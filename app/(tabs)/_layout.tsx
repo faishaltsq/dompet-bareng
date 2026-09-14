@@ -3,6 +3,7 @@ import { View, ColorValue, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '@/context/LanguageContext';
 
 function TabIcon({
   name,
@@ -28,6 +29,7 @@ function TabIcon({
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
   return (
@@ -51,7 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Beranda',
+          title: t('tabHome'),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="home-outline" nameFocused="home" color={color} active={focused} />
           ),
@@ -60,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="statistics"
         options={{
-          title: 'Statistik',
+          title: t('tabStats'),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="bar-chart-outline" nameFocused="bar-chart" color={color} active={focused} />
           ),
@@ -69,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Pengaturan',
+          title: t('tabSettings'),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="settings-outline" nameFocused="settings" color={color} active={focused} />
           ),

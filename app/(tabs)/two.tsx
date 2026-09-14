@@ -24,6 +24,7 @@ import SwipeableModal from '@/components/SwipeableModal';
 
 import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import {
@@ -46,6 +47,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile, signOut, updateDisplayName, signInWithGoogle, avatarUrl } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
 
   const isRegisteredUser = Boolean(user && !user.is_anonymous && (user.email || user.app_metadata?.provider === 'google'));
   const {
@@ -95,19 +97,10 @@ export default function SettingsScreen() {
 
   // Daily reminder state
   const [dailyReminder, setDailyReminder] = useState(false);
-  const [language, setLanguage] = useState<'id' | 'en'>('id');
 
   useEffect(() => {
     isReminderEnabled().then(setDailyReminder);
-    AsyncStorage.getItem('@db:app_language').then(val => {
-      if (val === 'en' || val === 'id') setLanguage(val);
-    });
   }, []);
-
-  const handleToggleLanguage = (lang: 'id' | 'en') => {
-    setLanguage(lang);
-    AsyncStorage.setItem('@db:app_language', lang).catch(() => {});
-  };
 
   const handleToggleReminder = async (val: boolean) => {
     if (Platform.OS === 'web') {
@@ -372,15 +365,15 @@ export default function SettingsScreen() {
       >
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-          <Text style={s.headerTitle}>Pengaturan</Text>
-          <Text style={s.headerSubtitle}>Akun, dompet, dan preferensi</Text>
+          <Text style={s.headerTitle}>{t('settingsTitle')}</Text>
+          <Text style={s.headerSubtitle}>{t('settingsSubtitle')}</Text>
         </View>
 
         <View style={s.body}>
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 1: PROFIL PENGGUNA PRIBADI */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          <Text style={s.sectionHeader}>Akun Saya</Text>
+          <Text style={s.sectionHeader}>{t('myAccount')}</Text>
 
           <Animated.View entering={FadeInDown.duration(400)} style={s.userCard}>
             <View style={s.userCardMainRow}>
@@ -402,21 +395,21 @@ export default function SettingsScreen() {
               <View style={s.userInfo}>
                 <View style={s.userNameRow}>
                   <Text style={s.userName} numberOfLines={1}>
-                    {profile?.display_name || user?.user_metadata?.full_name || 'Pengguna'}
+                    {profile?.display_name || user?.user_metadata?.full_name || t('userFallback')}
                   </Text>
                   <TouchableOpacity onPress={handleOpenEditProfile} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Text style={s.editNameIcon}>✏️</Text>
                   </TouchableOpacity>
                 </View>
                 <Text style={s.userEmailText} numberOfLines={1}>
-                  {user?.email || 'Tamu / Mode Dev'}
+                  {user?.email || t('devGuestTag')}
                 </Text>
                 <View style={[s.authBadge, isRegisteredUser ? s.authBadgeGoogle : s.authBadgeGuest]}>
                   {!isRegisteredUser && (
                     <Text style={s.googleMiniIcon}>G</Text>
                   )}
                   <Text style={[s.authBadgeText, isRegisteredUser ? s.authBadgeTextGoogle : s.authBadgeTextGuest]}>
-                    {isRegisteredUser ? '✓ Akun Google Terhubung' : 'Belum Login Google'}
+                    {isRegisteredUser ? t('googleConnected') : t('googleNotConnected')}
                   </Text>
                 </View>
               </View>
@@ -437,7 +430,7 @@ export default function SettingsScreen() {
                     <View style={s.googleIconCircle}>
                       <Text style={s.googleIconChar}>G</Text>
                     </View>
-                    <Text style={s.googleLoginBtnText}>Masuk dengan Google</Text>
+                    <Text style={s.googleLoginBtnText}>{t('signInWithGoogle')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -447,7 +440,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 2: DOMPET AKTIF & WORKSPACE SWITCHER */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          <Text style={s.sectionHeader}>Dompet Aktif</Text>
+          <Text style={s.sectionHeader}>{t('activeWalletHeader')}</Text>
 
           <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.wsActiveCard}>
             <View style={s.wsActiveHeader}>
@@ -477,11 +470,11 @@ export default function SettingsScreen() {
 
               <View style={s.wsActiveInfo}>
                 <Text style={s.wsActiveName} numberOfLines={1}>
-                  {activeWorkspace?.name || 'Pilih Dompet'}
+                  {activeWorkspace?.name || t('selectWallet')}
                 </Text>
                 <View style={[s.rolePill, isAdmin ? s.rolePillAdmin : s.rolePillMember]}>
                   <Text style={[s.rolePillText, isAdmin ? s.rolePillTextAdmin : s.rolePillTextMember]}>
-                    {isAdmin ? '👑 Pemilik / Admin' : '👤 Anggota'}
+                    {isAdmin ? `👑 ${t('roleOwner')}` : `👤 ${t('roleMember')}`}
                   </Text>
                 </View>
               </View>
@@ -491,7 +484,7 @@ export default function SettingsScreen() {
                 style={s.switchWsBtn}
                 onPress={() => setSwitchWsModalVisible(true)}
               >
-                <Text style={s.switchWsBtnText}>Pindah ›</Text>
+                <Text style={s.switchWsBtnText}>{t('switchLabel')}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -499,7 +492,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 3: MANAJEMEN DOMPET (GATED BY ROLE) */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          <Text style={s.sectionHeader}>Pengaturan Dompet</Text>
+          <Text style={s.sectionHeader}>{t('walletSettings')}</Text>
 
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.menuGroup}>
             {/* Ubah Nama Dompet (Admin only) */}
@@ -515,8 +508,8 @@ export default function SettingsScreen() {
                   <Ionicons name="pencil-outline" size={18} color={Colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.menuTitle}>Ubah Nama Dompet</Text>
-                  <Text style={s.menuDesc}>Ganti nama dompet aktif ini</Text>
+                  <Text style={s.menuTitle}>{t('renameWallet')}</Text>
+                  <Text style={s.menuDesc}>{t('renameWalletDesc')}</Text>
                 </View>
                 <Text style={s.menuArrow}>›</Text>
               </TouchableOpacity>
@@ -529,8 +522,8 @@ export default function SettingsScreen() {
                   <Ionicons name="image-outline" size={18} color={Colors.accentBlue} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.menuTitle}>Ganti Foto Dompet</Text>
-                  <Text style={s.menuDesc}>Unggah ikon atau foto profil dompet</Text>
+                  <Text style={s.menuTitle}>{t('changeWalletPhoto')}</Text>
+                  <Text style={s.menuDesc}>{t('changeWalletPhotoDesc')}</Text>
                 </View>
                 <Text style={s.menuArrow}>›</Text>
               </TouchableOpacity>
@@ -542,8 +535,8 @@ export default function SettingsScreen() {
                 <Ionicons name="share-social-outline" size={18} color={Colors.savings} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>Undang Anggota</Text>
-                <Text style={s.menuDesc}>Bagikan link ke keluarga atau rekan</Text>
+                <Text style={s.menuTitle}>{t('inviteMembers')}</Text>
+                <Text style={s.menuDesc}>{t('inviteMembersDesc')}</Text>
               </View>
               {sharing ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
@@ -563,8 +556,8 @@ export default function SettingsScreen() {
                   <Ionicons name="exit-outline" size={18} color={Colors.expense} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.menuTitle, { color: Colors.expense }]}>Keluar dari Dompet</Text>
-                  <Text style={s.menuDesc}>Tinggalkan dompet bersama ini</Text>
+                  <Text style={[s.menuTitle, { color: Colors.expense }]}>{t('leaveWallet')}</Text>
+                  <Text style={s.menuDesc}>{t('leaveWalletDesc')}</Text>
                 </View>
                 {leavingWs ? (
                   <ActivityIndicator size="small" color={Colors.expense} />
@@ -585,8 +578,8 @@ export default function SettingsScreen() {
                   <Ionicons name="trash-outline" size={18} color={Colors.expense} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.menuTitle, { color: Colors.expense }]}>Hapus Dompet Ini</Text>
-                  <Text style={s.menuDesc}>Hapus seluruh data dompet dan riwayat transaksi</Text>
+                  <Text style={[s.menuTitle, { color: Colors.expense }]}>{t('deleteWallet')}</Text>
+                  <Text style={s.menuDesc}>{t('deleteWalletDesc')}</Text>
                 </View>
                 {deletingWs ? (
                   <ActivityIndicator size="small" color={Colors.expense} />
@@ -601,7 +594,7 @@ export default function SettingsScreen() {
           {/* SECTION 4: ANGGOTA DOMPET */}
           {/* ═══════════════════════════════════════════════════════════════ */}
           <Text style={s.sectionHeader}>
-            Anggota Dompet ({members.length})
+            {t('walletMembersTitle')} ({members.length})
           </Text>
 
           <Animated.View entering={FadeInDown.delay(140).duration(400)} style={s.menuGroup}>
@@ -629,13 +622,13 @@ export default function SettingsScreen() {
                         {isMe ? `${memberName} (Kamu)` : memberName}
                       </Text>
                       <Text style={s.menuDesc}>
-                        {m.email ? m.email : `Bergabung ${new Date(m.joined_at).toLocaleDateString('id-ID')}`}
+                        {m.email ? m.email : `Bergabung ${new Date(m.joined_at).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US')}`}
                       </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <View style={[s.badgeSmall, m.role === 'admin' && s.badgeSmallAdmin]}>
                         <Text style={[s.badgeSmallText, m.role === 'admin' && s.badgeSmallTextAdmin]}>
-                          {m.role === 'admin' ? 'Admin' : 'Member'}
+                          {m.role === 'admin' ? t('roleOwner') : t('roleMember')}
                         </Text>
                       </View>
                       {/* Kick button: admin can remove other members */}
@@ -658,7 +651,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 5: LAINNYA (GABUNG DOMPET & KELUAR AKUN) */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          <Text style={s.sectionHeader}>Lainnya</Text>
+          <Text style={s.sectionHeader}>{t('othersSection')}</Text>
 
           <Animated.View entering={FadeInDown.delay(180).duration(400)} style={s.menuGroup}>
             <TouchableOpacity style={s.menuRow} onPress={() => setJoinModalVisible(true)}>
@@ -666,8 +659,8 @@ export default function SettingsScreen() {
                 <Ionicons name="enter-outline" size={18} color={Colors.accentPurple} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>Gabung Dompet Lain</Text>
-                <Text style={s.menuDesc}>Masukkan tautan atau kode token undangan</Text>
+                <Text style={s.menuTitle}>{t('joinWallet')}</Text>
+                <Text style={s.menuDesc}>{t('joinWalletDesc')}</Text>
               </View>
               <Text style={s.menuArrow}>›</Text>
             </TouchableOpacity>
@@ -678,8 +671,8 @@ export default function SettingsScreen() {
                 <Ionicons name="notifications-outline" size={18} color={Colors.savings} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>Pengingat Harian</Text>
-                <Text style={s.menuDesc}>Notifikasi jam 20:00 untuk mencatat pengeluaran</Text>
+                <Text style={s.menuTitle}>{t('dailyReminder')}</Text>
+                <Text style={s.menuDesc}>{t('dailyReminderDesc')}</Text>
               </View>
               <Switch
                 value={dailyReminder}
@@ -695,7 +688,7 @@ export default function SettingsScreen() {
                 <Ionicons name="globe-outline" size={18} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>Bahasa Aplikasi</Text>
+                <Text style={s.menuTitle}>{t('appLanguage')}</Text>
                 <Text style={s.menuDesc}>
                   {language === 'id' ? 'Bahasa Indonesia aktif' : 'English active'}
                 </Text>
@@ -703,13 +696,13 @@ export default function SettingsScreen() {
               <View style={s.langSegment}>
                 <TouchableOpacity
                   style={[s.langBtn, language === 'id' && s.langBtnActive]}
-                  onPress={() => handleToggleLanguage('id')}
+                  onPress={() => setLanguage('id')}
                 >
                   <Text style={[s.langBtnText, language === 'id' && s.langBtnTextActive]}>ID</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.langBtn, language === 'en' && s.langBtnActive]}
-                  onPress={() => handleToggleLanguage('en')}
+                  onPress={() => setLanguage('en')}
                 >
                   <Text style={[s.langBtnText, language === 'en' && s.langBtnTextActive]}>EN</Text>
                 </TouchableOpacity>
@@ -722,14 +715,14 @@ export default function SettingsScreen() {
                 <Ionicons name="flask-outline" size={18} color={Colors.accentBlue} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>Test Notifikasi</Text>
-                <Text style={s.menuDesc}>Kirim notifikasi uji dalam 3 detik</Text>
+                <Text style={s.menuTitle}>{t('testNotification')}</Text>
+                <Text style={s.menuDesc}>{t('testNotificationDesc')}</Text>
               </View>
               <TouchableOpacity
                 onPress={handleTestNotification}
                 style={s.testNotifBtn}
               >
-                <Text style={s.testNotifBtnText}>Coba</Text>
+                <Text style={s.testNotifBtnText}>{t('testBtn')}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -738,7 +731,7 @@ export default function SettingsScreen() {
           <Animated.View entering={FadeInDown.delay(220).duration(400)} style={{ marginTop: 20 }}>
             <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
               <Ionicons name="log-out-outline" size={18} color={Colors.expense} style={{ marginRight: 6 }} />
-              <Text style={s.signOutBtnText}>Keluar dari Akun</Text>
+              <Text style={s.signOutBtnText}>{t('logOut')}</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -749,8 +742,8 @@ export default function SettingsScreen() {
         visible={editProfileModalVisible}
         onClose={() => setEditProfileModalVisible(false)}
       >
-        <Text style={s.sheetTitle}>Ubah Nama Profil</Text>
-        <Text style={s.sheetSubtitle}>Nama ini akan muncul pada transaksi dan daftar anggota dompet bersama.</Text>
+        <Text style={s.sheetTitle}>{t('editProfileTitle')}</Text>
+        <Text style={s.sheetSubtitle}>{t('editProfileSubtitle')}</Text>
 
         <TextInput
           style={s.sheetInput}
@@ -769,12 +762,12 @@ export default function SettingsScreen() {
           {savingProfileName ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.sheetBtnText}>Simpan Nama</Text>
+            <Text style={s.sheetBtnText}>{t('saveNameBtn')}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Batal</Text>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
 
@@ -783,8 +776,8 @@ export default function SettingsScreen() {
         visible={switchWsModalVisible}
         onClose={() => setSwitchWsModalVisible(false)}
       >
-        <Text style={s.sheetTitle}>Pilih Dompet</Text>
-        <Text style={s.sheetSubtitle}>Beralih ke dompet bersama lainnya:</Text>
+        <Text style={s.sheetTitle}>{t('selectWallet')}</Text>
+        <Text style={s.sheetSubtitle}>{t('selectWalletSubtitle')}</Text>
 
         <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
           {workspaces.map(ws => {
@@ -816,7 +809,7 @@ export default function SettingsScreen() {
                       color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
                     />
                     <Text style={s.wsPickerRole}>
-                      {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                      {ws.role === 'admin' ? t('roleOwner') : t('roleMember')}
                     </Text>
                   </View>
                 </View>
@@ -827,7 +820,7 @@ export default function SettingsScreen() {
         </ScrollView>
 
         <TouchableOpacity onPress={() => setSwitchWsModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Tutup</Text>
+          <Text style={s.cancelBtnText}>{t('close')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
 
@@ -836,7 +829,7 @@ export default function SettingsScreen() {
         visible={editWsModalVisible}
         onClose={() => setEditWsModalVisible(false)}
       >
-        <Text style={s.sheetTitle}>Ubah Nama Dompet</Text>
+        <Text style={s.sheetTitle}>{t('renameWalletTitle')}</Text>
 
         <TextInput
           style={s.sheetInput}
@@ -855,12 +848,12 @@ export default function SettingsScreen() {
           {savingWsEdit ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.sheetBtnText}>Simpan Perubahan</Text>
+            <Text style={s.sheetBtnText}>{t('saveChangesBtn')}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Batal</Text>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
 
@@ -869,8 +862,8 @@ export default function SettingsScreen() {
         visible={joinModalVisible}
         onClose={() => setJoinModalVisible(false)}
       >
-        <Text style={s.sheetTitle}>Gabung Dompet Lain</Text>
-        <Text style={s.sheetSubtitle}>Tempel tautan undangan atau kode token yang kamu terima:</Text>
+        <Text style={s.sheetTitle}>{t('joinWalletTitle')}</Text>
+        <Text style={s.sheetSubtitle}>{t('joinWalletSubtitle')}</Text>
 
         <TextInput
           style={s.sheetInput}
@@ -883,11 +876,11 @@ export default function SettingsScreen() {
         />
 
         <TouchableOpacity style={s.sheetBtn} onPress={handleJoinWithInput}>
-          <Text style={s.sheetBtnText}>Lanjut Gabung</Text>
+          <Text style={s.sheetBtnText}>{t('joinWalletBtn')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Batal</Text>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
 
@@ -898,26 +891,26 @@ export default function SettingsScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <Text style={{ fontSize: 22 }}>⚠️</Text>
-          <Text style={s.sheetTitle}>Keluarkan Anggota</Text>
+          <Text style={s.sheetTitle}>{t('kickMemberTitle')}</Text>
         </View>
 
         <Text style={s.sheetSubtitle}>
-          Apakah kamu yakin ingin mengeluarkan{' '}
+          {language === 'id' ? 'Apakah kamu yakin ingin mengeluarkan ' : 'Are you sure you want to remove '}
           <Text style={{ fontWeight: '700', color: Colors.textDark }}>
-            {memberToKick?.display_name || memberToKick?.email || 'anggota ini'}
+            {memberToKick?.display_name || memberToKick?.email || (language === 'id' ? 'anggota ini' : 'this member')}
           </Text>{' '}
-          dari dompet "{activeWorkspace?.name}"?
+          {language === 'id' ? `dari dompet "${activeWorkspace?.name}"?` : `from wallet "${activeWorkspace?.name}"?`}
         </Text>
 
         <View style={{ marginTop: 12, marginBottom: 6 }}>
           <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textDark, marginBottom: 6 }}>
-            Alasan Dikeluarkan (dikirim ke anggota via notifikasi):
+            {t('kickReasonLabel')}
           </Text>
           <TextInput
             style={[s.sheetInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
             value={kickReason}
             onChangeText={setKickReason}
-            placeholder="Tuliskan alasan (misal: Tidak aktif, salah gabung, dll)..."
+            placeholder={t('kickReasonPlaceholder')}
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={3}
@@ -932,7 +925,7 @@ export default function SettingsScreen() {
           {kicking ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.sheetBtnText}>Ya, Keluarkan & Beri Tahu</Text>
+            <Text style={s.sheetBtnText}>{t('kickConfirmBtn')}</Text>
           )}
         </TouchableOpacity>
 
@@ -941,7 +934,7 @@ export default function SettingsScreen() {
           style={s.cancelBtn}
           disabled={kicking}
         >
-          <Text style={s.cancelBtnText}>Batal</Text>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
     </View>

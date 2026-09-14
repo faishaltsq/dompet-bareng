@@ -9,6 +9,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
 
 export {
@@ -44,7 +45,9 @@ export default function RootLayout() {
     <AuthProvider>
       <WorkspaceProvider>
         <NotificationProvider>
-          <RootLayoutNav />
+          <LanguageProvider>
+            <RootLayoutNav />
+          </LanguageProvider>
         </NotificationProvider>
       </WorkspaceProvider>
     </AuthProvider>

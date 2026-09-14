@@ -19,12 +19,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
 export default function AddTransactionModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
   const params = useLocalSearchParams<{
     type?: string;
     amount?: string;
@@ -122,7 +124,7 @@ export default function AddTransactionModal() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Text style={s.backBtnText}>✕</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Catat Transaksi</Text>
+        <Text style={s.headerTitle}>{t('recordTxTitle')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -149,14 +151,14 @@ export default function AddTransactionModal() {
               onPress={() => handleSwitchType('expense')}
             >
               <Text style={s.switchEmoji}>⬇️</Text>
-              <Text style={[s.switchText, isExpense && s.switchTextActive]}>Pengeluaran</Text>
+              <Text style={[s.switchText, isExpense && s.switchTextActive]}>{t('expense')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.switchBtn, isExpense && s.switchBtnInactive, !isExpense && s.switchBtnIncome]}
               onPress={() => handleSwitchType('income')}
             >
               <Text style={s.switchEmoji}>⬆️</Text>
-              <Text style={[s.switchText, !isExpense && s.switchTextActive]}>Pemasukan</Text>
+              <Text style={[s.switchText, !isExpense && s.switchTextActive]}>{t('income')}</Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -176,7 +178,7 @@ export default function AddTransactionModal() {
 
           {/* Category Chips */}
           <Animated.View entering={FadeInDown.delay(100).duration(350)}>
-            <Text style={s.sectionLabel}>Kategori</Text>
+            <Text style={s.sectionLabel}>{t('categoryLabel')}</Text>
             <View style={s.chipsWrap}>
               {categories.map(cat => {
                 const active = category === cat;
@@ -205,15 +207,15 @@ export default function AddTransactionModal() {
           <Animated.View entering={FadeInDown.delay(140).duration(350)} style={s.noteSection}>
             {/* Label row: "Catatan" + tombol "+ Tambah Struk" */}
             <View style={s.noteLabelRow}>
-              <Text style={s.sectionLabel}>Catatan (Opsional)</Text>
+              <Text style={s.sectionLabel}>{t('noteOptional')}</Text>
               <TouchableOpacity style={s.receiptBtn} onPress={handlePickReceipt}>
-                <Text style={s.receiptBtnText}>📎 Tambah Struk</Text>
+                <Text style={s.receiptBtnText}>📎 {t('addReceipt')}</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
               style={s.noteInput}
-              placeholder="Misal: Makan siang soto, bayar listrik..."
+              placeholder={language === 'id' ? 'Misal: Makan siang soto, bayar listrik...' : 'e.g. Lunch, electricity bill...'}
               placeholderTextColor={Colors.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -228,9 +230,9 @@ export default function AddTransactionModal() {
             {receiptUri && (
               <Animated.View entering={FadeIn.duration(250)} style={s.receiptPreview}>
                 <View style={s.receiptPreviewHeader}>
-                  <Text style={s.receiptPreviewLabel}>📷 Foto Struk</Text>
+                  <Text style={s.receiptPreviewLabel}>📷 {language === 'id' ? 'Foto Struk' : 'Receipt Photo'}</Text>
                   <TouchableOpacity onPress={handleRemoveReceipt} style={s.receiptRemoveBtn}>
-                    <Text style={s.receiptRemoveBtnText}>✕ Hapus</Text>
+                    <Text style={s.receiptRemoveBtnText}>✕ {language === 'id' ? 'Hapus' : 'Remove'}</Text>
                   </TouchableOpacity>
                 </View>
                 <Image source={{ uri: receiptUri }} style={s.receiptImg} resizeMode="cover" />
@@ -253,7 +255,7 @@ export default function AddTransactionModal() {
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={s.saveBtnText}>
-                  Simpan {isExpense ? 'Pengeluaran' : 'Pemasukan'}
+                  {t('saveBtn')} {isExpense ? t('expense') : t('income')}
                 </Text>
               )}
             </TouchableOpacity>

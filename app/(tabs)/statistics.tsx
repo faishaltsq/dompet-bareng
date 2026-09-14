@@ -17,13 +17,17 @@ import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedProgressBar } from '@/components/Animated';
 import SwipeableModal from '@/components/SwipeableModal';
+import { useLanguage } from '@/context/LanguageContext';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 type TabType = 'expense' | 'income';
 
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
+  const MONTHS = language === 'id' ? MONTHS_ID : MONTHS_EN;
   const { activeWorkspace, transactions, loadingTx, budgets, setBudget, deleteBudget } = useWorkspace();
   const isAdmin = activeWorkspace?.role === 'admin';
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
@@ -85,7 +89,7 @@ export default function StatisticsScreen() {
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>
           <View style={s.headerTopRow}>
-            <Text style={s.headerTitle}>Analisis & Anggaran</Text>
+            <Text style={s.headerTitle}>{t('statsTitle')}</Text>
             {activeWorkspace && (
               <View style={s.wsBadge}>
                 <Text style={s.wsBadgeText}>{activeWorkspace.name}</Text>
@@ -119,7 +123,7 @@ export default function StatisticsScreen() {
               <View style={[s.summaryDot, { backgroundColor: Colors.incomeSoft }]}>
                 <Text style={{ fontSize: 16 }}>⬆️</Text>
               </View>
-              <Text style={s.summaryCardLabel}>Pemasukan</Text>
+              <Text style={s.summaryCardLabel}>{t('income')}</Text>
               <Text style={[s.summaryCardAmt, { color: Colors.income }]}>
                 {formatRupiah(monthSummary.income)}
               </Text>
@@ -129,7 +133,7 @@ export default function StatisticsScreen() {
               <View style={[s.summaryDot, { backgroundColor: Colors.expenseSoft }]}>
                 <Text style={{ fontSize: 16 }}>⬇️</Text>
               </View>
-              <Text style={s.summaryCardLabel}>Pengeluaran</Text>
+              <Text style={s.summaryCardLabel}>{t('expense')}</Text>
               <Text style={[s.summaryCardAmt, { color: Colors.expense }]}>
                 {formatRupiah(monthSummary.expense)}
               </Text>
@@ -139,7 +143,7 @@ export default function StatisticsScreen() {
           {/* Net Balance card */}
           <Animated.View entering={FadeInDown.delay(80).duration(450)} style={s.netCard}>
             <View>
-              <Text style={s.netLabel}>Saldo Bersih {MONTHS[selectedMonth]}</Text>
+              <Text style={s.netLabel}>{t('netBalance')} {MONTHS[selectedMonth]}</Text>
               <Text style={[s.netAmount, {
                 color: balance >= 0 ? Colors.income : Colors.expense,
               }]}>
@@ -150,7 +154,7 @@ export default function StatisticsScreen() {
             {/* Income/expense comparative bar */}
             <View style={{ gap: 6, marginTop: 12 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={s.barLabel}>Pemasukan</Text>
+                <Text style={s.barLabel}>{t('income')}</Text>
                 <Text style={[s.barLabel, { color: Colors.income }]}>
                   {monthSummary.income > 0
                     ? `${Math.round((monthSummary.income / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
@@ -166,7 +170,7 @@ export default function StatisticsScreen() {
               />
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={s.barLabel}>Pengeluaran</Text>
+                <Text style={s.barLabel}>{t('expense')}</Text>
                 <Text style={[s.barLabel, { color: Colors.expense }]}>
                   {monthSummary.expense > 0
                     ? `${Math.round((monthSummary.expense / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
@@ -189,13 +193,13 @@ export default function StatisticsScreen() {
               style={[s.tabBtn, tab === 'expense' && s.tabBtnActive]}
               onPress={() => setTab('expense')}
             >
-              <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActive]}>Pengeluaran</Text>
+              <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActive]}>{t('expense')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.tabBtn, tab === 'income' && s.tabBtnActive]}
               onPress={() => setTab('income')}
             >
-              <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActive]}>Pemasukan</Text>
+              <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActive]}>{t('income')}</Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -206,25 +210,25 @@ export default function StatisticsScreen() {
             <Animated.View entering={FadeInDown.delay(160).duration(400)} style={s.budgetSection}>
               <View style={s.budgetHeaderRow}>
                 <View>
-                  <Text style={s.budgetSectionTitle}>Batas Anggaran Kategori</Text>
-                  <Text style={s.budgetSectionSubtitle}>Pantau kuota pengeluaran kategori</Text>
+                  <Text style={s.budgetSectionTitle}>{t('categoryBudgetLimits')}</Text>
+                  <Text style={s.budgetSectionSubtitle}>{t('categoryBudgetLimitsSubtitle')}</Text>
                 </View>
                 {isAdmin && (
                   <TouchableOpacity
                     style={s.setBudgetBtn}
                     onPress={() => setBudgetModalVisible(true)}
                   >
-                    <Text style={s.setBudgetBtnText}>+ Atur</Text>
+                    <Text style={s.setBudgetBtnText}>+ {t('setBudget')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
               {budgets.length === 0 ? (
                 <View style={s.noBudgetBox}>
-                  <Text style={s.noBudgetText}>Belum ada batas anggaran yang diatur.</Text>
+                  <Text style={s.noBudgetText}>{t('noBudgetYet')}</Text>
                   {isAdmin && (
                     <TouchableOpacity onPress={() => setBudgetModalVisible(true)}>
-                      <Text style={s.noBudgetAction}>+ Pasang Target Anggaran</Text>
+                      <Text style={s.noBudgetAction}>+ {t('setBudgetTarget')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -256,8 +260,8 @@ export default function StatisticsScreen() {
                         style={{ marginTop: 8 }}
                       />
                       <View style={s.budgetBottomRow}>
-                        <Text style={s.budgetSpentText}>Terpakai: {formatRupiah(spent)}</Text>
-                        <Text style={s.budgetTotalText}>Batas: {formatRupiah(b.amount)}</Text>
+                        <Text style={s.budgetSpentText}>{t('budgetSpent')}: {formatRupiah(spent)}</Text>
+                        <Text style={s.budgetTotalText}>{t('budgetQuota')}: {formatRupiah(b.amount)}</Text>
                       </View>
                     </View>
                   );
@@ -268,7 +272,7 @@ export default function StatisticsScreen() {
 
           {/* Category breakdown */}
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Per Kategori</Text>
+            <Text style={s.sectionTitle}>{t('byCategory')}</Text>
             <Text style={s.sectionSub}>{MONTHS[selectedMonth]}</Text>
           </View>
 
@@ -278,7 +282,9 @@ export default function StatisticsScreen() {
             <Animated.View entering={FadeIn.duration(300)} style={s.emptyWrap}>
               <Text style={{ fontSize: 36 }}>📊</Text>
               <Text style={s.emptyText}>
-                Tidak ada {tab === 'expense' ? 'pengeluaran' : 'pemasukan'} di {MONTHS[selectedMonth]}.
+                {language === 'id'
+                  ? `Tidak ada ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} di ${MONTHS[selectedMonth]}.`
+                  : `No ${tab === 'expense' ? 'expenses' : 'income'} recorded in ${MONTHS[selectedMonth]}.`}
               </Text>
             </Animated.View>
           ) : (
@@ -320,8 +326,8 @@ export default function StatisticsScreen() {
         visible={budgetModalVisible}
         onClose={() => setBudgetModalVisible(false)}
       >
-        <Text style={s.sheetTitle}>Atur Batas Anggaran</Text>
-        <Text style={s.sheetSubtitle}>Pilih kategori dan tentukan kuota pengeluaran bulanan:</Text>
+        <Text style={s.sheetTitle}>{t('setBudgetTitle')}</Text>
+        <Text style={s.sheetSubtitle}>{t('setBudgetSubtitle')}</Text>
 
         {/* Category horizontal scroll */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -343,7 +349,7 @@ export default function StatisticsScreen() {
           style={s.sheetInput}
           value={budgetAmount}
           onChangeText={setBudgetAmount}
-          placeholder="Nominal budget (contoh: 1500000)"
+          placeholder={t('budgetPlaceholder')}
           placeholderTextColor={Colors.textMuted}
           keyboardType="number-pad"
         />
@@ -356,12 +362,12 @@ export default function StatisticsScreen() {
           {savingBudget ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.sheetBtnText}>Simpan Anggaran</Text>
+            <Text style={s.sheetBtnText}>{t('saveBudgetBtn')}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setBudgetModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Batal</Text>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
     </View>

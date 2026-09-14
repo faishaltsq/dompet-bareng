@@ -13,6 +13,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, AppNotification } from '@/context/NotificationContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import SwipeableModal from './SwipeableModal';
 
@@ -25,6 +26,7 @@ interface NotificationModalProps {
 
 export default function NotificationModal({ visible, onClose }: NotificationModalProps) {
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
   const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
 
@@ -44,12 +46,21 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
       const diffHours = Math.floor(diffMins / 60);
       const diffDays = Math.floor(diffHours / 24);
 
-      if (diffMins < 1) return 'Baru saja';
-      if (diffMins < 60) return `${diffMins} mnt lalu`;
-      if (diffHours < 24) return `${diffHours} jam lalu`;
-      if (diffDays === 1) return 'Kemarin';
-      if (diffDays < 7) return `${diffDays} hari lalu`;
-      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      if (language === 'en') {
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      } else {
+        if (diffMins < 1) return 'Baru saja';
+        if (diffMins < 60) return `${diffMins} mnt lalu`;
+        if (diffHours < 24) return `${diffHours} jam lalu`;
+        if (diffDays === 1) return 'Kemarin';
+        if (diffDays < 7) return `${diffDays} hari lalu`;
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      }
     } catch {
       return '';
     }
@@ -70,9 +81,11 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
               <Ionicons name="notifications" size={18} color={Colors.primary} />
             </View>
             <View>
-              <Text style={s.headerTitle}>Notifikasi</Text>
+              <Text style={s.headerTitle}>{t('notificationsTitle')}</Text>
               <Text style={s.headerSubtitle}>
-                {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
+                {unreadCount > 0
+                  ? (language === 'id' ? `${unreadCount} belum dibaca` : `${unreadCount} unread`)
+                  : (language === 'id' ? 'Semua sudah dibaca' : 'All caught up')}
               </Text>
             </View>
           </View>
@@ -84,7 +97,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                 style={s.markAllBtn}
                 activeOpacity={0.7}
               >
-                <Text style={s.markAllBtnText}>Tandai Dibaca</Text>
+                <Text style={s.markAllBtnText}>{t('markAllAsRead')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
@@ -101,14 +114,16 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
           {loading && notifications.length === 0 ? (
             <View style={s.emptyBox}>
               <ActivityIndicator color={Colors.primary} size="small" />
-              <Text style={s.emptySubtext}>Memuat notifikasi...</Text>
+              <Text style={s.emptySubtext}>
+                {language === 'id' ? 'Memuat notifikasi...' : 'Loading notifications...'}
+              </Text>
             </View>
           ) : notifications.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="notifications-off-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 8 }} />
-              <Text style={s.emptyTitle}>Belum Ada Notifikasi</Text>
+              <Text style={s.emptyTitle}>{t('noNotifications')}</Text>
               <Text style={s.emptySubtext}>
-                Pemberitahuan terkait aktivitas dompetmu akan muncul di sini.
+                {t('noNotificationsDesc')}
               </Text>
             </View>
           ) : (
@@ -220,7 +235,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                 {selectedNotif.data?.workspace_name && (
                   <View style={s.workspaceBadge}>
                     <Text style={s.workspaceBadgeText}>
-                      Dompet: {selectedNotif.data.workspace_name}
+                      {language === 'id' ? 'Dompet' : 'Wallet'}: {selectedNotif.data.workspace_name}
                     </Text>
                   </View>
                 )}
@@ -231,7 +246,9 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                 {/* REASON CARD (IF KICKED) */}
                 {selectedNotif.data?.reason ? (
                   <View style={s.reasonBox}>
-                    <Text style={s.reasonLabel}>Catatan dari Pengurus/Admin:</Text>
+                    <Text style={s.reasonLabel}>
+                      {language === 'id' ? 'Catatan dari Pengurus/Admin:' : 'Note from Admin:'}
+                    </Text>
                     <Text style={s.reasonText}>"{selectedNotif.data.reason}"</Text>
                     {selectedNotif.data?.admin_name ? (
                       <Text style={s.reasonAuthor}>— {selectedNotif.data.admin_name}</Text>
@@ -243,7 +260,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                   style={s.detailDoneBtn}
                   onPress={() => setSelectedNotif(null)}
                 >
-                  <Text style={s.detailDoneBtnText}>Tutup</Text>
+                  <Text style={s.detailDoneBtnText}>{t('close')}</Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>

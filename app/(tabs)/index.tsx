@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { useWorkspace, Transaction, Workspace } from '@/context/WorkspaceContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { useLanguage } from '@/context/LanguageContext';
 import NotificationModal from '@/components/NotificationModal';
 import SwipeableModal from '@/components/SwipeableModal';
 import { formatRupiah, getCategoryMeta } from '@/lib/utils';
@@ -44,6 +45,7 @@ function CreateWorkspaceModal({
   onClose: () => void;
   onCreate: (name: string) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -57,8 +59,8 @@ function CreateWorkspaceModal({
 
   return (
     <SwipeableModal visible={visible} onClose={onClose}>
-      <Text style={s.sheetTitle}>Buat Dompet Baru</Text>
-      <Text style={s.sheetSubtitle}>Atur keuangan bersama keluarga, pasangan, atau tim</Text>
+      <Text style={s.sheetTitle}>{t('createNewWallet')}</Text>
+      <Text style={s.sheetSubtitle}>{t('createWalletSubtitle')}</Text>
 
       <TextInput
         style={s.sheetInput}
@@ -77,12 +79,12 @@ function CreateWorkspaceModal({
         {creating ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text style={s.sheetBtnText}>Buat Dompet</Text>
+          <Text style={s.sheetBtnText}>{t('createWalletBtn')}</Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
-        <Text style={s.cancelBtnText}>Batal</Text>
+        <Text style={s.cancelBtnText}>{t('cancel')}</Text>
       </TouchableOpacity>
     </SwipeableModal>
   );
@@ -91,6 +93,7 @@ function CreateWorkspaceModal({
 export default function HomeScreen() {
   const { user, profile, avatarUrl } = useAuth();
   const { unreadCount } = useNotifications();
+  const { t, language } = useLanguage();
   const {
     workspaces,
     activeWorkspace,
@@ -187,12 +190,12 @@ export default function HomeScreen() {
           <View style={s.emptyIconCircle}>
             <Ionicons name="wallet-outline" size={32} color={Colors.primary} />
           </View>
-          <Text style={s.emptyTitle}>Mulai dengan DompetBareng</Text>
+          <Text style={s.emptyTitle}>{t('getStartedTitle')}</Text>
           <Text style={s.emptySubtitle}>
-            Buat dompet pertamamu untuk mencatat keuangan pribadi atau bersama tim.
+            {t('getStartedSubtitle')}
           </Text>
           <PressableScale onPress={() => setShowCreate(true)} style={s.emptyBtn}>
-            <Text style={s.emptyBtnText}>＋ Buat Dompet Sekarang</Text>
+            <Text style={s.emptyBtnText}>＋ {t('createWalletNow')}</Text>
           </PressableScale>
         </Animated.View>
         <CreateWorkspaceModal
@@ -222,7 +225,7 @@ export default function HomeScreen() {
             )}
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={s.greetingSub}>Hi, Selamat Datang</Text>
+            <Text style={s.greetingSub}>{t('hiWelcome')}</Text>
             <Text style={s.greetingName} numberOfLines={1}>
               {displayName}
             </Text>
@@ -254,7 +257,7 @@ export default function HomeScreen() {
           <View style={s.heroTopRow}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.heroLabel}>Total Saldo</Text>
+                <Text style={s.heroLabel}>{t('totalBalance')}</Text>
                 {activeWorkspace?.name ? (
                   <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600' }} numberOfLines={1}>
                     • {activeWorkspace.name}
@@ -276,7 +279,7 @@ export default function HomeScreen() {
             <View style={s.metricItem}>
               <View style={s.metricHeader}>
                 <View style={[s.dotIndicator, { backgroundColor: Colors.income }]} />
-                <Text style={s.metricLabel}>Pemasukan</Text>
+                <Text style={s.metricLabel}>{t('income')}</Text>
               </View>
               <Text style={[s.metricValue, { color: Colors.income }]}>
                 {formatRupiah(summary.income)}
@@ -286,7 +289,7 @@ export default function HomeScreen() {
             <View style={s.metricItem}>
               <View style={s.metricHeader}>
                 <View style={[s.dotIndicator, { backgroundColor: Colors.expense }]} />
-                <Text style={s.metricLabel}>Pengeluaran</Text>
+                <Text style={s.metricLabel}>{t('expense')}</Text>
               </View>
               <Text style={[s.metricValue, { color: Colors.expense }]}>
                 {formatRupiah(summary.expense)}
@@ -297,7 +300,7 @@ export default function HomeScreen() {
           {/* Budget Progress Bar */}
           <View style={s.budgetSection}>
             <View style={s.budgetHeader}>
-              <Text style={s.budgetTitle}>Budget Terpakai</Text>
+              <Text style={s.budgetTitle}>{t('budgetUsed')}</Text>
               <Text style={s.budgetPercent}>{budgetPercent}%</Text>
             </View>
             <AnimatedProgressBar
@@ -318,7 +321,7 @@ export default function HomeScreen() {
             <View style={[s.quickActionIcon, { backgroundColor: Colors.primarySoft }]}>
               <Ionicons name="add" size={24} color={Colors.primary} />
             </View>
-            <Text style={s.quickActionLabel}>Catat</Text>
+            <Text style={s.quickActionLabel}>{t('recordBtn')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -328,7 +331,7 @@ export default function HomeScreen() {
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentBlueSoft }]}>
               <Ionicons name="swap-horizontal" size={22} color={Colors.accentBlue} />
             </View>
-            <Text style={s.quickActionLabel}>Pindah Dompet</Text>
+            <Text style={s.quickActionLabel}>{t('switchWallet')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -338,7 +341,7 @@ export default function HomeScreen() {
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentPurpleSoft }]}>
               <Ionicons name="bar-chart-outline" size={20} color={Colors.accentPurple} />
             </View>
-            <Text style={s.quickActionLabel}>Statistik</Text>
+            <Text style={s.quickActionLabel}>{t('statisticsTab')}</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -346,10 +349,10 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(150).duration(450)} style={s.periodSegment}>
           {(['month', 'week', 'day', 'all'] as PeriodFilter[]).map(p => {
             const labels: Record<PeriodFilter, string> = {
-              month: 'Bulan Ini',
-              week: 'Minggu Ini',
-              day: 'Hari Ini',
-              all: 'Semua',
+              month: t('thisMonth'),
+              week: t('thisWeek'),
+              day: t('today'),
+              all: t('allTime'),
             };
             const active = period === p;
             return (
@@ -368,9 +371,9 @@ export default function HomeScreen() {
 
         {/* SECTION TITLE */}
         <View style={s.txSectionHeader}>
-          <Text style={s.txSectionTitle}>Transaksi Terakhir</Text>
+          <Text style={s.txSectionTitle}>{t('recentTx')}</Text>
           <Text style={s.txSectionCount}>
-            {filteredTransactions.length} transaksi
+            {filteredTransactions.length} {t('txCount')}
           </Text>
         </View>
 
@@ -439,9 +442,9 @@ export default function HomeScreen() {
           !loadingTx ? (
             <Animated.View entering={FadeIn.duration(400)} style={s.emptyTxBox}>
               <Ionicons name="receipt-outline" size={42} color={Colors.textMuted} style={{ marginBottom: 6 }} />
-              <Text style={s.emptyTxTitle}>Belum ada transaksi</Text>
+              <Text style={s.emptyTxTitle}>{t('emptyTxTitle')}</Text>
               <Text style={s.emptyTxDesc}>
-                Tap tombol "+ Catat" di atas untuk mencatat pengeluaran atau pemasukan.
+                {t('emptyTxDesc')}
               </Text>
             </Animated.View>
           ) : null
@@ -452,8 +455,8 @@ export default function HomeScreen() {
         visible={showSwitchModal}
         onClose={() => setShowSwitchModal(false)}
       >
-        <Text style={s.sheetTitle}>Pilih Dompet</Text>
-        <Text style={s.sheetSubtitle}>Beralih ke dompet bersama atau pribadi lainnya:</Text>
+        <Text style={s.sheetTitle}>{t('selectWallet')}</Text>
+        <Text style={s.sheetSubtitle}>{t('selectWalletSubtitle')}</Text>
 
         <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
           {workspaces.map(ws => {
@@ -485,13 +488,13 @@ export default function HomeScreen() {
                       color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
                     />
                     <Text style={s.wsRowRole}>
-                      {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                      {ws.role === 'admin' ? t('roleOwner') : t('roleMember')}
                     </Text>
                   </View>
                 </View>
                 {isActive && (
                   <View style={s.activeBadge}>
-                    <Text style={s.activeBadgeText}>Aktif</Text>
+                    <Text style={s.activeBadgeText}>{t('activeStatus')}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -507,7 +510,7 @@ export default function HomeScreen() {
               setShowCreate(true);
             }}
           >
-            <Text style={s.modalActionBtnText}>＋ Dompet Baru</Text>
+            <Text style={s.modalActionBtnText}>＋ {t('newWallet')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -517,12 +520,12 @@ export default function HomeScreen() {
               router.push('/(tabs)/two');
             }}
           >
-            <Text style={s.modalActionBtnTextOutline}>📥 Gabung Lain</Text>
+            <Text style={s.modalActionBtnTextOutline}>📥 {t('joinOther')}</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={() => setShowSwitchModal(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>Tutup</Text>
+          <Text style={s.cancelBtnText}>{t('close')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
 
