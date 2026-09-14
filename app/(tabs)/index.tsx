@@ -476,14 +476,27 @@ export default function HomeScreen() {
                       setShowSwitchModal(false);
                     }}
                   >
-                    <Text style={{ fontSize: 22 }}>{ws.image_url ? '🖼️' : '💰'}</Text>
+                    {ws.image_url ? (
+                      <Image source={{ uri: ws.image_url }} style={s.wsRowImg} />
+                    ) : (
+                      <View style={s.wsRowImgPlaceholder}>
+                        <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+                      </View>
+                    )}
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[s.wsRowName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
                         {ws.name}
                       </Text>
-                      <Text style={s.wsRowRole}>
-                        {ws.role === 'admin' ? '👑 Pemilik' : '👤 Anggota'}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Ionicons
+                          name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                          size={12}
+                          color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
+                        />
+                        <Text style={s.wsRowRole}>
+                          {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                        </Text>
+                      </View>
                     </View>
                     {isActive && (
                       <View style={s.activeBadge}>
@@ -629,6 +642,20 @@ const s = StyleSheet.create({
   wsRowActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primarySoft,
+  },
+  wsRowImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.borderLight,
+  },
+  wsRowImgPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   wsRowName: {
     fontSize: 14,

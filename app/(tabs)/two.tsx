@@ -458,7 +458,7 @@ export default function SettingsScreen() {
                   <Image source={{ uri: activeWorkspace.image_url }} style={s.wsImage} />
                 ) : (
                   <View style={s.wsImagePlaceholder}>
-                    <Text style={{ fontSize: 28 }}>💰</Text>
+                    <Ionicons name="wallet-outline" size={28} color={Colors.primary} />
                   </View>
                 )}
                 {isAdmin && (
@@ -466,7 +466,7 @@ export default function SettingsScreen() {
                     {uploadingImage ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text style={{ fontSize: 10 }}>📷</Text>
+                      <Ionicons name="camera" size={11} color="#fff" />
                     )}
                   </View>
                 )}
@@ -793,14 +793,27 @@ export default function SettingsScreen() {
                       setSwitchWsModalVisible(false);
                     }}
                   >
-                    <Text style={{ fontSize: 24 }}>{ws.image_url ? '🖼️' : '💰'}</Text>
+                    {ws.image_url ? (
+                      <Image source={{ uri: ws.image_url }} style={s.wsPickerImg} />
+                    ) : (
+                      <View style={s.wsPickerImgPlaceholder}>
+                        <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+                      </View>
+                    )}
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[s.wsPickerName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
                         {ws.name}
                       </Text>
-                      <Text style={s.wsPickerRole}>
-                        {ws.role === 'admin' ? '👑 Pemilik' : '👤 Anggota'}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Ionicons
+                          name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                          size={12}
+                          color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
+                        />
+                        <Text style={s.wsPickerRole}>
+                          {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                        </Text>
+                      </View>
                     </View>
                     {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
                   </TouchableOpacity>
@@ -1357,6 +1370,20 @@ const s = StyleSheet.create({
   wsPickerRowActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primarySoft,
+  },
+  wsPickerImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.borderLight,
+  },
+  wsPickerImgPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   wsPickerName: {
     fontSize: 14,
