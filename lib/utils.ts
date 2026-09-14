@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 /** Format angka ke Rupiah dengan titik ribuan: 50000 -> "Rp 50.000" */
 export function formatRupiah(amount: number): string {
@@ -47,20 +48,23 @@ export const INCOME_CATEGORIES = [
   'Gaji', 'Transfer', 'Bonus', 'Investasi', 'Lainnya',
 ] as const;
 
-/** Compact category marker + warna pastel per kategori */
-export const CATEGORY_META: Record<string, { emoji: string; bg: string; color: string }> = {
-  'Makan & Minum': { emoji: '🍜', bg: Colors.expenseSoft, color: Colors.expense },
-  'Transportasi':  { emoji: '🚗', bg: Colors.accentBlueSoft, color: Colors.accentBlue },
-  'Belanja':       { emoji: '🛒', bg: Colors.savingsSoft, color: Colors.savings },
-  'Tagihan':       { emoji: '📄', bg: '#FFF3E0', color: '#E65100' },
-  'Hiburan':       { emoji: '🎮', bg: Colors.accentPurpleSoft, color: Colors.accentPurple },
-  'Kesehatan':     { emoji: '💊', bg: Colors.accentTealSoft, color: Colors.accentTeal },
-  'Pendidikan':    { emoji: '📚', bg: Colors.accentBlueSoft, color: Colors.accentBlue },
-  'Gaji':          { emoji: '💰', bg: Colors.incomeSoft, color: Colors.income },
-  'Transfer':      { emoji: '🔄', bg: Colors.accentTealSoft, color: Colors.accentTeal },
-  'Bonus':         { emoji: '🎁', bg: Colors.savingsSoft, color: Colors.savings },
-  'Investasi':     { emoji: '📈', bg: Colors.primarySoft, color: Colors.primaryDark },
-  'Lainnya':       { emoji: '📌', bg: '#F0F1F5', color: Colors.textMuted },
+/** Category icon & color mapping */
+export const CATEGORY_META: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; emoji: string; bg: string; color: string }
+> = {
+  'Makan & Minum': { icon: 'restaurant-outline', emoji: '🍜', bg: Colors.expenseSoft, color: Colors.expense },
+  'Transportasi':  { icon: 'car-outline', emoji: '🚗', bg: Colors.accentBlueSoft, color: Colors.accentBlue },
+  'Belanja':       { icon: 'cart-outline', emoji: '🛒', bg: Colors.savingsSoft, color: Colors.savings },
+  'Tagihan':       { icon: 'receipt-outline', emoji: '📄', bg: '#FFF3E0', color: '#E65100' },
+  'Hiburan':       { icon: 'game-controller-outline', emoji: '🎮', bg: Colors.accentPurpleSoft, color: Colors.accentPurple },
+  'Kesehatan':     { icon: 'medkit-outline', emoji: '💊', bg: Colors.accentTealSoft, color: Colors.accentTeal },
+  'Pendidikan':    { icon: 'school-outline', emoji: '📚', bg: Colors.accentBlueSoft, color: Colors.accentBlue },
+  'Gaji':          { icon: 'cash-outline', emoji: '💰', bg: Colors.incomeSoft, color: Colors.income },
+  'Transfer':      { icon: 'swap-horizontal-outline', emoji: '🔄', bg: Colors.accentTealSoft, color: Colors.accentTeal },
+  'Bonus':         { icon: 'gift-outline', emoji: '🎁', bg: Colors.savingsSoft, color: Colors.savings },
+  'Investasi':     { icon: 'trending-up-outline', emoji: '📈', bg: Colors.primarySoft, color: Colors.primaryDark },
+  'Lainnya':       { icon: 'ellipsis-horizontal-circle-outline', emoji: '📌', bg: '#F1F5F9', color: Colors.textMuted },
 };
 
 export function getCategoryMeta(cat: string) {

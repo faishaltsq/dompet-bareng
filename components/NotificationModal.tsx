@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { SlideInDown, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, AppNotification } from '@/context/NotificationContext';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
@@ -72,7 +73,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
           <View style={s.headerRow}>
             <View style={s.headerLeft}>
               <View style={s.iconWrapper}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.primary }}>!</Text>
+                <Ionicons name="notifications" size={18} color={Colors.primary} />
               </View>
               <View>
                 <Text style={s.headerTitle}>Notifikasi</Text>
@@ -110,7 +111,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
               </View>
             ) : notifications.length === 0 ? (
               <View style={s.emptyBox}>
-                <Text style={{ fontSize: 30, marginBottom: 8, fontWeight: '700', color: Colors.textMuted }}>—</Text>
+                <Ionicons name="notifications-off-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 8 }} />
                 <Text style={s.emptyTitle}>Belum Ada Notifikasi</Text>
                 <Text style={s.emptySubtext}>
                   Pemberitahuan terkait aktivitas dompetmu akan muncul di sini.
@@ -119,7 +120,6 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
             ) : (
               notifications.map((item) => {
                 const isKicked = item.type === 'member_kicked';
-                const notifIcon = isKicked ? '!' : 'i';
 
                 return (
                   <TouchableOpacity
@@ -135,7 +135,11 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                         isKicked ? s.typeIconBoxWarning : s.typeIconBoxInfo,
                       ]}
                     >
-                      <Text style={{ fontSize: 18 }}>{notifIcon}</Text>
+                      <Ionicons
+                        name={isKicked ? 'alert-circle-outline' : 'information-circle-outline'}
+                        size={20}
+                        color={isKicked ? Colors.accentOrange : Colors.accentBlue}
+                      />
                     </View>
 
                     {/* TEXT BODY */}
@@ -186,9 +190,11 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                           : s.typeIconBoxInfo,
                       ]}
                     >
-                      <Text style={{ fontSize: 20 }}>
-                        {selectedNotif.type === 'member_kicked' ? '!' : 'i'}
-                      </Text>
+                      <Ionicons
+                        name={selectedNotif.type === 'member_kicked' ? 'alert-circle' : 'information-circle'}
+                        size={22}
+                        color={selectedNotif.type === 'member_kicked' ? Colors.accentOrange : Colors.accentBlue}
+                      />
                     </View>
                     <View>
                       <Text style={s.detailTitle}>{selectedNotif.title}</Text>

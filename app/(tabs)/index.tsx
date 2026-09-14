@@ -22,6 +22,7 @@ import Animated, {
   SlideInDown,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { useWorkspace, Transaction, Workspace } from '@/context/WorkspaceContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -185,9 +186,9 @@ export default function HomeScreen() {
         <StatusBar style="dark" />
         <Animated.View entering={FadeInUp.springify()} style={s.emptyBox}>
           <View style={s.emptyIconCircle}>
-            <Text style={s.emptyTitle}>DB</Text>
+            <Ionicons name="wallet-outline" size={32} color={Colors.primary} />
           </View>
-          <Text style={s.emptyTitle}>Mulai dengan FinWise</Text>
+          <Text style={s.emptyTitle}>Mulai dengan DompetBareng</Text>
           <Text style={s.emptySubtitle}>
             Buat dompet pertamamu untuk mencatat keuangan pribadi atau bersama tim.
           </Text>
@@ -235,7 +236,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={s.iconGlyph}>!</Text>
+            <Ionicons name="notifications-outline" size={20} color="#fff" />
             {unreadCount > 0 && (
               <View style={s.notifBadge}>
                 <Text style={s.notifBadgeText}>
@@ -316,7 +317,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/modal')}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.primarySoft }]}>
-              <Text style={s.iconGlyph}>+</Text>
+              <Ionicons name="add" size={24} color={Colors.primary} />
             </View>
             <Text style={s.quickActionLabel}>Catat</Text>
           </TouchableOpacity>
@@ -326,7 +327,7 @@ export default function HomeScreen() {
             onPress={() => setShowSwitchModal(true)}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentBlueSoft }]}>
-              <Text style={s.iconGlyph}>↔</Text>
+              <Ionicons name="swap-horizontal" size={22} color={Colors.accentBlue} />
             </View>
             <Text style={s.quickActionLabel}>Pindah Dompet</Text>
           </TouchableOpacity>
@@ -336,7 +337,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/(tabs)/statistics')}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentPurpleSoft }]}>
-              <Text style={s.iconGlyph}>%</Text>
+              <Ionicons name="bar-chart-outline" size={20} color={Colors.accentPurple} />
             </View>
             <Text style={s.quickActionLabel}>Statistik</Text>
           </TouchableOpacity>
@@ -410,7 +411,7 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
-                  <Text style={s.iconGlyph}>{item.category.slice(0, 1)}</Text>
+                  <Ionicons name={meta.icon || 'receipt-outline'} size={20} color={meta.color} />
                 </View>
 
                 <View style={s.txDetails}>
@@ -438,7 +439,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           !loadingTx ? (
             <Animated.View entering={FadeIn.duration(400)} style={s.emptyTxBox}>
-              <Text style={s.emptyTitle}>—</Text>
+              <Ionicons name="receipt-outline" size={42} color={Colors.textMuted} style={{ marginBottom: 6 }} />
               <Text style={s.emptyTxTitle}>Belum ada transaksi</Text>
               <Text style={s.emptyTxDesc}>
                 Tap tombol "+ Catat" di atas untuk mencatat pengeluaran atau pemasukan.

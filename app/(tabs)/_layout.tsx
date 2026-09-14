@@ -1,12 +1,27 @@
 import { Tabs } from 'expo-router';
-import { View, Text, ColorValue, StyleSheet } from 'react-native';
+import { View, ColorValue, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function TabIcon({ emoji, active }: { emoji: string; color: ColorValue; active: boolean }) {
+function TabIcon({
+  name,
+  nameFocused,
+  color,
+  active,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  nameFocused: keyof typeof Ionicons.glyphMap;
+  color: ColorValue;
+  active: boolean;
+}) {
   return (
     <View style={[styles.tabIconWrap, active && styles.tabIconActive]}>
-      <Text style={{ fontSize: active ? 22 : 20 }}>{emoji}</Text>
+      <Ionicons
+        name={active ? nameFocused : name}
+        size={22}
+        color={active ? Colors.primary : Colors.textMuted}
+      />
     </View>
   );
 }
@@ -23,7 +38,8 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: -4 },
         tabBarStyle: {
           backgroundColor: Colors.card,
-          borderTopWidth: 0,
+          borderTopWidth: 1,
+          borderTopColor: Colors.borderLight,
           height: tabBarHeight,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 6,
@@ -36,21 +52,27 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Beranda',
-          tabBarIcon: ({ color, focused }) => <TabIcon emoji="🏠" color={color} active={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home-outline" nameFocused="home" color={color} active={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="statistics"
         options={{
           title: 'Statistik',
-          tabBarIcon: ({ color, focused }) => <TabIcon emoji="📊" color={color} active={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="bar-chart-outline" nameFocused="bar-chart" color={color} active={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
           title: 'Pengaturan',
-          tabBarIcon: ({ color, focused }) => <TabIcon emoji="⚙️" color={color} active={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="settings-outline" nameFocused="settings" color={color} active={focused} />
+          ),
         }}
       />
       {/* Tab AI dihapus — diganti floating MascotOverlay di _layout.tsx */}

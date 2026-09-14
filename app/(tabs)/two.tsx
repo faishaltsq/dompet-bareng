@@ -18,6 +18,8 @@ import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
@@ -91,10 +93,19 @@ export default function SettingsScreen() {
 
   // Daily reminder state
   const [dailyReminder, setDailyReminder] = useState(false);
+  const [language, setLanguage] = useState<'id' | 'en'>('id');
 
   useEffect(() => {
     isReminderEnabled().then(setDailyReminder);
+    AsyncStorage.getItem('@db:app_language').then(val => {
+      if (val === 'en' || val === 'id') setLanguage(val);
+    });
   }, []);
+
+  const handleToggleLanguage = (lang: 'id' | 'en') => {
+    setLanguage(lang);
+    AsyncStorage.setItem('@db:app_language', lang).catch(() => {});
+  };
 
   const handleToggleReminder = async (val: boolean) => {
     if (Platform.OS === 'web') {
@@ -493,7 +504,7 @@ export default function SettingsScreen() {
                 }}
               >
                 <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
-                  <Text style={{ fontSize: 18 }}>✏️</Text>
+                  <Ionicons name="pencil-outline" size={18} color={Colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.menuTitle}>Ubah Nama Dompet</Text>
@@ -507,7 +518,7 @@ export default function SettingsScreen() {
             {isAdmin && (
               <TouchableOpacity style={s.menuRow} onPress={handlePickWorkspaceImage}>
                 <View style={[s.menuIcon, { backgroundColor: Colors.accentBlueSoft }]}>
-                  <Text style={{ fontSize: 18 }}>🖼️</Text>
+                  <Ionicons name="image-outline" size={18} color={Colors.accentBlue} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.menuTitle}>Ganti Foto Dompet</Text>
@@ -520,7 +531,7 @@ export default function SettingsScreen() {
             {/* Undang Anggota */}
             <TouchableOpacity style={s.menuRow} onPress={handleShare} disabled={sharing}>
               <View style={[s.menuIcon, { backgroundColor: Colors.savingsSoft }]}>
-                <Text style={{ fontSize: 18 }}>🔗</Text>
+                <Ionicons name="share-social-outline" size={18} color={Colors.savings} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.menuTitle}>Undang Anggota</Text>
@@ -541,7 +552,7 @@ export default function SettingsScreen() {
                 disabled={leavingWs}
               >
                 <View style={[s.menuIcon, { backgroundColor: Colors.expenseSoft }]}>
-                  <Text style={{ fontSize: 18 }}>🚪</Text>
+                  <Ionicons name="exit-outline" size={18} color={Colors.expense} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.menuTitle, { color: Colors.expense }]}>Keluar dari Dompet</Text>
@@ -563,7 +574,7 @@ export default function SettingsScreen() {
                 disabled={deletingWs}
               >
                 <View style={[s.menuIcon, { backgroundColor: Colors.expenseSoft }]}>
-                  <Text style={{ fontSize: 18 }}>🗑️</Text>
+                  <Ionicons name="trash-outline" size={18} color={Colors.expense} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.menuTitle, { color: Colors.expense }]}>Hapus Dompet Ini</Text>
@@ -595,7 +606,11 @@ export default function SettingsScreen() {
                 return (
                   <View key={m.user_id} style={[s.menuRow, idx === members.length - 1 && { borderBottomWidth: 0 }]}>
                     <View style={[s.menuIcon, { backgroundColor: Colors.borderLight }]}>
-                      <Text style={{ fontSize: 18 }}>{m.role === 'admin' ? '👑' : '👤'}</Text>
+                      <Ionicons
+                        name={m.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                        size={18}
+                        color={m.role === 'admin' ? Colors.savings : Colors.textMuted}
+                      />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.menuTitle}>
@@ -636,7 +651,7 @@ export default function SettingsScreen() {
           <Animated.View entering={FadeInDown.delay(180).duration(400)} style={s.menuGroup}>
             <TouchableOpacity style={s.menuRow} onPress={() => setJoinModalVisible(true)}>
               <View style={[s.menuIcon, { backgroundColor: '#F3E8FF' }]}>
-                <Text style={{ fontSize: 18 }}>📥</Text>
+                <Ionicons name="enter-outline" size={18} color={Colors.accentPurple} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.menuTitle}>Gabung Dompet Lain</Text>
@@ -648,7 +663,7 @@ export default function SettingsScreen() {
             {/* Pengingat Harian Toggle */}
             <View style={s.menuRow}>
               <View style={[s.menuIcon, { backgroundColor: Colors.savingsSoft }]}>
-                <Text style={{ fontSize: 18 }}>🔔</Text>
+                <Ionicons name="notifications-outline" size={18} color={Colors.savings} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.menuTitle}>Pengingat Harian</Text>
@@ -662,10 +677,37 @@ export default function SettingsScreen() {
               />
             </View>
 
+            {/* Pilihan Bahasa (Language Selector) */}
+            <View style={s.menuRow}>
+              <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
+                <Ionicons name="globe-outline" size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.menuTitle}>Bahasa Aplikasi</Text>
+                <Text style={s.menuDesc}>
+                  {language === 'id' ? 'Bahasa Indonesia aktif' : 'English active'}
+                </Text>
+              </View>
+              <View style={s.langSegment}>
+                <TouchableOpacity
+                  style={[s.langBtn, language === 'id' && s.langBtnActive]}
+                  onPress={() => handleToggleLanguage('id')}
+                >
+                  <Text style={[s.langBtnText, language === 'id' && s.langBtnTextActive]}>ID</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.langBtn, language === 'en' && s.langBtnActive]}
+                  onPress={() => handleToggleLanguage('en')}
+                >
+                  <Text style={[s.langBtnText, language === 'en' && s.langBtnTextActive]}>EN</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Test Notifikasi */}
             <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
               <View style={[s.menuIcon, { backgroundColor: Colors.accentBlueSoft }]}>
-                <Text style={{ fontSize: 18 }}>🧪</Text>
+                <Ionicons name="flask-outline" size={18} color={Colors.accentBlue} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.menuTitle}>Test Notifikasi</Text>
@@ -683,6 +725,7 @@ export default function SettingsScreen() {
           {/* KELUAR AKUN */}
           <Animated.View entering={FadeInDown.delay(220).duration(400)} style={{ marginTop: 20 }}>
             <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+              <Ionicons name="log-out-outline" size={18} color={Colors.expense} style={{ marginRight: 6 }} />
               <Text style={s.signOutBtnText}>Keluar dari Akun</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -1213,6 +1256,31 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: Colors.accentBlue,
   },
+  langSegment: {
+    flexDirection: 'row',
+    backgroundColor: Colors.cardAlt,
+    borderRadius: Radius.full,
+    padding: 3,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  langBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+  },
+  langBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+  langBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  langBtnTextActive: {
+    color: '#fff',
+  },
   menuArrow: {
     fontSize: 20,
     color: Colors.textMuted,
@@ -1257,7 +1325,9 @@ const s = StyleSheet.create({
     backgroundColor: Colors.expenseSoft,
     borderRadius: Radius.md,
     paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#FFD7DB',
   },

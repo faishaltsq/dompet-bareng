@@ -1,0 +1,134 @@
+================================================================================
+PANDUAN PROMPT V0.DEV - REDESIGN UI/UX DOMPETBARENG (FINTECH MINIMALIS)
+================================================================================
+
+CARA PENGGUNAAN:
+1. Buka https://v0.dev
+2. Di setiap prompt baru di v0, sertakan "ATURAN GLOBAL DESAIN" di bagian awal.
+3. Gunakan Prompt 1 untuk Beranda, Prompt 2 untuk Statistik, Prompt 3 untuk Pengaturan, dan Prompt 4 untuk Modal.
+4. Setelah v0 selesai generate, copy kode JSX / ambil screenshot hasilnya dan paste ke chat Hermes untuk langsung dikonversi ke React Native + Supabase.
+
+--------------------------------------------------------------------------------
+ATURAN GLOBAL DESAIN (Wajib disertakan di setiap prompt v0)
+--------------------------------------------------------------------------------
+Aesthetic: Modern Minimalist Fintech Mobile App (inspired by Wise, Linear, and Revolut).
+Strict Constraints:
+- NO EMOJIS anywhere. Use only crisp vector icons from 'lucide-react' (size 16-20px, strokeWidth 1.5).
+- Typography: Plus Jakarta Sans / Inter. Hierarchy strictly defined by font weight (500, 600, 700) and muted colors, not oversized fonts.
+- Colors: Crisp neutral background (#F8FAFC), card white (#FFFFFF), borders 1px subtle (#E2E8F0 / #CBD5E1), primary dark text (#0F172A), muted labels (#64748B), single brand accent (Emerald #059669 or Slate #0F172A), expense (#EF4444), income (#10B981).
+- Layout: 390px iPhone mobile viewport, subtle 1px border cards, 12-16px border-radius, no aggressive neon gradients or bloated drop-shadows.
+- Navigation: 3 bottom tabs (Beranda, Statistik, Pengaturan).
+
+--------------------------------------------------------------------------------
+PROMPT 1: LAYAR BERANDA (HOME SCREEN)
+--------------------------------------------------------------------------------
+Design a modern minimalist mobile home screen for "DompetBareng", a shared expense tracking app.
+
+Follow the global design rules (NO EMOJIS, use lucide-react icons, clean fintech slate/emerald palette, 390px mobile frame).
+
+Key Sections to include:
+1. Top Bar:
+   - Left: User avatar (subtle initials or clean photo) + "Hi, [Name]" in 13px muted text, bold name below.
+   - Center/Right: Subtle workspace badge with chevron dropdown (e.g., "Kas Keluarga" + ChevronDown icon) to switch wallets.
+   - Far Right: Clean Bell icon with a tiny red unread notification dot.
+
+2. Hero Balance Card (Single sleek white card with 1px border):
+   - Label: "Total Saldo Bersih" with an eye toggle icon to hide/show balance.
+   - Large formatted Rupiah: "Rp 14.850.000".
+   - Split row below:
+     * Income this month: "Rp 22.000.000" with a tiny green ArrowDownLeft icon in a soft green circle.
+     * Expense this month: "Rp 7.150.000" with a tiny red ArrowUpRight icon in a soft red circle.
+
+3. Quick Action Bar (3 pill buttons):
+   - "+ Catat Pengeluaran" (high contrast primary button)
+   - "+ Pemasukan" (subtle secondary button)
+   - "Pindah Dompet" (outline button with RefreshCw or Wallet icon)
+
+4. Filter Chips:
+   - Horizontal pills: "Bulan Ini" (active state), "Minggu Ini", "Hari Ini", "Semua".
+
+5. Transaction History List:
+   - Section header: "Transaksi Terbaru" with a "Lihat Semua" link.
+   - Transaction rows:
+     * Category vector icon in 36px subtle rounded background (e.g., Utensils for food, Car for transport, ShoppingBag for groceries, Zap for bills).
+     * Middle: Transaction name (e.g., "Belanja Mingguan"), subtitle showing "Dicatat oleh Sarah • 14 Sep", and a receipt icon if an attachment exists.
+     * Right: Formatted amount (-Rp 350.000 in red or +Rp 5.000.000 in green).
+
+6. Floating Companion Indicator:
+   - Subtle floating pill or circular mascot dock in the bottom-right corner with a small health badge ("Keuangan Sehat: 82%").
+
+--------------------------------------------------------------------------------
+PROMPT 2: LAYAR STATISTIK & ANGGARAN (STATISTICS & BUDGET SCREEN)
+--------------------------------------------------------------------------------
+Design a mobile analytics and budgeting screen for "DompetBareng".
+Follow the global design rules (NO EMOJIS, use lucide-react icons, clean fintech slate/emerald palette, 390px mobile frame).
+
+Key Sections:
+1. Header:
+   - Title: "Analisis & Anggaran".
+   - Month Selector: Clean horizontal pill selector (Jan, Feb, Mar ... Sep active) with left/right chevrons.
+
+2. Cash Flow Summary Widget:
+   - Net balance row with percentage comparison vs last month (+12.4% vs bulan lalu).
+   - Minimalist split progress bar showing Income ratio vs Expense ratio.
+
+3. Category Budgets (Target Anggaran Bulanan):
+   - Section title: "Batas Anggaran Kategori" + "+ Atur" button.
+   - Budget Cards:
+     * Makanan & Minuman: Spent "Rp 1.450.000 / Rp 2.000.000" (72%), thin sleek progress bar (Emerald).
+     * Transportasi: Spent "Rp 650.000 / Rp 700.000" (92%), thin progress bar (Amber warning).
+     * Belanja & Hiburan: Spent "Rp 1.200.000 / Rp 1.000.000" (120%), thin progress bar (Rose red alert with "Overbudget" tag).
+
+4. Expense Breakdown List:
+   - Clean category list ranked by highest spend.
+   - Vector icon, Category Name, transaction count, percentage of total expenses, and Rupiah amount.
+
+--------------------------------------------------------------------------------
+PROMPT 3: LAYAR PENGATURAN & ANGGOTA (SETTINGS & WORKSPACE SCREEN)
+--------------------------------------------------------------------------------
+Design a mobile Settings & Workspace Management screen for "DompetBareng".
+Follow the global design rules (NO EMOJIS, use lucide-react icons, clean fintech slate/emerald palette, 390px mobile frame).
+
+Key Sections:
+1. User Profile Card:
+   - Clean user avatar with Google "G" badge or email verified icon.
+   - Display Name, Email address, and "Edit Profil" button.
+
+2. Active Workspace Section:
+   - Card showing current wallet ("Kas Keluarga").
+   - Admin badge tag.
+   - Action row: "Ubah Nama Dompet", "Ganti Foto Dompet", and "Bagikan Tautan Undangan" with copy link button.
+
+3. Workspace Members List:
+   - Section title: "Anggota Dompet (4 Orang)".
+   - Member rows:
+     * Avatar + Name + Email / Join date.
+     * Role badge ("Admin" or "Anggota").
+     * For Admin viewing members: subtle trash or 'X' icon to kick member.
+
+4. General Preferences:
+   - Language selector row: Globe icon, label "Bahasa Aplikasi", with clean segmented pill or selector ("Bahasa Indonesia" [Active] / "English") with subtle checkmark.
+   - Notification toggle row: "Pengingat Harian (20:00)" with a clean iOS-style switch.
+   - "Gabung Dompet Lain": Input field with "Gabung" button for invite tokens.
+   - "Buat Dompet Baru" button.
+
+5. Danger Zone (Bottom):
+   - "Keluar dari Dompet" (destruktif / text red).
+   - "Keluar dari Akun" (Log Out button with LogOut vector icon).
+
+--------------------------------------------------------------------------------
+PROMPT 4: MODAL POPUP (NOTIFIKASI & KICK ANGGOTA)
+--------------------------------------------------------------------------------
+Design 2 clean mobile popup sheets/modals for "DompetBareng":
+1. "Notification History Modal":
+   - Title: "Notifikasi" with "Tandai Semua Dibaca" text button.
+   - List of notification cards:
+     * Unread item: subtle blue/emerald tinted background, small dot, Lucide AlertTriangle icon, Title: "Dikeluarkan dari Dompet", time "10 mnt lalu", snippet of reason.
+     * Read item: muted text, Title: "Transaksi Baru Ditambahkan".
+   - Detail state: A focused view showing Admin's note in a clean quote box: "Alasan: Akun tidak aktif selama 30 hari" by Admin.
+
+2. "Kick Member Confirmation Modal":
+   - Warning icon (AlertCircle) in subtle rose background.
+   - Text: "Keluarkan [Name] dari dompet [Workspace Name]?"
+   - Multiline textarea: "Tuliskan alasan (akan dikirimkan via notifikasi ke anggota)..."
+   - Buttons: "Batal" (neutral outline) and "Keluarkan & Kirim Notif" (solid red destructive).
