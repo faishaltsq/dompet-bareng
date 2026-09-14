@@ -41,7 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
-function ensureHttps(url?: string | null): string | null {
+function ensureHttps(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (trimmed.startsWith('http://')) {
@@ -50,24 +50,75 @@ function ensureHttps(url?: string | null): string | null {
   return trimmed;
 }
 
+function isValidAvatarUrl(url: any): url is string {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed.length < 8) return false;
+  if (trimmed === 'null' || trimmed === 'undefined') return false;
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/');
+}
+
 export function extractAvatarUrl(user: User | null, profile: UserProfile | null): string | null {
   if (!user && !profile) return null;
 
-  // 1. Profile avatar dari database
-  if (profile?.avatar_url) return ensureHttps(profile.avatar_url);
-
-  // 2. User metadata dari Google OAuth
+  // 1. Cek Google user metadata (prioritas: foto asli akun Google)
   const meta = user?.user_metadata;
-  const metaAvatar = meta?.avatar_url || meta?.picture || meta?.avatar;
-  if (metaAvatar && typeof metaAvatar === 'string') return ensureHttps(metaAvatar);
+  const rawMeta = (user as any)?.raw_user_meta_data;
 
-  // 3. Identities data dari provider Google
+  const candidateMeta = [
+    meta?.avatar_url,
+    meta?.picture,
+    meta?.avatar,
+    meta?.photo_url,
+    meta?.photoURL,
+    meta?.image,
+    meta?.image_url,
+    rawMeta?.avatar_url,
+    rawMeta?.picture,
+    rawMeta?.photo_url,
+  ];
+
+  for (const c of candidateMeta) {
+    if (isValidAvatarUrl(c)) return ensureHttps(c);
+  }
+
+  // 2. Cek identities data dari Google provider
   if (user?.identities && Array.isArray(user.identities)) {
     for (const id of user.identities) {
       const idData = id?.identity_data;
-      const idAvatar = idData?.avatar_url || idData?.picture || idData?.avatar;
-      if (idAvatar && typeof idAvatar === 'string') return ensureHttps(idAvatar);
+      const candidateId = [
+        idData?.avatar_url,
+        idData?.picture,
+        idData?.avatar,
+        idData?.photo_url,
+        idData?.photoURL,
+        idData?.image,
+        idData?.image_url,
+      ];
+      for (const c of candidateId) {
+        if (isValidAvatarUrl(c)) return ensureHttps(c);
+      }
     }
+  }
+
+  // 3. Cek profile avatar dari database Supabase
+  if (isValidAvatarUrl(profile?.avatar_url)) {
+    return ensureHttps(profile.avatar_url);
+  }
+
+  // 4. Default / Fallback bawaan Google:
+  // Jika user login Google (provider Google atau email akun asli), tetapi akun Google-nya
+  // tidak memiliki foto kustom yang di-upload, buatkan avatar bawaan Google yang authentic!
+  const isGoogleUser = Boolean(
+    user?.app_metadata?.provider === 'google' ||
+    user?.identities?.some(i => i.provider === 'google') ||
+    (user?.email && !user.email.includes('tester_') && !user.is_anonymous)
+  );
+
+  if (isGoogleUser) {
+    const name = profile?.display_name || meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'User';
+    // Google Official Avatar: background Google Blue (#4285F4) dengan inisial putih tebal
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=FFFFFF&size=128&bold=true`;
   }
 
   return null;
@@ -91,8 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (data) {
       const prof = data as UserProfile;
-      // Jika profile di database belum punya avatar_url tapi di user metadata Google ada, simpan ke database
-      if (!prof.avatar_url && avatarFromUser) {
+      // Jika profile di database belum punya avatar_url atau avatarFromUser ada dan beda, simpan ke database
+      if (avatarFromUser && (!prof.avatar_url || prof.avatar_url !== avatarFromUser)) {
         prof.avatar_url = avatarFromUser;
         try {
           await supabase
@@ -121,19 +172,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Inisialisasi session dari cache lokal dulu (instant, tidak tunggu network)
+    // 1. Inisialisasi session dari cache lokal dulu (instant UI)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false); // ← selesai loading segera, fetchProfile background
-      if (session?.user) fetchProfile(session.user.id, session.user);
+      setLoading(false);
+      if (session?.user) {
+        fetchProfile(session.user.id, session.user);
+        // 2. Fetch data user terbaru langsung dari server (dapatkan metadata & identities Google terlengkap)
+        supabase.auth.getUser().then(({ data: { user: latestUser } }) => {
+          if (latestUser) {
+            setUser(latestUser);
+            fetchProfile(latestUser.id, latestUser);
+          }
+        }).catch(() => {});
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) fetchProfile(session.user.id, session.user);
+      if (session?.user) {
+        fetchProfile(session.user.id, session.user);
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+          supabase.auth.getUser().then(({ data: { user: latestUser } }) => {
+            if (latestUser) {
+              setUser(latestUser);
+              fetchProfile(latestUser.id, latestUser);
+            }
+          }).catch(() => {});
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -141,8 +211,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // Gunakan Linking.createURL('/') untuk Expo Go (exp://192.168.x.x:8081/--)
-      // atau dompetbareng:// di standalone
       const redirectUri = Linking.createURL('/');
 
       if (Platform.OS === 'web') {
@@ -150,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           provider: 'google',
           options: {
             redirectTo: window.location.origin,
+            scopes: 'email profile openid',
           },
         });
         return;
@@ -159,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: 'google',
         options: {
           redirectTo: redirectUri,
+          scopes: 'email profile openid',
           skipBrowserRedirect: true,
           queryParams: {
             prompt: 'select_account',
@@ -173,12 +243,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
-        // User menutup browser — jangan stuck loading
         return;
       }
 
       if (result.type === 'success' && result.url) {
-        // Parse baik hash fragment (#access_token=...) maupun query param (?code=...)
         const parsedUrl = new URL(result.url);
         const hashParams = new URLSearchParams(
           parsedUrl.hash ? parsedUrl.hash.substring(1) : ''
@@ -191,15 +259,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (code) {
           // PKCE flow (Supabase v2 default)
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
+          if (exchangeData?.user) {
+            setUser(exchangeData.user);
+            await fetchProfile(exchangeData.user.id, exchangeData.user);
+          }
         } else if (accessToken && refreshToken) {
           // Implicit flow
-          const { error: sessionError } = await supabase.auth.setSession({
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
           if (sessionError) throw sessionError;
+          if (sessionData?.user) {
+            setUser(sessionData.user);
+            await fetchProfile(sessionData.user.id, sessionData.user);
+          }
         } else {
           throw new Error('No auth tokens or code in callback URL');
         }

@@ -379,13 +379,18 @@ export default function SettingsScreen() {
             <View style={s.userCardMainRow}>
               <View style={s.userAvatarWrapper}>
                 {googleAvatarUrl ? (
-                  <Image source={{ uri: googleAvatarUrl }} style={s.userAvatarImage} />
+                  <Image
+                    source={{ uri: googleAvatarUrl }}
+                    style={s.userAvatarImage}
+                    // @ts-ignore
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <View style={s.userAvatarPlaceholder}>
                     <Text style={s.userAvatarInitial}>{userInitial}</Text>
                   </View>
                 )}
-                {!isRegisteredUser && (
+                {isRegisteredUser && (
                   <View style={s.googleAvatarBadge}>
                     <Text style={s.googleAvatarBadgeText}>G</Text>
                   </View>
@@ -405,7 +410,7 @@ export default function SettingsScreen() {
                   {user?.email || t('devGuestTag')}
                 </Text>
                 <View style={[s.authBadge, isRegisteredUser ? s.authBadgeGoogle : s.authBadgeGuest]}>
-                  {!isRegisteredUser && (
+                  {isRegisteredUser && (
                     <Text style={s.googleMiniIcon}>G</Text>
                   )}
                   <Text style={[s.authBadgeText, isRegisteredUser ? s.authBadgeTextGoogle : s.authBadgeTextGuest]}>
@@ -608,7 +613,12 @@ export default function SettingsScreen() {
                   <View key={m.user_id} style={[s.menuRow, idx === members.length - 1 && { borderBottomWidth: 0 }]}>
                     <View style={[s.menuIcon, { backgroundColor: Colors.borderLight, overflow: 'hidden' }]}>
                       {m.avatar_url ? (
-                        <Image source={{ uri: m.avatar_url }} style={s.memberAvatarImg} />
+                        <Image
+                          source={{ uri: m.avatar_url }}
+                          style={s.memberAvatarImg}
+                          // @ts-ignore
+                          referrerPolicy="no-referrer"
+                        />
                       ) : (
                         <Ionicons
                           name={m.role === 'admin' ? 'ribbon-outline' : 'person-outline'}

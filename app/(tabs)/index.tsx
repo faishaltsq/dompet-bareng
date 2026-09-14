@@ -219,7 +219,12 @@ export default function HomeScreen() {
             activeOpacity={0.8}
           >
             {googleAvatarUrl ? (
-              <Image source={{ uri: googleAvatarUrl }} style={s.avatarImg} />
+              <Image
+                source={{ uri: googleAvatarUrl }}
+                style={s.avatarImg}
+                // @ts-ignore
+                referrerPolicy="no-referrer"
+              />
             ) : (
               <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFFFFF' }}>{userInitial}</Text>
             )}
