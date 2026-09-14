@@ -57,8 +57,8 @@ type WorkspaceContextType = {
   joinWorkspace: (workspaceId: string, role?: 'admin' | 'member') => Promise<boolean>;
   leaveWorkspace: (workspaceId: string) => Promise<boolean>;
   removeMember: (workspaceId: string, userId: string, reason?: string) => Promise<boolean>;
-  uploadWorkspaceImage: (id: string, uri: string) => Promise<string | null>;
-  uploadReceiptImage: (uri: string) => Promise<string | null>;
+  uploadWorkspaceImage: (id: string, uri: string, base64?: string | null) => Promise<string | null>;
+  uploadReceiptImage: (uri: string, base64?: string | null) => Promise<string | null>;
   budgets: WorkspaceBudget[];
   setBudget: (category: string, amount: number) => Promise<boolean>;
   deleteBudget: (category: string) => Promise<boolean>;
@@ -379,17 +379,39 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return !error;
   };
 
-  const uploadWorkspaceImage = async (id: string, uri: string): Promise<string | null> => {
+  function decodeBase64ToUint8(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  const uploadWorkspaceImage = async (
+    id: string,
+    uri: string,
+    base64?: string | null
+  ): Promise<string | null> => {
     try {
       const fileName = `workspace_${id}_${Date.now()}.jpg`;
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      let fileData: Uint8Array | Blob;
+
+      if (base64) {
+        fileData = decodeBase64ToUint8(base64);
+      } else {
+        const response = await fetch(uri);
+        fileData = await response.blob();
+      }
 
       const { error } = await supabase.storage
         .from('workspace-images')
-        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+        .upload(fileName, fileData, { contentType: 'image/jpeg', upsert: true });
 
-      if (error) return null;
+      if (error) {
+        console.error('uploadWorkspaceImage Supabase error:', error);
+        return null;
+      }
 
       const { data: urlData } = supabase.storage
         .from('workspace-images')
@@ -414,17 +436,29 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const uploadReceiptImage = async (uri: string): Promise<string | null> => {
+  const uploadReceiptImage = async (
+    uri: string,
+    base64?: string | null
+  ): Promise<string | null> => {
     try {
       const fileName = `receipt_${Date.now()}.jpg`;
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      let fileData: Uint8Array | Blob;
+
+      if (base64) {
+        fileData = decodeBase64ToUint8(base64);
+      } else {
+        const response = await fetch(uri);
+        fileData = await response.blob();
+      }
 
       const { error } = await supabase.storage
         .from('workspace-images')
-        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+        .upload(fileName, fileData, { contentType: 'image/jpeg', upsert: true });
 
-      if (error) return null;
+      if (error) {
+        console.error('uploadReceiptImage Supabase error:', error);
+        return null;
+      }
 
       const { data: urlData } = supabase.storage
         .from('workspace-images')

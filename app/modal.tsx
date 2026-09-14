@@ -44,6 +44,7 @@ export default function AddTransactionModal() {
   );
   const [description, setDescription] = useState(params.description ?? '');
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -64,13 +65,18 @@ export default function AddTransactionModal() {
       mediaTypes: ['images'],
       allowsEditing: true,
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       setReceiptUri(result.assets[0].uri);
+      setReceiptBase64(result.assets[0].base64 ?? null);
     }
   };
 
-  const handleRemoveReceipt = () => setReceiptUri(null);
+  const handleRemoveReceipt = () => {
+    setReceiptUri(null);
+    setReceiptBase64(null);
+  };
 
   const handleAmountChange = (text: string) => {
     setAmount(formatCurrencyInput(text));
@@ -87,7 +93,7 @@ export default function AddTransactionModal() {
     // Upload receipt first (blocking) — biasanya cepat, tapi harus sebelum navigate
     let imageUrl: string | null = null;
     if (receiptUri) {
-      imageUrl = await uploadReceiptImage(receiptUri);
+      imageUrl = await uploadReceiptImage(receiptUri, receiptBase64);
     }
 
     // Navigate back immediately — optimistic insert handles the rest in background

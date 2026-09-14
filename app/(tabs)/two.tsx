@@ -205,11 +205,16 @@ export default function SettingsScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
       setUploadingImage(true);
-      const url = await uploadWorkspaceImage(activeWorkspace.id, result.assets[0].uri);
+      const url = await uploadWorkspaceImage(
+        activeWorkspace.id,
+        result.assets[0].uri,
+        result.assets[0].base64
+      );
       setUploadingImage(false);
       if (!url) {
         Alert.alert('Gagal', 'Tidak dapat mengunggah gambar. Pastikan bucket storage aktif.');
