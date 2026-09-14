@@ -146,9 +146,12 @@ export default function HomeScreen() {
 
   // Filter transaksi berdasarkan periode
   const filteredTransactions = useMemo(() => {
-    if (period === 'all') return transactions;
+    if (!activeWorkspace) return [];
+    // Pastikan hanya transaksi milik activeWorkspace yang ditampilkan
+    const wsTransactions = transactions.filter(t => t.workspace_id === activeWorkspace.id);
+    if (period === 'all') return wsTransactions;
     const now = new Date();
-    return transactions.filter(t => {
+    return wsTransactions.filter(t => {
       const d = new Date(t.transaction_date);
       if (period === 'day') {
         return d.toDateString() === now.toDateString();
@@ -163,7 +166,7 @@ export default function HomeScreen() {
       }
       return true;
     });
-  }, [transactions, period]);
+  }, [transactions, period, activeWorkspace]);
 
   // Budget persentase pengeluaran vs pemasukan
   const budgetPercent = summary.income > 0

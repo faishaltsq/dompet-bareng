@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Share, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -94,8 +94,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Setters that sync to ref for realtime closures
   const setActiveWorkspace = useCallback((ws: Workspace) => {
+    if (activeRef.current?.id === ws.id) return;
     activeRef.current = ws;
     setActiveWorkspaceState(ws);
+    // Segera bersihkan transaksi dan anggaran dari dompet sebelumnya agar tidak tercampur
+    setTransactions([]);
+    setBudgetsState([]);
+    setLoadingTx(true);
     // Simpan pilihan workspace agar tetap sama setelah restart/ganti akun
     if (user) AsyncStorage.setItem(CACHE_ACTIVE_WS_KEY(user.id), ws.id).catch(() => {});
   }, [user]);
@@ -192,12 +197,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const fetchTransactions = useCallback(async (ws?: Workspace | null) => {
     const target = ws ?? activeRef.current;
-    if (!target) return;
+    if (!target) {
+      setTransactions([]);
+      setLoadingTx(false);
+      return;
+    }
 
-    // Show cache instantly
-    const cached = await readCache<Transaction[]>(CACHE_TX_KEY(target.id));
-    if (cached?.length) setTransactions(cached);
     setLoadingTx(true);
+
+    // Tampilkan cache instan HANYA jika cocok dengan workspace target yang masih aktif
+    const cached = await readCache<Transaction[]>(CACHE_TX_KEY(target.id));
+    if (activeRef.current?.id === target.id) {
+      setTransactions(cached || []);
+    }
 
     const { data, error } = await supabase
       .from('transactions')
@@ -207,17 +219,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (!error && data) {
-      const mapped = data.map((t: any) => ({
-        ...t,
-        user_display_name: t.profiles?.display_name ?? null,
-        user_email: t.profiles?.email ?? null,
-        profiles: undefined,
-      }));
-      setTransactions(mapped as Transaction[]);
-      await writeCache(CACHE_TX_KEY(target.id), mapped);
+    if (error) {
+      console.error('fetchTransactions error for ws', target.id, ':', error);
     }
-    setLoadingTx(false);
+
+    // Race condition guard: hanya perbarui state jika workspace target masih aktif
+    if (activeRef.current?.id === target.id) {
+      if (!error && data) {
+        const mapped = data.map((t: any) => ({
+          ...t,
+          user_display_name: t.profiles?.display_name ?? null,
+          user_email: t.profiles?.email ?? null,
+          profiles: undefined,
+        }));
+        setTransactions(mapped as Transaction[]);
+        await writeCache(CACHE_TX_KEY(target.id), mapped);
+      } else if (error && !cached) {
+        setTransactions([]);
+      }
+      setLoadingTx(false);
+    }
   }, []);
 
   const refetchTransactions = useCallback(() => fetchTransactions(), [fetchTransactions]);
@@ -609,15 +630,25 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const fetchBudgets = useCallback(async (ws?: Workspace | null) => {
     const target = ws ?? activeRef.current;
-    if (!target) return;
+    if (!target) {
+      setBudgetsState([]);
+      return;
+    }
     const now = new Date();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('workspace_budgets')
       .select('*')
       .eq('workspace_id', target.id)
       .eq('month', now.getMonth())
       .eq('year', now.getFullYear());
-    if (data) setBudgetsState(data as WorkspaceBudget[]);
+
+    if (activeRef.current?.id === target.id) {
+      if (!error && data) {
+        setBudgetsState(data as WorkspaceBudget[]);
+      } else {
+        setBudgetsState([]);
+      }
+    }
   }, []);
 
   const setBudget = async (category: string, amount: number): Promise<boolean> => {
@@ -656,15 +687,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const summary = transactions.reduce<Summary>(
-    (acc, t) => {
-      if (t.type === 'income') acc.income += t.amount;
-      else acc.expense += t.amount;
-      acc.balance = acc.income - acc.expense;
-      return acc;
-    },
-    { income: 0, expense: 0, balance: 0 }
-  );
+  const summary = useMemo(() => {
+    if (!activeWorkspace) return { income: 0, expense: 0, balance: 0 };
+    return transactions
+      .filter(t => t.workspace_id === activeWorkspace.id)
+      .reduce<Summary>(
+        (acc, t) => {
+          if (t.type === 'income') acc.income += t.amount;
+          else acc.expense += t.amount;
+          acc.balance = acc.income - acc.expense;
+          return acc;
+        },
+        { income: 0, expense: 0, balance: 0 }
+      );
+  }, [transactions, activeWorkspace]);
 
   return (
     <WorkspaceContext.Provider value={{

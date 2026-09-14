@@ -33,11 +33,14 @@ export default function StatisticsScreen() {
   const [tab, setTab] = useState<TabType>('expense');
 
   const filtered = useMemo(() => {
-    return transactions.filter(t => {
-      const d = new Date(t.transaction_date);
-      return d.getMonth() === selectedMonth && d.getFullYear() === new Date().getFullYear();
-    });
-  }, [transactions, selectedMonth]);
+    if (!activeWorkspace) return [];
+    return transactions
+      .filter(t => t.workspace_id === activeWorkspace.id)
+      .filter(t => {
+        const d = new Date(t.transaction_date);
+        return d.getMonth() === selectedMonth && d.getFullYear() === new Date().getFullYear();
+      });
+  }, [transactions, selectedMonth, activeWorkspace]);
 
   const monthSummary = useMemo(() =>
     filtered.reduce((acc, t) => {
