@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useWorkspace, Transaction, Workspace } from '@/context/WorkspaceContext';
 import { useNotifications } from '@/context/NotificationContext';
 import NotificationModal from '@/components/NotificationModal';
+import SwipeableModal from '@/components/SwipeableModal';
 import { formatRupiah, getCategoryMeta } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { HomeSkeleton } from '@/components/Skeleton';
@@ -55,40 +56,35 @@ function CreateWorkspaceModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.modalOverlay}>
-        <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-          <View style={s.sheetHandle} />
-          <Text style={s.sheetTitle}>Buat Dompet Baru</Text>
-          <Text style={s.sheetSubtitle}>Atur keuangan bersama keluarga, pasangan, atau tim</Text>
+    <SwipeableModal visible={visible} onClose={onClose}>
+      <Text style={s.sheetTitle}>Buat Dompet Baru</Text>
+      <Text style={s.sheetSubtitle}>Atur keuangan bersama keluarga, pasangan, atau tim</Text>
 
-          <TextInput
-            style={s.sheetInput}
-            placeholder="Misal: Kas Keluarga, Tabungan Liburan"
-            placeholderTextColor={Colors.textMuted}
-            value={name}
-            onChangeText={setName}
-            autoFocus
-          />
+      <TextInput
+        style={s.sheetInput}
+        placeholder="Misal: Kas Keluarga, Tabungan Liburan"
+        placeholderTextColor={Colors.textMuted}
+        value={name}
+        onChangeText={setName}
+        autoFocus
+      />
 
-          <TouchableOpacity
-            style={[s.sheetBtn, creating && { opacity: 0.6 }]}
-            onPress={handleCreate}
-            disabled={creating}
-          >
-            {creating ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={s.sheetBtnText}>Buat Dompet</Text>
-            )}
-          </TouchableOpacity>
+      <TouchableOpacity
+        style={[s.sheetBtn, creating && { opacity: 0.6 }]}
+        onPress={handleCreate}
+        disabled={creating}
+      >
+        {creating ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={s.sheetBtnText}>Buat Dompet</Text>
+        )}
+      </TouchableOpacity>
 
-          <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
-            <Text style={s.cancelBtnText}>Batal</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </Modal>
+      <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
+        <Text style={s.cancelBtnText}>Batal</Text>
+      </TouchableOpacity>
+    </SwipeableModal>
   );
 }
 
@@ -452,90 +448,83 @@ export default function HomeScreen() {
         }
       />
 
-      <Modal
+      <SwipeableModal
         visible={showSwitchModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSwitchModal(false)}
+        onClose={() => setShowSwitchModal(false)}
       >
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Pilih Dompet</Text>
-            <Text style={s.sheetSubtitle}>Beralih ke dompet bersama atau pribadi lainnya:</Text>
+        <Text style={s.sheetTitle}>Pilih Dompet</Text>
+        <Text style={s.sheetSubtitle}>Beralih ke dompet bersama atau pribadi lainnya:</Text>
 
-            <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
-              {workspaces.map(ws => {
-                const isActive = ws.id === activeWorkspace?.id;
-                return (
-                  <TouchableOpacity
-                    key={ws.id}
-                    style={[s.wsRow, isActive && s.wsRowActive]}
-                    onPress={() => {
-                      setActiveWorkspace(ws);
-                      setShowSwitchModal(false);
-                    }}
-                  >
-                    {ws.image_url ? (
-                      <Image source={{ uri: ws.image_url }} style={s.wsRowImg} />
-                    ) : (
-                      <View style={s.wsRowImgPlaceholder}>
-                        <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
-                      </View>
-                    )}
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[s.wsRowName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
-                        {ws.name}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <Ionicons
-                          name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
-                          size={12}
-                          color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
-                        />
-                        <Text style={s.wsRowRole}>
-                          {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
-                        </Text>
-                      </View>
-                    </View>
-                    {isActive && (
-                      <View style={s.activeBadge}>
-                        <Text style={s.activeBadgeText}>Aktif</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <View style={s.modalActionsRow}>
+        <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+          {workspaces.map(ws => {
+            const isActive = ws.id === activeWorkspace?.id;
+            return (
               <TouchableOpacity
-                style={s.modalActionBtn}
+                key={ws.id}
+                style={[s.wsRow, isActive && s.wsRowActive]}
                 onPress={() => {
+                  setActiveWorkspace(ws);
                   setShowSwitchModal(false);
-                  setShowCreate(true);
                 }}
               >
-                <Text style={s.modalActionBtnText}>＋ Dompet Baru</Text>
+                {ws.image_url ? (
+                  <Image source={{ uri: ws.image_url }} style={s.wsRowImg} />
+                ) : (
+                  <View style={s.wsRowImgPlaceholder}>
+                    <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+                  </View>
+                )}
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.wsRowName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
+                    {ws.name}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons
+                      name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                      size={12}
+                      color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
+                    />
+                    <Text style={s.wsRowRole}>
+                      {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                    </Text>
+                  </View>
+                </View>
+                {isActive && (
+                  <View style={s.activeBadge}>
+                    <Text style={s.activeBadgeText}>Aktif</Text>
+                  </View>
+                )}
               </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-              <TouchableOpacity
-                style={[s.modalActionBtn, s.modalActionBtnOutline]}
-                onPress={() => {
-                  setShowSwitchModal(false);
-                  router.push('/(tabs)/two');
-                }}
-              >
-                <Text style={s.modalActionBtnTextOutline}>📥 Gabung Lain</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={s.modalActionsRow}>
+          <TouchableOpacity
+            style={s.modalActionBtn}
+            onPress={() => {
+              setShowSwitchModal(false);
+              setShowCreate(true);
+            }}
+          >
+            <Text style={s.modalActionBtnText}>＋ Dompet Baru</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setShowSwitchModal(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Tutup</Text>
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity
+            style={[s.modalActionBtn, s.modalActionBtnOutline]}
+            onPress={() => {
+              setShowSwitchModal(false);
+              router.push('/(tabs)/two');
+            }}
+          >
+            <Text style={s.modalActionBtnTextOutline}>📥 Gabung Lain</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        <TouchableOpacity onPress={() => setShowSwitchModal(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Tutup</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
 
       <CreateWorkspaceModal
         visible={showCreate}

@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import Animated, { SlideInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, AppNotification } from '@/context/NotificationContext';
 import { Colors, Shadows, Radius } from '@/constants/theme';
+import SwipeableModal from './SwipeableModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,131 +56,129 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={s.modalOverlay}>
-        <Animated.View
-          entering={SlideInDown.springify()}
-          style={[s.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
-        >
-          {/* DRAG HANDLE */}
-          <View style={s.sheetHandle} />
-
-          {/* HEADER */}
-          <View style={s.headerRow}>
-            <View style={s.headerLeft}>
-              <View style={s.iconWrapper}>
-                <Ionicons name="notifications" size={18} color={Colors.primary} />
-              </View>
-              <View>
-                <Text style={s.headerTitle}>Notifikasi</Text>
-                <Text style={s.headerSubtitle}>
-                  {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
-                </Text>
-              </View>
+    <>
+      <SwipeableModal
+        visible={visible}
+        onClose={onClose}
+        maxHeight={SCREEN_HEIGHT * 0.8}
+        contentStyle={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16) }}
+      >
+        {/* HEADER */}
+        <View style={s.headerRow}>
+          <View style={s.headerLeft}>
+            <View style={s.iconWrapper}>
+              <Ionicons name="notifications" size={18} color={Colors.primary} />
             </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {unreadCount > 0 && (
-                <TouchableOpacity
-                  onPress={() => markAllAsRead()}
-                  style={s.markAllBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.markAllBtnText}>Tandai Dibaca</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
-                <Text style={s.closeBtnText}>✕</Text>
-              </TouchableOpacity>
+            <View>
+              <Text style={s.headerTitle}>Notifikasi</Text>
+              <Text style={s.headerSubtitle}>
+                {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
+              </Text>
             </View>
           </View>
 
-          {/* CONTENT LIST */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={s.scrollContent}
-          >
-            {loading && notifications.length === 0 ? (
-              <View style={s.emptyBox}>
-                <ActivityIndicator color={Colors.primary} size="small" />
-                <Text style={s.emptySubtext}>Memuat notifikasi...</Text>
-              </View>
-            ) : notifications.length === 0 ? (
-              <View style={s.emptyBox}>
-                <Ionicons name="notifications-off-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 8 }} />
-                <Text style={s.emptyTitle}>Belum Ada Notifikasi</Text>
-                <Text style={s.emptySubtext}>
-                  Pemberitahuan terkait aktivitas dompetmu akan muncul di sini.
-                </Text>
-              </View>
-            ) : (
-              notifications.map((item) => {
-                const isKicked = item.type === 'member_kicked';
-
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[s.notifCard, !item.is_read && s.notifCardUnread]}
-                    onPress={() => handleOpenDetail(item)}
-                    activeOpacity={0.8}
-                  >
-                    {/* ICON TYPE */}
-                    <View
-                      style={[
-                        s.typeIconBox,
-                        isKicked ? s.typeIconBoxWarning : s.typeIconBoxInfo,
-                      ]}
-                    >
-                      <Ionicons
-                        name={isKicked ? 'alert-circle-outline' : 'information-circle-outline'}
-                        size={20}
-                        color={isKicked ? Colors.accentOrange : Colors.accentBlue}
-                      />
-                    </View>
-
-                    {/* TEXT BODY */}
-                    <View style={{ flex: 1 }}>
-                      <View style={s.notifHeaderRow}>
-                        <Text
-                          style={[s.notifTitle, !item.is_read && s.notifTitleBold]}
-                          numberOfLines={1}
-                        >
-                          {item.title}
-                        </Text>
-                        <Text style={s.notifTime}>{formatRelativeTime(item.created_at)}</Text>
-                      </View>
-                      <Text
-                        style={[s.notifMessage, !item.is_read && s.notifMessageUnread]}
-                        numberOfLines={2}
-                      >
-                        {item.message}
-                      </Text>
-                    </View>
-
-                    {/* UNREAD BLUE DOT */}
-                    {!item.is_read && <View style={s.unreadDot} />}
-                  </TouchableOpacity>
-                );
-              })
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {unreadCount > 0 && (
+              <TouchableOpacity
+                onPress={() => markAllAsRead()}
+                style={s.markAllBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={s.markAllBtnText}>Tandai Dibaca</Text>
+              </TouchableOpacity>
             )}
-          </ScrollView>
-        </Animated.View>
+            <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
+              <Text style={s.closeBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        {/* ── DETAIL MODAL OVERLAY ── */}
-        {selectedNotif && (
-          <Modal
-            visible={Boolean(selectedNotif)}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setSelectedNotif(null)}
-          >
-            <View style={s.detailOverlay}>
-              <Animated.View entering={FadeIn.duration(200)} style={s.detailCard}>
+        {/* CONTENT LIST */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scrollContent}
+        >
+          {loading && notifications.length === 0 ? (
+            <View style={s.emptyBox}>
+              <ActivityIndicator color={Colors.primary} size="small" />
+              <Text style={s.emptySubtext}>Memuat notifikasi...</Text>
+            </View>
+          ) : notifications.length === 0 ? (
+            <View style={s.emptyBox}>
+              <Ionicons name="notifications-off-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 8 }} />
+              <Text style={s.emptyTitle}>Belum Ada Notifikasi</Text>
+              <Text style={s.emptySubtext}>
+                Pemberitahuan terkait aktivitas dompetmu akan muncul di sini.
+              </Text>
+            </View>
+          ) : (
+            notifications.map((item) => {
+              const isKicked = item.type === 'member_kicked';
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[s.notifCard, !item.is_read && s.notifCardUnread]}
+                  onPress={() => handleOpenDetail(item)}
+                  activeOpacity={0.8}
+                >
+                  {/* ICON TYPE */}
+                  <View
+                    style={[
+                      s.typeIconBox,
+                      isKicked ? s.typeIconBoxWarning : s.typeIconBoxInfo,
+                    ]}
+                  >
+                    <Ionicons
+                      name={isKicked ? 'alert-circle-outline' : 'information-circle-outline'}
+                      size={20}
+                      color={isKicked ? Colors.accentOrange : Colors.accentBlue}
+                    />
+                  </View>
+
+                  {/* TEXT BODY */}
+                  <View style={{ flex: 1 }}>
+                    <View style={s.notifHeaderRow}>
+                      <Text
+                        style={[s.notifTitle, !item.is_read && s.notifTitleBold]}
+                        numberOfLines={1}
+                      >
+                        {item.title}
+                      </Text>
+                      <Text style={s.notifTime}>{formatRelativeTime(item.created_at)}</Text>
+                    </View>
+                    <Text
+                      style={[s.notifMessage, !item.is_read && s.notifMessageUnread]}
+                      numberOfLines={2}
+                    >
+                      {item.message}
+                    </Text>
+                  </View>
+
+                  {/* UNREAD BLUE DOT */}
+                  {!item.is_read && <View style={s.unreadDot} />}
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      </SwipeableModal>
+
+      {/* ── DETAIL MODAL OVERLAY ── */}
+      {selectedNotif && (
+        <Modal
+          visible={Boolean(selectedNotif)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedNotif(null)}
+        >
+          <View style={s.detailOverlay} pointerEvents="box-none">
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSelectedNotif(null)}
+            />
+            <Animated.View entering={FadeIn.duration(200)} style={s.detailCard}>
                 <View style={s.detailTopRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View
@@ -250,16 +249,17 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
             </View>
           </Modal>
         )}
-      </View>
-    </Modal>
+    </>
   );
 }
 
 const s = StyleSheet.create({
-  modalOverlay: {
+  detailOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   modalSheet: {
     backgroundColor: Colors.surface,
@@ -420,19 +420,15 @@ const s = StyleSheet.create({
   },
 
   // Detail Modal Styles
-  detailOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
   detailCard: {
     width: '100%',
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
     padding: 20,
-    ...Shadows.card,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    ...Shadows.header,
+    elevation: 24,
   },
   detailTopRow: {
     flexDirection: 'row',

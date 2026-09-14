@@ -16,6 +16,7 @@ import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedProgressBar } from '@/components/Animated';
+import SwipeableModal from '@/components/SwipeableModal';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -315,55 +316,54 @@ export default function StatisticsScreen() {
       </ScrollView>
 
       {/* MODAL ATUR ANGGARAN */}
-      <Modal visible={budgetModalVisible} transparent animationType="fade" onRequestClose={() => setBudgetModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <Text style={s.sheetTitle}>Atur Batas Anggaran</Text>
-            <Text style={s.sheetSubtitle}>Pilih kategori dan tentukan kuota pengeluaran bulanan:</Text>
+      <SwipeableModal
+        visible={budgetModalVisible}
+        onClose={() => setBudgetModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>Atur Batas Anggaran</Text>
+        <Text style={s.sheetSubtitle}>Pilih kategori dan tentukan kuota pengeluaran bulanan:</Text>
 
-            {/* Category horizontal scroll */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {EXPENSE_CATEGORIES.map(cat => {
-                const isSelected = budgetCategory === cat;
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[s.catChip, isSelected && s.catChipActive]}
-                    onPress={() => setBudgetCategory(cat)}
-                  >
-                    <Text style={[s.catChipText, isSelected && s.catChipTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+        {/* Category horizontal scroll */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+          {EXPENSE_CATEGORIES.map(cat => {
+            const isSelected = budgetCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[s.catChip, isSelected && s.catChipActive]}
+                onPress={() => setBudgetCategory(cat)}
+              >
+                <Text style={[s.catChipText, isSelected && s.catChipTextActive]}>{cat}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-            <TextInput
-              style={s.sheetInput}
-              value={budgetAmount}
-              onChangeText={setBudgetAmount}
-              placeholder="Nominal budget (contoh: 1500000)"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="number-pad"
-            />
+        <TextInput
+          style={s.sheetInput}
+          value={budgetAmount}
+          onChangeText={setBudgetAmount}
+          placeholder="Nominal budget (contoh: 1500000)"
+          placeholderTextColor={Colors.textMuted}
+          keyboardType="number-pad"
+        />
 
-            <TouchableOpacity
-              style={[s.sheetBtn, savingBudget && { opacity: 0.6 }]}
-              onPress={handleSaveBudget}
-              disabled={savingBudget}
-            >
-              {savingBudget ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={s.sheetBtnText}>Simpan Anggaran</Text>
-              )}
-            </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.sheetBtn, savingBudget && { opacity: 0.6 }]}
+          onPress={handleSaveBudget}
+          disabled={savingBudget}
+        >
+          {savingBudget ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>Simpan Anggaran</Text>
+          )}
+        </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setBudgetModalVisible(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <TouchableOpacity onPress={() => setBudgetModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Batal</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
     </View>
   );
 }

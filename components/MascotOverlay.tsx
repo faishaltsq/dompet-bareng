@@ -145,6 +145,42 @@ export function MascotOverlay() {
     })
   ).current;
 
+  // Sheet drag down to dismiss
+  const sheetTranslateY = useRef(new RNAnimated.Value(0)).current;
+
+  const sheetPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          sheetTranslateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 70 || gestureState.vy > 0.4) {
+          RNAnimated.timing(sheetTranslateY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            setModalVisible(false);
+            sheetTranslateY.setValue(0);
+          });
+        } else {
+          RNAnimated.spring(sheetTranslateY, {
+            toValue: 0,
+            friction: 7,
+            tension: 45,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   // Animasi mood mascot
   const moodScale = useSharedValue(1);
   const moodRotate = useSharedValue(0);
@@ -347,8 +383,18 @@ export function MascotOverlay() {
             onPress={() => setModalVisible(false)}
           />
 
-          <View style={[s.bottomSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <View style={s.dragHandle} />
+          <RNAnimated.View
+            style={[
+              s.bottomSheet,
+              {
+                paddingBottom: Math.max(insets.bottom, 16),
+                transform: [{ translateY: sheetTranslateY }],
+              },
+            ]}
+          >
+            <View {...sheetPanResponder.panHandlers} style={s.dragHandleArea}>
+              <View style={s.dragHandle} />
+            </View>
 
             {/* Header: Otter Lucu + Status Finansial */}
             <View style={s.sheetHeader}>
@@ -463,7 +509,7 @@ export function MascotOverlay() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </RNAnimated.View>
         </View>
       </Modal>
     </View>
@@ -552,13 +598,18 @@ const s = StyleSheet.create({
     shadowRadius: 16,
     elevation: 16,
   },
+  dragHandleArea: {
+    width: '100%',
+    paddingTop: 8,
+    paddingBottom: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dragHandle: {
     width: 36,
     height: 4,
     backgroundColor: Colors.borderDark,
     borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   sheetHeader: {
     flexDirection: 'row',

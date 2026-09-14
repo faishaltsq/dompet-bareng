@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SwipeableModal from '@/components/SwipeableModal';
 
 import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
@@ -744,215 +745,205 @@ export default function SettingsScreen() {
       </ScrollView>
 
       {/* ── MODAL 1: EDIT PROFILE DISPLAY NAME ── */}
-      <Modal visible={editProfileModalVisible} transparent animationType="fade" onRequestClose={() => setEditProfileModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Ubah Nama Profil</Text>
-            <Text style={s.sheetSubtitle}>Nama ini akan muncul pada transaksi dan daftar anggota dompet bersama.</Text>
+      <SwipeableModal
+        visible={editProfileModalVisible}
+        onClose={() => setEditProfileModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>Ubah Nama Profil</Text>
+        <Text style={s.sheetSubtitle}>Nama ini akan muncul pada transaksi dan daftar anggota dompet bersama.</Text>
 
-            <TextInput
-              style={s.sheetInput}
-              value={profileNameInput}
-              onChangeText={setProfileNameInput}
-              placeholder="Contoh: Budi Pratama"
-              placeholderTextColor={Colors.textMuted}
-              autoFocus
-            />
+        <TextInput
+          style={s.sheetInput}
+          value={profileNameInput}
+          onChangeText={setProfileNameInput}
+          placeholder="Contoh: Budi Pratama"
+          placeholderTextColor={Colors.textMuted}
+          autoFocus
+        />
 
-            <TouchableOpacity
-              style={[s.sheetBtn, savingProfileName && { opacity: 0.6 }]}
-              onPress={handleSaveProfileName}
-              disabled={savingProfileName}
-            >
-              {savingProfileName ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={s.sheetBtnText}>Simpan Nama</Text>
-              )}
-            </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.sheetBtn, savingProfileName && { opacity: 0.6 }]}
+          onPress={handleSaveProfileName}
+          disabled={savingProfileName}
+        >
+          {savingProfileName ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>Simpan Nama</Text>
+          )}
+        </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
+        <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Batal</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
 
       {/* ── MODAL 2: SWITCH WORKSPACE ── */}
-      <Modal visible={switchWsModalVisible} transparent animationType="fade" onRequestClose={() => setSwitchWsModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Pilih Dompet</Text>
-            <Text style={s.sheetSubtitle}>Beralih ke dompet bersama lainnya:</Text>
+      <SwipeableModal
+        visible={switchWsModalVisible}
+        onClose={() => setSwitchWsModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>Pilih Dompet</Text>
+        <Text style={s.sheetSubtitle}>Beralih ke dompet bersama lainnya:</Text>
 
-            <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
-              {workspaces.map(ws => {
-                const isActive = ws.id === activeWorkspace?.id;
-                return (
-                  <TouchableOpacity
-                    key={ws.id}
-                    style={[s.wsPickerRow, isActive && s.wsPickerRowActive]}
-                    onPress={() => {
-                      setActiveWorkspace(ws);
-                      setSwitchWsModalVisible(false);
-                    }}
-                  >
-                    {ws.image_url ? (
-                      <Image source={{ uri: ws.image_url }} style={s.wsPickerImg} />
-                    ) : (
-                      <View style={s.wsPickerImgPlaceholder}>
-                        <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
-                      </View>
-                    )}
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[s.wsPickerName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
-                        {ws.name}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <Ionicons
-                          name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
-                          size={12}
-                          color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
-                        />
-                        <Text style={s.wsPickerRole}>
-                          {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
-                        </Text>
-                      </View>
-                    </View>
-                    {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+          {workspaces.map(ws => {
+            const isActive = ws.id === activeWorkspace?.id;
+            return (
+              <TouchableOpacity
+                key={ws.id}
+                style={[s.wsPickerRow, isActive && s.wsPickerRowActive]}
+                onPress={() => {
+                  setActiveWorkspace(ws);
+                  setSwitchWsModalVisible(false);
+                }}
+              >
+                {ws.image_url ? (
+                  <Image source={{ uri: ws.image_url }} style={s.wsPickerImg} />
+                ) : (
+                  <View style={s.wsPickerImgPlaceholder}>
+                    <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+                  </View>
+                )}
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.wsPickerName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
+                    {ws.name}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons
+                      name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                      size={12}
+                      color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
+                    />
+                    <Text style={s.wsPickerRole}>
+                      {ws.role === 'admin' ? 'Pemilik' : 'Anggota'}
+                    </Text>
+                  </View>
+                </View>
+                {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-            <TouchableOpacity onPress={() => setSwitchWsModalVisible(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Tutup</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
+        <TouchableOpacity onPress={() => setSwitchWsModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Tutup</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
 
       {/* ── MODAL 3: EDIT WORKSPACE NAME ── */}
-      <Modal visible={editWsModalVisible} transparent animationType="fade" onRequestClose={() => setEditWsModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Ubah Nama Dompet</Text>
+      <SwipeableModal
+        visible={editWsModalVisible}
+        onClose={() => setEditWsModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>Ubah Nama Dompet</Text>
 
-            <TextInput
-              style={s.sheetInput}
-              value={editWsName}
-              onChangeText={setEditWsName}
-              placeholder="Nama dompet baru"
-              placeholderTextColor={Colors.textMuted}
-              autoFocus
-            />
+        <TextInput
+          style={s.sheetInput}
+          value={editWsName}
+          onChangeText={setEditWsName}
+          placeholder="Nama dompet baru"
+          placeholderTextColor={Colors.textMuted}
+          autoFocus
+        />
 
-            <TouchableOpacity
-              style={[s.sheetBtn, savingWsEdit && { opacity: 0.6 }]}
-              onPress={handleSaveWsEdit}
-              disabled={savingWsEdit}
-            >
-              {savingWsEdit ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={s.sheetBtnText}>Simpan Perubahan</Text>
-              )}
-            </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.sheetBtn, savingWsEdit && { opacity: 0.6 }]}
+          onPress={handleSaveWsEdit}
+          disabled={savingWsEdit}
+        >
+          {savingWsEdit ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>Simpan Perubahan</Text>
+          )}
+        </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
+        <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Batal</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
 
       {/* ── MODAL 4: GABUNG WORKSPACE ── */}
-      <Modal visible={joinModalVisible} transparent animationType="fade" onRequestClose={() => setJoinModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Gabung Dompet Lain</Text>
-            <Text style={s.sheetSubtitle}>Tempel tautan undangan atau kode token yang kamu terima:</Text>
+      <SwipeableModal
+        visible={joinModalVisible}
+        onClose={() => setJoinModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>Gabung Dompet Lain</Text>
+        <Text style={s.sheetSubtitle}>Tempel tautan undangan atau kode token yang kamu terima:</Text>
 
-            <TextInput
-              style={s.sheetInput}
-              value={joinInput}
-              onChangeText={setJoinInput}
-              placeholder="dompetbareng://invite/... atau kode token"
-              placeholderTextColor={Colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+        <TextInput
+          style={s.sheetInput}
+          value={joinInput}
+          onChangeText={setJoinInput}
+          placeholder="dompetbareng://invite/... atau kode token"
+          placeholderTextColor={Colors.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
 
-            <TouchableOpacity style={s.sheetBtn} onPress={handleJoinWithInput}>
-              <Text style={s.sheetBtnText}>Lanjut Gabung</Text>
-            </TouchableOpacity>
+        <TouchableOpacity style={s.sheetBtn} onPress={handleJoinWithInput}>
+          <Text style={s.sheetBtnText}>Lanjut Gabung</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
+        <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>Batal</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
 
       {/* ── MODAL 5: KICK MEMBER CONFIRMATION WITH REASON ── */}
-      <Modal visible={kickModalVisible} transparent animationType="fade" onRequestClose={() => setKickModalVisible(false)}>
-        <View style={s.modalOverlay}>
-          <Animated.View entering={SlideInDown.springify()} style={s.modalSheet}>
-            <View style={s.sheetHandle} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Text style={{ fontSize: 22 }}>⚠️</Text>
-              <Text style={s.sheetTitle}>Keluarkan Anggota</Text>
-            </View>
-
-            <Text style={s.sheetSubtitle}>
-              Apakah kamu yakin ingin mengeluarkan{' '}
-              <Text style={{ fontWeight: '700', color: Colors.textDark }}>
-                {memberToKick?.display_name || memberToKick?.email || 'anggota ini'}
-              </Text>{' '}
-              dari dompet "{activeWorkspace?.name}"?
-            </Text>
-
-            <View style={{ marginTop: 12, marginBottom: 6 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textDark, marginBottom: 6 }}>
-                Alasan Dikeluarkan (dikirim ke anggota via notifikasi):
-              </Text>
-              <TextInput
-                style={[s.sheetInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
-                value={kickReason}
-                onChangeText={setKickReason}
-                placeholder="Tuliskan alasan (misal: Tidak aktif, salah gabung, dll)..."
-                placeholderTextColor={Colors.textMuted}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[s.sheetBtn, { backgroundColor: Colors.expense }, kicking && { opacity: 0.6 }]}
-              onPress={handleConfirmKick}
-              disabled={kicking}
-            >
-              {kicking ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={s.sheetBtnText}>Ya, Keluarkan & Beri Tahu</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setKickModalVisible(false)}
-              style={s.cancelBtn}
-              disabled={kicking}
-            >
-              <Text style={s.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </Animated.View>
+      <SwipeableModal
+        visible={kickModalVisible}
+        onClose={() => setKickModalVisible(false)}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Text style={{ fontSize: 22 }}>⚠️</Text>
+          <Text style={s.sheetTitle}>Keluarkan Anggota</Text>
         </View>
-      </Modal>
+
+        <Text style={s.sheetSubtitle}>
+          Apakah kamu yakin ingin mengeluarkan{' '}
+          <Text style={{ fontWeight: '700', color: Colors.textDark }}>
+            {memberToKick?.display_name || memberToKick?.email || 'anggota ini'}
+          </Text>{' '}
+          dari dompet "{activeWorkspace?.name}"?
+        </Text>
+
+        <View style={{ marginTop: 12, marginBottom: 6 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textDark, marginBottom: 6 }}>
+            Alasan Dikeluarkan (dikirim ke anggota via notifikasi):
+          </Text>
+          <TextInput
+            style={[s.sheetInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+            value={kickReason}
+            onChangeText={setKickReason}
+            placeholder="Tuliskan alasan (misal: Tidak aktif, salah gabung, dll)..."
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[s.sheetBtn, { backgroundColor: Colors.expense }, kicking && { opacity: 0.6 }]}
+          onPress={handleConfirmKick}
+          disabled={kicking}
+        >
+          {kicking ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>Ya, Keluarkan & Beri Tahu</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setKickModalVisible(false)}
+          style={s.cancelBtn}
+          disabled={kicking}
+        >
+          <Text style={s.cancelBtnText}>Batal</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
     </View>
   );
 }
