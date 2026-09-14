@@ -81,7 +81,7 @@ export default function StatisticsScreen() {
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>
           <View style={s.headerTopRow}>
-            <Text style={s.headerTitle}>Statistik</Text>
+            <Text style={s.headerTitle}>Analisis & Anggaran</Text>
             {activeWorkspace && (
               <View style={s.wsBadge}>
                 <Text style={s.wsBadgeText}>{activeWorkspace.name}</Text>
@@ -202,7 +202,7 @@ export default function StatisticsScreen() {
             <Animated.View entering={FadeInDown.delay(160).duration(400)} style={s.budgetSection}>
               <View style={s.budgetHeaderRow}>
                 <View>
-                  <Text style={s.budgetSectionTitle}>Batas Anggaran Bulanan</Text>
+                  <Text style={s.budgetSectionTitle}>Batas Anggaran Kategori</Text>
                   <Text style={s.budgetSectionSubtitle}>Pantau kuota pengeluaran kategori</Text>
                 </View>
                 {isAdmin && (

@@ -353,8 +353,8 @@ export default function SettingsScreen() {
       >
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-          <Text style={s.headerTitle}>Profil & Pengaturan</Text>
-          <Text style={s.headerSubtitle}>Kelola akun pribadi dan dompet bersama</Text>
+          <Text style={s.headerTitle}>Pengaturan</Text>
+          <Text style={s.headerSubtitle}>Akun, dompet, dan preferensi</Text>
         </View>
 
         <View style={s.body}>

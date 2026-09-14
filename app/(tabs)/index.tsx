@@ -185,7 +185,7 @@ export default function HomeScreen() {
         <StatusBar style="dark" />
         <Animated.View entering={FadeInUp.springify()} style={s.emptyBox}>
           <View style={s.emptyIconCircle}>
-            <Text style={{ fontSize: 40 }}>🌿</Text>
+            <Text style={s.emptyTitle}>DB</Text>
           </View>
           <Text style={s.emptyTitle}>Mulai dengan FinWise</Text>
           <Text style={s.emptySubtitle}>
@@ -235,7 +235,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ fontSize: 20 }}>🔔</Text>
+            <Text style={s.iconGlyph}>!</Text>
             {unreadCount > 0 && (
               <View style={s.notifBadge}>
                 <Text style={s.notifBadgeText}>
@@ -316,7 +316,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/modal')}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.primarySoft }]}>
-              <Text style={{ fontSize: 20 }}>✏️</Text>
+              <Text style={s.iconGlyph}>+</Text>
             </View>
             <Text style={s.quickActionLabel}>Catat</Text>
           </TouchableOpacity>
@@ -326,7 +326,7 @@ export default function HomeScreen() {
             onPress={() => setShowSwitchModal(true)}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentBlueSoft }]}>
-              <Text style={{ fontSize: 20 }}>🔄</Text>
+              <Text style={s.iconGlyph}>↔</Text>
             </View>
             <Text style={s.quickActionLabel}>Pindah Dompet</Text>
           </TouchableOpacity>
@@ -336,7 +336,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/(tabs)/statistics')}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentPurpleSoft }]}>
-              <Text style={{ fontSize: 20 }}>📊</Text>
+              <Text style={s.iconGlyph}>%</Text>
             </View>
             <Text style={s.quickActionLabel}>Statistik</Text>
           </TouchableOpacity>
@@ -410,7 +410,7 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
-                  <Text style={{ fontSize: 22 }}>{meta.emoji}</Text>
+                  <Text style={s.iconGlyph}>{item.category.slice(0, 1)}</Text>
                 </View>
 
                 <View style={s.txDetails}>
@@ -438,7 +438,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           !loadingTx ? (
             <Animated.View entering={FadeIn.duration(400)} style={s.emptyTxBox}>
-              <Text style={{ fontSize: 44 }}>🧾</Text>
+              <Text style={s.emptyTitle}>—</Text>
               <Text style={s.emptyTxTitle}>Belum ada transaksi</Text>
               <Text style={s.emptyTxDesc}>
                 Tap tombol "+ Catat" di atas untuk mencatat pengeluaran atau pemasukan.
@@ -1041,5 +1041,10 @@ const s = StyleSheet.create({
   cancelBtnText: {
     color: Colors.textMuted,
     fontSize: 14,
+  },
+  iconGlyph: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.primaryDark,
   },
 });

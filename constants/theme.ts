@@ -3,39 +3,30 @@
  * Palette: Emerald/mint primary, white surface, soft backgrounds
  */
 export const Colors = {
-  // Primary — FinWise Emerald
-  primary: '#1CAB68',
-  primaryDark: '#15864F',
-  primaryLight: '#2DD07E',
-  primaryMuted: '#6EDBA8',
-  primarySoft: '#E8F9F1',
-  primaryGradientStart: '#1CAB68',
-  primaryGradientEnd: '#0E9060',
-
-  // Backgrounds
-  background: '#F7F9FB',
+  primary: '#059669',
+  primaryDark: '#047857',
+  primaryLight: '#10B981',
+  primaryMuted: '#6EE7B7',
+  primarySoft: '#ECFDF5',
+  primaryGradientStart: '#059669',
+  primaryGradientEnd: '#047857',
+  background: '#F8FAFC',
   surface: '#FFFFFF',
   card: '#FFFFFF',
-  cardAlt: '#F0FAF5',
-
-  // Typography
-  textDark: '#0D1117',
-  textSecondary: '#4A5568',
-  textMuted: '#8896A4',
+  cardAlt: '#F1F5F9',
+  textDark: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
   textLight: '#FFFFFF',
   textOnPrimary: '#FFFFFF',
-
-  // Financial Status
-  income: '#1CAB68',
-  incomeSoft: '#E8F9F1',
-  expense: '#FF4757',
-  expenseSoft: '#FFF0F1',
+  income: '#10B981',
+  incomeSoft: '#ECFDF5',
+  expense: '#EF4444',
+  expenseSoft: '#FEF2F2',
   savings: '#F59E0B',
-  savingsSoft: '#FFF8E7',
+  savingsSoft: '#FFFBEB',
   savings2: '#3B82F6',
   savings2Soft: '#EFF6FF',
-
-  // Accents
   accentBlue: '#3B82F6',
   accentBlueSoft: '#EFF6FF',
   accentTeal: '#14B8A6',
@@ -44,15 +35,11 @@ export const Colors = {
   accentPurpleSoft: '#F5F3FF',
   accentOrange: '#F97316',
   accentOrangeSoft: '#FFF7ED',
-
-  // Borders & Dividers
-  border: '#E8EDF2',
-  borderDark: '#D1D9E0',
-  borderLight: '#F3F6F9',
-
-  // Skeleton
-  skeletonBase: '#E8EDF2',
-  skeletonHighlight: '#F5F7FA',
+  border: '#E2E8F0',
+  borderDark: '#CBD5E1',
+  borderLight: '#F1F5F9',
+  skeletonBase: '#E2E8F0',
+  skeletonHighlight: '#F8FAFC',
 };
 
 export const Shadows = {
