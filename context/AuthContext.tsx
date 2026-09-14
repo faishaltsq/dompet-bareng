@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,6 +20,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
+  avatarUrl: string | null;
   signInWithGoogle: () => Promise<void>;
   signInDevGuest: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   session: null,
   loading: true,
+  avatarUrl: null,
   signInWithGoogle: async () => {},
   signInDevGuest: async () => {},
   signOut: async () => {},
@@ -39,23 +41,83 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
+function ensureHttps(url?: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://')) {
+    return trimmed.replace('http://', 'https://');
+  }
+  return trimmed;
+}
+
+export function extractAvatarUrl(user: User | null, profile: UserProfile | null): string | null {
+  if (!user && !profile) return null;
+
+  // 1. Profile avatar dari database
+  if (profile?.avatar_url) return ensureHttps(profile.avatar_url);
+
+  // 2. User metadata dari Google OAuth
+  const meta = user?.user_metadata;
+  const metaAvatar = meta?.avatar_url || meta?.picture || meta?.avatar;
+  if (metaAvatar && typeof metaAvatar === 'string') return ensureHttps(metaAvatar);
+
+  // 3. Identities data dari provider Google
+  if (user?.identities && Array.isArray(user.identities)) {
+    for (const id of user.identities) {
+      const idData = id?.identity_data;
+      const idAvatar = idData?.avatar_url || idData?.picture || idData?.avatar;
+      if (idAvatar && typeof idAvatar === 'string') return ensureHttps(idAvatar);
+    }
+  }
+
+  return null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string) => {
+  const fetchProfile = async (uid: string, currentUser?: User | null) => {
+    const u = currentUser ?? user;
     const { data } = await supabase
       .from('profiles')
       .select('id, email, display_name, avatar_url')
       .eq('id', uid)
       .single();
-    if (data) setProfile(data as UserProfile);
+
+    const avatarFromUser = extractAvatarUrl(u, null);
+
+    if (data) {
+      const prof = data as UserProfile;
+      // Jika profile di database belum punya avatar_url tapi di user metadata Google ada, simpan ke database
+      if (!prof.avatar_url && avatarFromUser) {
+        prof.avatar_url = avatarFromUser;
+        try {
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: avatarFromUser })
+            .eq('id', uid);
+        } catch (_) {}
+      }
+      setProfile(prof);
+    } else if (avatarFromUser || u?.email) {
+      const newProf: UserProfile = {
+        id: uid,
+        email: u?.email || null,
+        display_name: u?.user_metadata?.full_name || u?.user_metadata?.name || u?.email?.split('@')[0] || 'Pengguna',
+        avatar_url: avatarFromUser,
+      };
+      setProfile(newProf);
+      try {
+        await supabase.from('profiles').upsert(newProf);
+      } catch (_) {}
+    }
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) await fetchProfile(user.id, user);
   };
 
   useEffect(() => {
@@ -64,14 +126,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false); // ← selesai loading segera, fetchProfile background
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user.id, session.user);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user.id, session.user);
     });
 
     return () => subscription.unsubscribe();
@@ -206,12 +268,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const avatarUrl = useMemo(() => extractAvatarUrl(user, profile), [user, profile]);
+
   return (
     <AuthContext.Provider value={{
       user,
       profile,
       session,
       loading,
+      avatarUrl,
       signInWithGoogle,
       signInDevGuest,
       signOut,

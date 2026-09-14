@@ -93,7 +93,7 @@ function CreateWorkspaceModal({
 }
 
 export default function HomeScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, avatarUrl } = useAuth();
   const { unreadCount } = useNotifications();
   const {
     workspaces,
@@ -117,7 +117,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<PeriodFilter>('month');
 
-  const googleAvatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const googleAvatarUrl = avatarUrl;
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Pengguna';
   const userInitial = (displayName[0] || 'U').toUpperCase();
 
@@ -222,7 +222,7 @@ export default function HomeScreen() {
             {googleAvatarUrl ? (
               <Image source={{ uri: googleAvatarUrl }} style={s.avatarImg} />
             ) : (
-              <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.primary }}>{userInitial}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFFFFF' }}>{userInitial}</Text>
             )}
           </TouchableOpacity>
           <View style={{ flex: 1 }}>

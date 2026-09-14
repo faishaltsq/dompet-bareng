@@ -38,12 +38,13 @@ type Member = {
   joined_at: string;
   display_name?: string;
   email?: string;
+  avatar_url?: string | null;
 };
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, profile, signOut, updateDisplayName, signInWithGoogle } = useAuth();
+  const { user, profile, signOut, updateDisplayName, signInWithGoogle, avatarUrl } = useAuth();
 
   const isRegisteredUser = Boolean(user && !user.is_anonymous && (user.email || user.app_metadata?.provider === 'google'));
   const {
@@ -135,7 +136,7 @@ export default function SettingsScreen() {
     setLoadingMembers(true);
     const { data, error } = await supabase
       .from('workspace_members')
-      .select('user_id, role, joined_at, profiles(display_name, email)')
+      .select('user_id, role, joined_at, profiles(display_name, email, avatar_url)')
       .eq('workspace_id', activeWorkspace.id);
 
     if (!error && data) {
@@ -145,6 +146,7 @@ export default function SettingsScreen() {
         joined_at: m.joined_at,
         display_name: m.profiles?.display_name ?? null,
         email: m.profiles?.email ?? null,
+        avatar_url: m.profiles?.avatar_url ?? null,
       })));
     }
     setLoadingMembers(false);
@@ -356,7 +358,7 @@ export default function SettingsScreen() {
   };
 
   const isAdmin = activeWorkspace?.role === 'admin';
-  const googleAvatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const googleAvatarUrl = avatarUrl;
   const userInitial = (profile?.display_name?.[0] || user?.email?.[0] || 'U').toUpperCase();
 
   return (
@@ -610,12 +612,16 @@ export default function SettingsScreen() {
                 const memberName = m.display_name || m.email?.split('@')[0] || `User #${m.user_id.slice(0, 6)}`;
                 return (
                   <View key={m.user_id} style={[s.menuRow, idx === members.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={[s.menuIcon, { backgroundColor: Colors.borderLight }]}>
-                      <Ionicons
-                        name={m.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
-                        size={18}
-                        color={m.role === 'admin' ? Colors.savings : Colors.textMuted}
-                      />
+                    <View style={[s.menuIcon, { backgroundColor: Colors.borderLight, overflow: 'hidden' }]}>
+                      {m.avatar_url ? (
+                        <Image source={{ uri: m.avatar_url }} style={s.memberAvatarImg} />
+                      ) : (
+                        <Ionicons
+                          name={m.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                          size={18}
+                          color={m.role === 'admin' ? Colors.savings : Colors.textMuted}
+                        />
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.menuTitle}>
@@ -1037,6 +1043,11 @@ const s = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+  },
+  memberAvatarImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   userAvatarPlaceholder: {
     alignItems: 'center',
