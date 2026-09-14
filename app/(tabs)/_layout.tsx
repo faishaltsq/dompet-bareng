@@ -1,70 +1,73 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { Tabs } from 'expo-router';
+import { View, Text, ColorValue, StyleSheet } from 'react-native';
+import { Colors, Shadows, Radius } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+function TabIcon({ emoji, active }: { emoji: string; color: ColorValue; active: boolean }) {
+  return (
+    <View style={[styles.tabIconWrap, active && styles.tabIconActive]}>
+      <Text style={{ fontSize: active ? 22 : 20 }}>{emoji}</Text>
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: -4 },
+        tabBarStyle: {
+          backgroundColor: Colors.card,
+          borderTopWidth: 0,
+          height: tabBarHeight,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 6,
+          ...Shadows.header,
+        },
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Beranda',
+          tabBarIcon: ({ color, focused }) => <TabIcon emoji="🏠" color={color} active={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="statistics"
+        options={{
+          title: 'Statistik',
+          tabBarIcon: ({ color, focused }) => <TabIcon emoji="📊" color={color} active={focused} />,
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: 'Pengaturan',
+          tabBarIcon: ({ color, focused }) => <TabIcon emoji="⚙️" color={color} active={focused} />,
         }}
       />
+      {/* Tab AI dihapus — diganti floating MascotOverlay di _layout.tsx */}
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIconWrap: {
+    width: 38,
+    height: 34,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconActive: {
+    backgroundColor: Colors.primarySoft,
+    borderRadius: 12,
+  },
+});

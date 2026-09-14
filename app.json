@@ -8,16 +8,30 @@
     "scheme": "dompetbareng",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dompetbareng.app",
+      "associatedDomains": ["applinks:dompetbareng.app"]
     },
     "android": {
+      "package": "com.dompetbareng.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            { "scheme": "dompetbareng" },
+            { "scheme": "https", "host": "dompetbareng.app", "pathPrefix": "/invite" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

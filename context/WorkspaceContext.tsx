@@ -1,0 +1,687 @@
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { Share, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
+
+export type Workspace = {
+  id: string;
+  name: string;
+  role: 'admin' | 'member';
+  image_url?: string | null;
+};
+
+export type Transaction = {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  category: string;
+  description: string | null;
+  image_url: string | null;
+  transaction_date: string;
+  created_at: string;
+  // Dari join profiles
+  user_display_name?: string;
+  user_email?: string;
+};
+
+export type WorkspaceBudget = {
+  id: string;
+  workspace_id: string;
+  category: string;
+  amount: number;
+  month: number;
+  year: number;
+};
+
+type Summary = { income: number; expense: number; balance: number };
+
+type WorkspaceContextType = {
+  workspaces: Workspace[];
+  activeWorkspace: Workspace | null;
+  transactions: Transaction[];
+  loadingWorkspaces: boolean;
+  loadingTx: boolean;
+  setActiveWorkspace: (ws: Workspace) => void;
+  createWorkspace: (name: string) => Promise<Workspace | null>;
+  deleteWorkspace: (id: string) => Promise<boolean>;
+  updateWorkspace: (id: string, name: string) => Promise<boolean>;
+  generateInviteLink: () => Promise<string | null>;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'>) => Promise<boolean>;
+  deleteTransaction: (id: string) => Promise<boolean>;
+  refetchTransactions: () => Promise<void>;
+  summary: Summary;
+  refreshWorkspaces: () => Promise<void>;
+  joinWorkspace: (workspaceId: string, role?: 'admin' | 'member') => Promise<boolean>;
+  leaveWorkspace: (workspaceId: string) => Promise<boolean>;
+  removeMember: (workspaceId: string, userId: string, reason?: string) => Promise<boolean>;
+  uploadWorkspaceImage: (id: string, uri: string) => Promise<string | null>;
+  uploadReceiptImage: (uri: string) => Promise<string | null>;
+  budgets: WorkspaceBudget[];
+  setBudget: (category: string, amount: number) => Promise<boolean>;
+  deleteBudget: (category: string) => Promise<boolean>;
+};
+
+const WorkspaceContext = createContext<WorkspaceContextType>({} as WorkspaceContextType);
+
+// Cache key helpers
+const CACHE_WS_KEY = (uid: string) => `@db:workspaces:${uid}`;
+const CACHE_TX_KEY = (wsId: string) => `@db:transactions:${wsId}`;
+const CACHE_ACTIVE_WS_KEY = (uid: string) => `@db:active_workspace:${uid}`;
+
+async function readCache<T>(key: string): Promise<T | null> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+async function writeCache(key: string, value: unknown): Promise<void> {
+  try { await AsyncStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgetsState] = useState<WorkspaceBudget[]>([]);
+  const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const activeRef = useRef<Workspace | null>(null);
+
+  // Setters that sync to ref for realtime closures
+  const setActiveWorkspace = useCallback((ws: Workspace) => {
+    activeRef.current = ws;
+    setActiveWorkspaceState(ws);
+    // Simpan pilihan workspace agar tetap sama setelah restart/ganti akun
+    if (user) AsyncStorage.setItem(CACHE_ACTIVE_WS_KEY(user.id), ws.id).catch(() => {});
+  }, [user]);
+
+  // ── Workspaces ──────────────────────────────────────────────────────────────
+
+  const fetchWorkspaces = useCallback(async () => {
+    if (!user) return;
+
+    // 1. Show cache immediately for instant UI
+    const cached = await readCache<Workspace[]>(CACHE_WS_KEY(user.id));
+    const savedActiveId = await AsyncStorage.getItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => null);
+
+    if (cached?.length) {
+      setWorkspaces(cached);
+      setActiveWorkspaceState(prev => {
+        if (prev && cached.some(w => w.id === prev.id)) return prev;
+        // Prioritaskan ID yang disimpan sebelumnya agar konsisten/statis
+        if (savedActiveId) {
+          const matched = cached.find(w => w.id === savedActiveId);
+          if (matched) return matched;
+        }
+        return cached[0] ?? null;
+      });
+      setLoadingWorkspaces(false);
+    }
+
+    // 2. Fetch fresh
+    const { data, error } = await supabase
+      .from('workspace_members')
+      .select('role, workspaces(id, name, image_url)')
+      .eq('user_id', user.id);
+
+    if (!error && data) {
+      const ws: Workspace[] = data
+        .filter((m: any) => m.workspaces)
+        .map((m: any) => {
+          const w = Array.isArray(m.workspaces) ? m.workspaces[0] : m.workspaces;
+          return {
+            id: w.id,
+            name: w.name,
+            role: m.role,
+            image_url: w.image_url ?? null,
+          };
+        });
+
+      setWorkspaces(ws);
+
+      // Jika user tidak lagi memiliki dompet (misal dikeluarkan dari satu-satunya dompet)
+      if (ws.length === 0) {
+        setActiveWorkspaceState(null);
+        activeRef.current = null;
+        setTransactions([]);
+        setBudgetsState([]);
+        AsyncStorage.removeItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => {});
+        await writeCache(CACHE_WS_KEY(user.id), []);
+        setLoadingWorkspaces(false);
+        return;
+      }
+
+      setActiveWorkspaceState(prev => {
+        // Jika dompet aktif sebelumnya sudah tidak ada di daftar membership
+        if (prev && !ws.some(w => w.id === prev.id)) {
+          setTransactions([]);
+          setBudgetsState([]);
+          try { AsyncStorage.removeItem(CACHE_TX_KEY(prev.id)); } catch {}
+        }
+
+        if (prev && ws.some(w => w.id === prev.id)) {
+          // Update data terbaru tapi pertahankan pilihan
+          const updated = ws.find(w => w.id === prev.id) ?? prev;
+          activeRef.current = updated;
+          return updated;
+        }
+
+        // Prioritaskan saved ID jika masih ada di daftar membership
+        if (savedActiveId) {
+          const matched = ws.find(w => w.id === savedActiveId);
+          if (matched) {
+            activeRef.current = matched;
+            return matched;
+          }
+        }
+
+        activeRef.current = ws[0];
+        return ws[0];
+      });
+      await writeCache(CACHE_WS_KEY(user.id), ws);
+    }
+    setLoadingWorkspaces(false);
+  }, [user]);
+
+  // ── Transactions ─────────────────────────────────────────────────────────────
+
+  const fetchTransactions = useCallback(async (ws?: Workspace | null) => {
+    const target = ws ?? activeRef.current;
+    if (!target) return;
+
+    // Show cache instantly
+    const cached = await readCache<Transaction[]>(CACHE_TX_KEY(target.id));
+    if (cached?.length) setTransactions(cached);
+    setLoadingTx(true);
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, profiles(display_name, email)')
+      .eq('workspace_id', target.id)
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (!error && data) {
+      const mapped = data.map((t: any) => ({
+        ...t,
+        user_display_name: t.profiles?.display_name ?? null,
+        user_email: t.profiles?.email ?? null,
+        profiles: undefined,
+      }));
+      setTransactions(mapped as Transaction[]);
+      await writeCache(CACHE_TX_KEY(target.id), mapped);
+    }
+    setLoadingTx(false);
+  }, []);
+
+  const refetchTransactions = useCallback(() => fetchTransactions(), [fetchTransactions]);
+
+  // ── Effects ──────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (user) fetchWorkspaces();
+    else {
+      setWorkspaces([]);
+      setActiveWorkspaceState(null);
+      setTransactions([]);
+      setLoadingWorkspaces(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (activeWorkspace) {
+      fetchTransactions(activeWorkspace);
+      fetchBudgets(activeWorkspace);
+    }
+  }, [activeWorkspace]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!activeWorkspace) return;
+    const channel = supabase
+      .channel(`tx:${activeWorkspace.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'transactions',
+        filter: `workspace_id=eq.${activeWorkspace.id}`,
+      }, () => fetchTransactions())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeWorkspace]);
+
+  // Realtime subscription untuk keanggotaan workspace (kick / invite / join)
+  useEffect(() => {
+    if (!user) return;
+
+    const wmChannel = supabase
+      .channel(`user_membership:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workspace_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const removedWsId = (payload.old as any)?.workspace_id;
+            if (activeRef.current?.id === removedWsId) {
+              const kickedWsName = activeRef.current?.name || 'Dompet Bersama';
+              await AsyncStorage.removeItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => {});
+              activeRef.current = null;
+              setActiveWorkspaceState(null);
+              Alert.alert(
+                'Dikeluarkan dari Dompet 👋',
+                `Kamu telah dikeluarkan dari dompet "${kickedWsName}". Silakan periksa lonceng notifikasi untuk alasan lengkapnya.`
+              );
+            }
+            await fetchWorkspaces();
+          } else if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            await fetchWorkspaces();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(wmChannel);
+    };
+  }, [user, fetchWorkspaces]);
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────────
+
+  const createWorkspace = async (name: string): Promise<Workspace | null> => {
+    if (!user) return null;
+    const { data: ws, error: wsErr } = await supabase
+      .from('workspaces')
+      .insert({ name, created_by: user.id })
+      .select()
+      .single();
+
+    if (wsErr || !ws) return null;
+
+    await supabase.from('workspace_members').insert({
+      workspace_id: ws.id,
+      user_id: user.id,
+      role: 'admin',
+    });
+
+    const newWs: Workspace = { id: ws.id, name: ws.name, role: 'admin' };
+    setWorkspaces(prev => {
+      const updated = [...prev, newWs];
+      writeCache(CACHE_WS_KEY(user.id), updated);
+      return updated;
+    });
+    setActiveWorkspace(newWs);
+    return newWs;
+  };
+
+  const deleteWorkspace = async (id: string): Promise<boolean> => {
+    if (!user) return false;
+    // Optimistic remove
+    const prev = workspaces;
+    const newList = workspaces.filter(w => w.id !== id);
+    setWorkspaces(newList);
+    if (activeWorkspace?.id === id) setActiveWorkspace(newList[0] ?? null as any);
+
+    const { error } = await supabase.from('workspaces').delete().eq('id', id);
+    if (error) {
+      // Rollback
+      setWorkspaces(prev);
+      return false;
+    }
+    await writeCache(CACHE_WS_KEY(user.id), newList);
+    // Clear tx cache for deleted ws
+    try { await AsyncStorage.removeItem(CACHE_TX_KEY(id)); } catch {}
+    return true;
+  };
+
+  const updateWorkspace = async (id: string, name: string): Promise<boolean> => {
+    if (!user) return false;
+    // Optimistic update
+    setWorkspaces(prev => {
+      const updated = prev.map(w => w.id === id ? { ...w, name } : w);
+      writeCache(CACHE_WS_KEY(user.id), updated);
+      return updated;
+    });
+    if (activeWorkspace?.id === id) {
+      setActiveWorkspaceState(prev => prev ? { ...prev, name } : prev);
+    }
+    const { error } = await supabase.from('workspaces').update({ name }).eq('id', id);
+    return !error;
+  };
+
+  const uploadWorkspaceImage = async (id: string, uri: string): Promise<string | null> => {
+    try {
+      const fileName = `workspace_${id}_${Date.now()}.jpg`;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const { error } = await supabase.storage
+        .from('workspace-images')
+        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+      if (error) return null;
+
+      const { data: urlData } = supabase.storage
+        .from('workspace-images')
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+
+      await supabase.from('workspaces').update({ image_url: publicUrl }).eq('id', id);
+      setWorkspaces(prev => {
+        const updated = prev.map(w => w.id === id ? { ...w, image_url: publicUrl } : w);
+        if (user) writeCache(CACHE_WS_KEY(user.id), updated);
+        return updated;
+      });
+      // Also update activeWorkspace if it's the one being changed
+      if (activeWorkspace?.id === id) {
+        setActiveWorkspaceState(prev => prev ? { ...prev, image_url: publicUrl } : prev);
+      }
+      return publicUrl;
+    } catch (e) {
+      console.error('uploadWorkspaceImage error:', e);
+      return null;
+    }
+  };
+
+  const uploadReceiptImage = async (uri: string): Promise<string | null> => {
+    try {
+      const fileName = `receipt_${Date.now()}.jpg`;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const { error } = await supabase.storage
+        .from('workspace-images')
+        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+      if (error) return null;
+
+      const { data: urlData } = supabase.storage
+        .from('workspace-images')
+        .getPublicUrl(fileName);
+
+      return urlData.publicUrl;
+    } catch (e) {
+      console.error('uploadReceiptImage error:', e);
+      return null;
+    }
+  };
+
+  const generateInviteLink = async (): Promise<string | null> => {
+    if (!activeWorkspace || !user) return null;
+    const { data, error } = await supabase
+      .from('workspace_invites')
+      .insert({ workspace_id: activeWorkspace.id, created_by: user.id })
+      .select('token')
+      .single();
+
+    if (error || !data) return null;
+    const link = `dompetbareng://invite/${data.token}`;
+    await Share.share({
+      message: `Gabung ke dompet "${activeWorkspace.name}" di DompetBareng:\n${link}`,
+      title: 'Undangan DompetBareng',
+    });
+    return link;
+  };
+
+  const addTransaction = async (
+    tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'>
+  ): Promise<boolean> => {
+    if (!activeWorkspace || !user) return false;
+
+    // Optimistic insert
+    const optimisticId = `opt_${Date.now()}`;
+    const optimisticTx: Transaction = {
+      ...tx,
+      id: optimisticId,
+      workspace_id: activeWorkspace.id,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+    };
+    setTransactions(prev => [optimisticTx, ...prev]);
+
+    const { data, error } = await supabase.from('transactions').insert({
+      ...tx,
+      workspace_id: activeWorkspace.id,
+      user_id: user.id,
+    }).select().single();
+
+    if (error) {
+      // Rollback optimistic
+      setTransactions(prev => prev.filter(t => t.id !== optimisticId));
+      return false;
+    }
+
+    // Replace optimistic with real
+    setTransactions(prev => {
+      const updated = prev.map(t => t.id === optimisticId ? (data as Transaction) : t);
+      writeCache(CACHE_TX_KEY(activeWorkspace.id), updated);
+      return updated;
+    });
+    return true;
+  };
+
+  const deleteTransaction = async (id: string): Promise<boolean> => {
+    // Optimistic delete
+    const prev = transactions;
+    setTransactions(t => t.filter(tx => tx.id !== id));
+
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) {
+      setTransactions(prev);
+      return false;
+    }
+    if (activeWorkspace) {
+      const updated = prev.filter(t => t.id !== id);
+      await writeCache(CACHE_TX_KEY(activeWorkspace.id), updated);
+    }
+    return true;
+  };
+
+  const refreshWorkspaces = async (): Promise<void> => {
+    await fetchWorkspaces();
+  };
+
+  const joinWorkspace = async (
+    workspaceId: string,
+    role: 'admin' | 'member' = 'member'
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    const { error } = await supabase.from('workspace_members').insert({
+      workspace_id: workspaceId,
+      user_id: user.id,
+      role,
+    });
+
+    if (error && error.code !== '23505') {
+      console.error('joinWorkspace error:', error);
+      return false;
+    }
+
+    // Refresh langsung dari DB
+    const { data, error: fetchErr } = await supabase
+      .from('workspace_members')
+      .select('role, workspaces(id, name, image_url)')
+      .eq('user_id', user.id);
+
+    if (!fetchErr && data) {
+      const wsList: Workspace[] = data
+        .filter((m: any) => m.workspaces)
+        .map((m: any) => {
+          const w = Array.isArray(m.workspaces) ? m.workspaces[0] : m.workspaces;
+          return {
+            id: w.id,
+            name: w.name,
+            role: m.role,
+            image_url: w.image_url ?? null,
+          };
+        });
+
+      setWorkspaces(wsList);
+      const target = wsList.find(w => w.id === workspaceId) ?? wsList[0] ?? null;
+      if (target) {
+        activeRef.current = target;
+        setActiveWorkspaceState(target);
+      }
+      await writeCache(CACHE_WS_KEY(user.id), wsList);
+    }
+    return true;
+  };
+
+  // ── Leave & Kick ────────────────────────────────────────────────────────────
+
+  const leaveWorkspace = async (workspaceId: string): Promise<boolean> => {
+    if (!user) return false;
+    const { error } = await supabase
+      .from('workspace_members')
+      .delete()
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id);
+    if (error) return false;
+
+    const newList = workspaces.filter(w => w.id !== workspaceId);
+    setWorkspaces(newList);
+    if (activeWorkspace?.id === workspaceId) {
+      setActiveWorkspace(newList[0] ?? null as any);
+    }
+    if (user) await writeCache(CACHE_WS_KEY(user.id), newList);
+    return true;
+  };
+
+  const removeMember = async (
+    workspaceId: string,
+    userId: string,
+    reason?: string
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    const ws = workspaces.find(w => w.id === workspaceId) || activeWorkspace;
+    const wsName = ws?.name || 'Dompet';
+
+    // 1. Hapus dari tabel workspace_members
+    const { error } = await supabase
+      .from('workspace_members')
+      .delete()
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('removeMember error:', error);
+      return false;
+    }
+
+    // 2. Kirim notifikasi in-app ke member yang di-kick
+    try {
+      const adminName = user.user_metadata?.full_name || user.email || 'Admin';
+      const cleanReason = reason?.trim() ? reason.trim() : 'Tidak ada alasan khusus yang dicantumkan.';
+
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        workspace_id: workspaceId,
+        title: 'Dikeluarkan dari Dompet',
+        message: `Kamu telah dikeluarkan dari dompet "${wsName}". Alasan: ${cleanReason}`,
+        type: 'member_kicked',
+        data: {
+          reason: cleanReason,
+          workspace_name: wsName,
+          admin_name: adminName,
+        },
+        is_read: false,
+      });
+    } catch (notifErr) {
+      console.warn('Gagal membuat notifikasi kick:', notifErr);
+    }
+
+    return true;
+  };
+
+  // ── Budgets ────────────────────────────────────────────────────────────────
+
+  const fetchBudgets = useCallback(async (ws?: Workspace | null) => {
+    const target = ws ?? activeRef.current;
+    if (!target) return;
+    const now = new Date();
+    const { data } = await supabase
+      .from('workspace_budgets')
+      .select('*')
+      .eq('workspace_id', target.id)
+      .eq('month', now.getMonth())
+      .eq('year', now.getFullYear());
+    if (data) setBudgetsState(data as WorkspaceBudget[]);
+  }, []);
+
+  const setBudget = async (category: string, amount: number): Promise<boolean> => {
+    if (!activeWorkspace) return false;
+    const now = new Date();
+    const { error } = await supabase
+      .from('workspace_budgets')
+      .upsert({
+        workspace_id: activeWorkspace.id,
+        category,
+        amount,
+        month: now.getMonth(),
+        year: now.getFullYear(),
+      }, { onConflict: 'workspace_id,category,month,year' });
+    if (!error) {
+      await fetchBudgets();
+      return true;
+    }
+    return false;
+  };
+
+  const deleteBudget = async (category: string): Promise<boolean> => {
+    if (!activeWorkspace) return false;
+    const now = new Date();
+    const { error } = await supabase
+      .from('workspace_budgets')
+      .delete()
+      .eq('workspace_id', activeWorkspace.id)
+      .eq('category', category)
+      .eq('month', now.getMonth())
+      .eq('year', now.getFullYear());
+    if (!error) {
+      await fetchBudgets();
+      return true;
+    }
+    return false;
+  };
+
+  const summary = transactions.reduce<Summary>(
+    (acc, t) => {
+      if (t.type === 'income') acc.income += t.amount;
+      else acc.expense += t.amount;
+      acc.balance = acc.income - acc.expense;
+      return acc;
+    },
+    { income: 0, expense: 0, balance: 0 }
+  );
+
+  return (
+    <WorkspaceContext.Provider value={{
+      workspaces, activeWorkspace, transactions,
+      loadingWorkspaces, loadingTx,
+      setActiveWorkspace, createWorkspace, deleteWorkspace, updateWorkspace,
+      generateInviteLink, addTransaction, deleteTransaction,
+      refetchTransactions, summary,
+      refreshWorkspaces, joinWorkspace,
+      leaveWorkspace, removeMember,
+      uploadWorkspaceImage,
+      uploadReceiptImage,
+      budgets, setBudget, deleteBudget,
+    }}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
+}
+
+export const useWorkspace = () => useContext(WorkspaceContext);
