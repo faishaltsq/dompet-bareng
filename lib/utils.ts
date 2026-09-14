@@ -47,7 +47,7 @@ export const INCOME_CATEGORIES = [
   'Gaji', 'Transfer', 'Bonus', 'Investasi', 'Lainnya',
 ] as const;
 
-/** Icon + warna pastel per kategori */
+/** Compact category marker + warna pastel per kategori */
 export const CATEGORY_META: Record<string, { emoji: string; bg: string; color: string }> = {
   'Makan & Minum': { emoji: '🍜', bg: Colors.expenseSoft, color: Colors.expense },
   'Transportasi':  { emoji: '🚗', bg: Colors.accentBlueSoft, color: Colors.accentBlue },
