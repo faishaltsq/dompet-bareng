@@ -10,7 +10,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dompetbareng.app",
-      "associatedDomains": ["applinks:dompetbareng.app"]
+      "associatedDomains": [
+        "applinks:dompetbareng.app"
+      ]
     },
     "android": {
       "package": "com.dompetbareng.app",
@@ -26,10 +28,19 @@
         {
           "action": "VIEW",
           "data": [
-            { "scheme": "dompetbareng" },
-            { "scheme": "https", "host": "dompetbareng.app", "pathPrefix": "/invite" }
+            {
+              "scheme": "dompetbareng"
+            },
+            {
+              "scheme": "https",
+              "host": "dompetbareng.app",
+              "pathPrefix": "/invite"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -57,10 +68,17 @@
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 3000,
-      "url": "https://u.expo.dev/dompet-bareng"
+      "url": "https://u.expo.dev/763c45e6-04da-426c-923d-c72da18c1d7c"
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "763c45e6-04da-426c-923d-c72da18c1d7c"
+      }
+    },
+    "owner": "faishaltsq"
   }
 }
