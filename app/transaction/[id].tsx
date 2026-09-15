@@ -165,15 +165,13 @@ export default function TransactionDetailScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
 
-      {/* Header: Tombol sampah kanan atas sudah DIHAPUS, diganti tombol Ubah (pencil) */}
+      {/* Header: Tombol kanan atas kosong agar judul tetap di tengah */}
       <View style={[s.header, { backgroundColor: isIncome ? Colors.income : Colors.expense }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Detail Transaksi</Text>
-        <TouchableOpacity onPress={handleOpenEdit} style={s.editHeaderBtn} activeOpacity={0.7}>
-          <Ionicons name="create-outline" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView
@@ -279,7 +277,7 @@ export default function TransactionDetailScreen() {
             onPress={handleOpenEdit}
             activeOpacity={0.8}
           >
-            <Ionicons name="create-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+            <Ionicons name="options-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
             <Text style={s.editFullBtnText}>{t('editTransaction')}</Text>
           </TouchableOpacity>
 
@@ -461,11 +459,6 @@ function DetailRow({
         </Text>
         {subValue && <Text style={dr.subValue}>{subValue}</Text>}
       </View>
-      {onPress && (
-        <View style={dr.editAffordance}>
-          <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
-        </View>
-      )}
     </View>
   );
 
@@ -513,14 +506,6 @@ const dr = StyleSheet.create({
     fontWeight: '700',
     color: '#B45309',
   },
-  editAffordance: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
 
 const s = StyleSheet.create({
@@ -534,14 +519,6 @@ const s = StyleSheet.create({
     paddingVertical: 14,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editHeaderBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
