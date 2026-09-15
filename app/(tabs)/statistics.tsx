@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal,
   TextInput,
 } from 'react-native';
 import { useState, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedProgressBar } from '@/components/Animated';
 import SwipeableModal from '@/components/SwipeableModal';
 import { useLanguage } from '@/context/LanguageContext';
+import CalendarDropdownModal, { DateFilterState } from '@/components/CalendarDropdownModal';
+import PieChart, { PieSlice } from '@/components/PieChart';
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -34,18 +36,50 @@ export default function StatisticsScreen() {
   const [budgetCategory, setBudgetCategory] = useState(EXPENSE_CATEGORIES[0] as string);
   const [budgetAmount, setBudgetAmount] = useState('');
   const [savingBudget, setSavingBudget] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [tab, setTab] = useState<TabType>('expense');
+  const [showPieChart, setShowPieChart] = useState(false);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+
+  // Flexible date filter (replaces old selectedMonth)
+  const nowDate = new Date();
+  const nowMonth = nowDate.getMonth();
+  const nowYear = nowDate.getFullYear();
+  const daysInNowMonth = new Date(nowYear, nowMonth + 1, 0).getDate();
+
+  const [dateFilter, setDateFilter] = useState<DateFilterState>({
+    type: 'month',
+    label: `${MONTHS[nowMonth]} ${nowYear}`,
+    monthIndex: nowMonth,
+    year: nowYear,
+    startDate: `${nowYear}-${String(nowMonth + 1).padStart(2, '0')}-01`,
+    endDate: `${nowYear}-${String(nowMonth + 1).padStart(2, '0')}-${String(daysInNowMonth).padStart(2, '0')}`,
+  });
 
   const filtered = useMemo(() => {
     if (!activeWorkspace) return [];
-    return transactions
-      .filter(t => t.workspace_id === activeWorkspace.id)
-      .filter(t => {
-        const d = new Date(t.transaction_date);
-        return d.getMonth() === selectedMonth && d.getFullYear() === new Date().getFullYear();
-      });
-  }, [transactions, selectedMonth, activeWorkspace]);
+    const wsTx = transactions.filter(t => t.workspace_id === activeWorkspace.id);
+
+    if (dateFilter.type === 'all') return wsTx;
+
+    const start = dateFilter.startDate;
+    const end = dateFilter.endDate;
+    if (!start || !end) return wsTx;
+
+    return wsTx.filter(t => {
+      const d = t.transaction_date.slice(0, 10); // YYYY-MM-DD
+      return d >= start && d <= end;
+    });
+  }, [transactions, dateFilter, activeWorkspace]);
+
+  // Set of dates that have transactions (for calendar dot markers)
+  const txDateSet = useMemo(() => {
+    if (!activeWorkspace) return new Set<string>();
+    return new Set(
+      transactions
+        .filter(t => t.workspace_id === activeWorkspace.id)
+        .map(t => t.transaction_date.slice(0, 10))
+    );
+  }, [transactions, activeWorkspace]);
 
   const monthSummary = useMemo(() =>
     filtered.reduce((acc, t) => {
@@ -66,6 +100,22 @@ export default function StatisticsScreen() {
 
   const totalForTab = tab === 'expense' ? monthSummary.expense : monthSummary.income;
   const balance = monthSummary.income - monthSummary.expense;
+
+  // Pie chart slices
+  const SLICE_COLORS = [
+    '#059669', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6',
+    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  ];
+  const pieSlices = useMemo<PieSlice[]>(() => {
+    if (totalForTab === 0) return [];
+    return byCategory.map(([cat, amount], i) => ({
+      key: cat,
+      label: cat,
+      value: amount,
+      color: SLICE_COLORS[i % SLICE_COLORS.length],
+      percentage: (amount / totalForTab) * 100,
+    }));
+  }, [byCategory, totalForTab]);
 
   const handleSaveBudget = async () => {
     const raw = budgetAmount.replace(/[^0-9]/g, '');
@@ -97,22 +147,16 @@ export default function StatisticsScreen() {
             )}
           </View>
 
-          {/* Month Scroll */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.monthScrollContent}
+          {/* Calendar Dropdown Button (replaces month pills) */}
+          <TouchableOpacity
+            style={s.calendarDropdownBtn}
+            onPress={() => setCalendarVisible(true)}
+            activeOpacity={0.8}
           >
-            {MONTHS.map((m, i) => (
-              <TouchableOpacity
-                key={m}
-                style={[s.monthPill, i === selectedMonth && s.monthPillActive]}
-                onPress={() => setSelectedMonth(i)}
-              >
-                <Text style={[s.monthPillText, i === selectedMonth && s.monthPillTextActive]}>{m}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            <Ionicons name="calendar-outline" size={16} color="#fff" />
+            <Text style={s.calendarDropdownText}>{dateFilter.label}</Text>
+            <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+          </TouchableOpacity>
         </View>
 
         {/* BODY */}
@@ -143,7 +187,7 @@ export default function StatisticsScreen() {
           {/* Net Balance card */}
           <Animated.View entering={FadeInDown.delay(80).duration(450)} style={s.netCard}>
             <View>
-              <Text style={s.netLabel}>{t('netBalance')} {MONTHS[selectedMonth]}</Text>
+              <Text style={s.netLabel}>{t('netBalance')} — {dateFilter.label}</Text>
               <Text style={[s.netAmount, {
                 color: balance >= 0 ? Colors.income : Colors.expense,
               }]}>
@@ -201,6 +245,47 @@ export default function StatisticsScreen() {
             >
               <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActive]}>{t('income')}</Text>
             </TouchableOpacity>
+          </Animated.View>
+
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* COLLAPSIBLE PIE / DONUT CHART                             */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          <Animated.View entering={FadeInDown.delay(155).duration(400)}>
+            <TouchableOpacity
+              style={s.pieToggleBtn}
+              onPress={() => setShowPieChart(prev => !prev)}
+              activeOpacity={0.7}
+            >
+              <View style={s.pieToggleLeft}>
+                <Ionicons name="pie-chart-outline" size={18} color={Colors.primary} />
+                <Text style={s.pieToggleText}>
+                  {showPieChart ? t('hidePieChart') : t('showPieChart')}
+                </Text>
+              </View>
+              <Ionicons
+                name={showPieChart ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={Colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            {showPieChart && (
+              <Animated.View entering={FadeIn.duration(300)} style={s.pieChartWrap}>
+                {pieSlices.length > 0 ? (
+                  <PieChart
+                    data={pieSlices}
+                    total={totalForTab}
+                    size={200}
+                    formatValue={(v) => formatRupiah(v)}
+                  />
+                ) : (
+                  <View style={s.pieEmptyWrap}>
+                    <Text style={s.pieEmptyText}>{t('noDataPeriod')}</Text>
+                  </View>
+                )}
+                <Text style={s.pieHintText}>{t('tapSliceHint')}</Text>
+              </Animated.View>
+            )}
           </Animated.View>
 
           {/* ═══════════════════════════════════════════════════════════ */}
@@ -273,7 +358,7 @@ export default function StatisticsScreen() {
           {/* Category breakdown */}
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>{t('byCategory')}</Text>
-            <Text style={s.sectionSub}>{MONTHS[selectedMonth]}</Text>
+            <Text style={s.sectionSub}>{dateFilter.label}</Text>
           </View>
 
           {loadingTx ? (
@@ -283,8 +368,8 @@ export default function StatisticsScreen() {
               <Text style={{ fontSize: 36 }}>📊</Text>
               <Text style={s.emptyText}>
                 {language === 'id'
-                  ? `Tidak ada ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} di ${MONTHS[selectedMonth]}.`
-                  : `No ${tab === 'expense' ? 'expenses' : 'income'} recorded in ${MONTHS[selectedMonth]}.`}
+                  ? `Tidak ada ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} pada periode ${dateFilter.label}.`
+                  : `No ${tab === 'expense' ? 'expenses' : 'income'} recorded in ${dateFilter.label}.`}
               </Text>
             </Animated.View>
           ) : (
@@ -370,6 +455,15 @@ export default function StatisticsScreen() {
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
+
+      {/* CALENDAR DROPDOWN MODAL */}
+      <CalendarDropdownModal
+        visible={calendarVisible}
+        onClose={() => setCalendarVisible(false)}
+        currentFilter={dateFilter}
+        onSelectFilter={setDateFilter}
+        transactionDates={txDateSet}
+      />
     </View>
   );
 }
@@ -726,5 +820,74 @@ const s = StyleSheet.create({
   catChipTextActive: {
     color: Colors.primary,
     fontWeight: '800',
+  },
+
+  // ── Calendar Dropdown Button ────────────────────────────────────────────
+  calendarDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    marginTop: 14,
+  },
+  calendarDropdownText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ── Pie Chart Collapsible ──────────────────────────────────────────────
+  pieToggleBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 14,
+    ...Shadows.card,
+  },
+  pieToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pieToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textDark,
+  },
+  pieChartWrap: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    ...Shadows.card,
+  },
+  pieEmptyWrap: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  pieEmptyText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  pieHintText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
