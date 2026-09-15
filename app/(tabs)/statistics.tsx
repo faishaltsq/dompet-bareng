@@ -223,21 +223,25 @@ export default function StatisticsScreen() {
         <View style={s.body}>
           {/* Summary Cards Row */}
           <Animated.View entering={FadeInDown.duration(450)} style={s.summaryCardRow}>
-            <View style={[s.summaryCard, { borderColor: Colors.income }]}>
-              <View style={[s.summaryDot, { backgroundColor: Colors.incomeSoft }]}>
-                <Text style={{ fontSize: 16 }}>⬆️</Text>
+            <View style={[s.summaryCard, s.summaryCardIncome]}>
+              <View style={s.summaryCardHeader}>
+                <View style={[s.summaryDot, { backgroundColor: Colors.incomeSoft }]}>
+                  <Ionicons name="arrow-up-circle-outline" size={20} color={Colors.income} />
+                </View>
+                <Text style={[s.summaryCardLabel, { color: Colors.income }]}>{t('income')}</Text>
               </View>
-              <Text style={s.summaryCardLabel}>{t('income')}</Text>
               <Text style={[s.summaryCardAmt, { color: Colors.income }]}>
                 {formatRupiah(monthSummary.income)}
               </Text>
             </View>
 
-            <View style={[s.summaryCard, { borderColor: Colors.expense }]}>
-              <View style={[s.summaryDot, { backgroundColor: Colors.expenseSoft }]}>
-                <Text style={{ fontSize: 16 }}>⬇️</Text>
+            <View style={[s.summaryCard, s.summaryCardExpense]}>
+              <View style={s.summaryCardHeader}>
+                <View style={[s.summaryDot, { backgroundColor: Colors.expenseSoft }]}>
+                  <Ionicons name="arrow-down-circle-outline" size={20} color={Colors.expense} />
+                </View>
+                <Text style={[s.summaryCardLabel, { color: Colors.expense }]}>{t('expense')}</Text>
               </View>
-              <Text style={s.summaryCardLabel}>{t('expense')}</Text>
               <Text style={[s.summaryCardAmt, { color: Colors.expense }]}>
                 {formatRupiah(monthSummary.expense)}
               </Text>
@@ -256,10 +260,13 @@ export default function StatisticsScreen() {
             </View>
 
             {/* Income/expense comparative bar */}
-            <View style={{ gap: 6, marginTop: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={s.barLabel}>{t('income')}</Text>
-                <Text style={[s.barLabel, { color: Colors.income }]}>
+            <View style={s.comparativeBarsWrap}>
+              <View style={s.barHeaderRow}>
+                <View style={s.barLabelGroup}>
+                  <Ionicons name="arrow-up-circle-outline" size={14} color={Colors.income} />
+                  <Text style={s.barLabel}>{t('income')}</Text>
+                </View>
+                <Text style={[s.barValue, { color: Colors.income }]}>
                   {monthSummary.income > 0
                     ? `${Math.round((monthSummary.income / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
                     : '0%'}
@@ -271,11 +278,15 @@ export default function StatisticsScreen() {
                   : 0}
                 color={Colors.income}
                 height={7}
+                borderRadius={4}
               />
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={s.barLabel}>{t('expense')}</Text>
-                <Text style={[s.barLabel, { color: Colors.expense }]}>
+              <View style={[s.barHeaderRow, { marginTop: 8 }]}>
+                <View style={s.barLabelGroup}>
+                  <Ionicons name="arrow-down-circle-outline" size={14} color={Colors.expense} />
+                  <Text style={s.barLabel}>{t('expense')}</Text>
+                </View>
+                <Text style={[s.barValue, { color: Colors.expense }]}>
                   {monthSummary.expense > 0
                     ? `${Math.round((monthSummary.expense / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
                     : '0%'}
@@ -287,6 +298,7 @@ export default function StatisticsScreen() {
                   : 0}
                 color={Colors.expense}
                 height={7}
+                borderRadius={4}
               />
             </View>
           </Animated.View>
@@ -294,16 +306,34 @@ export default function StatisticsScreen() {
           {/* Tab switch: pengeluaran / pemasukan kategori */}
           <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.tabSwitch}>
             <TouchableOpacity
-              style={[s.tabBtn, tab === 'expense' && s.tabBtnActive]}
+              style={[s.tabBtn, tab === 'expense' && s.tabBtnActiveExpense]}
               onPress={() => setTab('expense')}
+              activeOpacity={0.8}
             >
-              <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActive]}>{t('expense')}</Text>
+              <Ionicons
+                name="arrow-down-circle-outline"
+                size={16}
+                color={tab === 'expense' ? Colors.expense : Colors.textMuted}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActiveExpense]}>
+                {t('expense')}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.tabBtn, tab === 'income' && s.tabBtnActive]}
+              style={[s.tabBtn, tab === 'income' && s.tabBtnActiveIncome]}
               onPress={() => setTab('income')}
+              activeOpacity={0.8}
             >
-              <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActive]}>{t('income')}</Text>
+              <Ionicons
+                name="arrow-up-circle-outline"
+                size={16}
+                color={tab === 'income' ? Colors.income : Colors.textMuted}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActiveIncome]}>
+                {t('income')}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -445,7 +475,7 @@ export default function StatisticsScreen() {
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
           ) : byCategory.length === 0 ? (
             <Animated.View entering={FadeIn.duration(300)} style={s.emptyWrap}>
-              <Text style={{ fontSize: 36 }}>📊</Text>
+              <Ionicons name="bar-chart-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 4 }} />
               <Text style={s.emptyText}>
                 {language === 'id'
                   ? `Tidak ada ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} pada periode ${dateFilter.label}.`
@@ -463,7 +493,7 @@ export default function StatisticsScreen() {
                   style={s.catCard}
                 >
                   <View style={[s.catIcon, { backgroundColor: meta.bg }]}>
-                    <Text style={{ fontSize: 22 }}>{meta.emoji}</Text>
+                    <Ionicons name={meta.icon || 'receipt-outline'} size={22} color={meta.color} />
                   </View>
                   <View style={s.catMid}>
                     <View style={s.catNameRow}>
@@ -661,46 +691,58 @@ const s = StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingTop: 16,
+    paddingTop: 20,
     paddingHorizontal: 16,
+    paddingBottom: 40,
   },
 
   summaryCardRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   summaryCard: {
     flex: 1,
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    padding: 14,
+    borderRadius: Radius.lg,
+    padding: 16,
     borderWidth: 1.5,
-    gap: 6,
+    gap: 8,
     ...Shadows.card,
   },
+  summaryCardIncome: {
+    borderColor: '#A7F3D0',
+  },
+  summaryCardExpense: {
+    borderColor: '#FECACA',
+  },
+  summaryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   summaryDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryCardLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   summaryCardAmt: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 2,
   },
 
   netCard: {
     backgroundColor: Colors.card,
     borderRadius: Radius.lg,
     padding: 18,
-    marginBottom: 16,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadows.card,
@@ -715,44 +757,82 @@ const s = StyleSheet.create({
     fontWeight: '900',
     marginTop: 4,
   },
+  comparativeBarsWrap: {
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  barHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  barLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   barLabel: {
     fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '500',
+    color: Colors.textDark,
+    fontWeight: '600',
+  },
+  barValue: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   tabSwitch: {
     flexDirection: 'row',
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.cardAlt,
     borderRadius: Radius.full,
     padding: 4,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 9,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
     borderRadius: Radius.full,
   },
-  tabBtnActive: {
-    backgroundColor: Colors.card,
+  tabBtnActiveExpense: {
+    backgroundColor: Colors.expenseSoft,
+    borderWidth: 1.5,
+    borderColor: Colors.expense,
     ...Shadows.card,
+  },
+  tabBtnTextActiveExpense: {
+    color: Colors.expense,
+    fontWeight: '800',
+  },
+  tabBtnActiveIncome: {
+    backgroundColor: Colors.incomeSoft,
+    borderWidth: 1.5,
+    borderColor: Colors.income,
+    ...Shadows.card,
+  },
+  tabBtnTextActiveIncome: {
+    color: Colors.income,
+    fontWeight: '800',
   },
   tabBtnText: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.textMuted,
   },
-  tabBtnTextActive: {
-    color: Colors.primaryDark,
-    fontWeight: '700',
-  },
 
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 6,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 16,
@@ -770,11 +850,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.card,
     borderRadius: Radius.md,
-    padding: 14,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: 12,
+    gap: 14,
     ...Shadows.card,
   },
   catIcon: {
@@ -803,19 +883,21 @@ const s = StyleSheet.create({
 
   // ── Budget Section ─────────────────────────────────────────────────────────
   budgetSection: {
-    marginTop: 16,
+    marginTop: 6,
+    marginBottom: 22,
     backgroundColor: Colors.card,
     borderRadius: Radius.lg,
-    padding: 14,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadows.card,
-    gap: 10,
+    gap: 12,
   },
   budgetHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   budgetSectionTitle: {
     fontSize: 14,
@@ -857,10 +939,10 @@ const s = StyleSheet.create({
   budgetCard: {
     backgroundColor: Colors.background,
     borderRadius: Radius.md,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    gap: 4,
+    gap: 8,
   },
   budgetTopRow: {
     flexDirection: 'row',
@@ -899,6 +981,7 @@ const s = StyleSheet.create({
   budgetBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 4,
   },
   budgetSpentText: {

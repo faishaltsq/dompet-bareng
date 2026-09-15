@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -149,15 +150,27 @@ export default function AddTransactionModal() {
             <TouchableOpacity
               style={[s.switchBtn, !isExpense && s.switchBtnInactive, isExpense && s.switchBtnExpense]}
               onPress={() => handleSwitchType('expense')}
+              activeOpacity={0.8}
             >
-              <Text style={s.switchEmoji}>⬇️</Text>
+              <Ionicons
+                name="arrow-down-circle-outline"
+                size={20}
+                color={isExpense ? Colors.expense : Colors.textMuted}
+                style={{ marginRight: 6 }}
+              />
               <Text style={[s.switchText, isExpense && s.switchTextActive]}>{t('expense')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.switchBtn, isExpense && s.switchBtnInactive, !isExpense && s.switchBtnIncome]}
               onPress={() => handleSwitchType('income')}
+              activeOpacity={0.8}
             >
-              <Text style={s.switchEmoji}>⬆️</Text>
+              <Ionicons
+                name="arrow-up-circle-outline"
+                size={20}
+                color={!isExpense ? Colors.income : Colors.textMuted}
+                style={{ marginRight: 6 }}
+              />
               <Text style={[s.switchText, !isExpense && s.switchTextActive]}>{t('income')}</Text>
             </TouchableOpacity>
           </Animated.View>

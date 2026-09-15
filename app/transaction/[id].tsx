@@ -197,9 +197,18 @@ export default function TransactionDetailScreen() {
           <Text style={s.heroAmount}>
             {isIncome ? '+' : '-'}{formatRupiah(tx.amount)}
           </Text>
-          <View style={s.heroBadge}>
+          <View style={[s.heroBadge, {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+          }]}>
+            <Ionicons
+              name={isIncome ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'}
+              size={15}
+              color="#FFFFFF"
+            />
             <Text style={s.heroBadgeText}>
-              {isIncome ? '⬆️ Pemasukan' : '⬇️ Pengeluaran'}
+              {isIncome ? 'Pemasukan' : 'Pengeluaran'}
             </Text>
           </View>
         </Animated.View>
