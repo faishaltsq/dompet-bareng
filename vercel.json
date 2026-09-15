@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/invite/(.*)",
+      "destination": "/invite/[token].html"
+    },
+    {
+      "source": "/transaction/(.*)",
+      "destination": "/transaction/[id].html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
