@@ -30,7 +30,6 @@ import { Colors, Shadows, Radius } from '@/constants/theme';
 import {
   scheduleDailyReminder,
   cancelAllReminders,
-  sendTestNotification,
   isReminderEnabled,
 } from '@/lib/notifications';
 
@@ -114,15 +113,6 @@ export default function SettingsScreen() {
     } else {
       await cancelAllReminders();
     }
-  };
-
-  const handleTestNotification = async () => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Info', 'Notifikasi hanya tersedia di Android & iOS.');
-      return;
-    }
-    await sendTestNotification();
-    Alert.alert('Test Dikirim 🔔', 'Notifikasi akan muncul dalam 3 detik. Minimize app-nya dulu!');
   };
 
   const fetchMembers = useCallback(async () => {
@@ -693,7 +683,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Pilihan Bahasa (Language Selector) */}
-            <View style={s.menuRow}>
+            <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
               <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
                 <Ionicons name="globe-outline" size={18} color={Colors.primary} />
               </View>
@@ -719,22 +709,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Test Notifikasi */}
-            <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
-              <View style={[s.menuIcon, { backgroundColor: Colors.accentBlueSoft }]}>
-                <Ionicons name="flask-outline" size={18} color={Colors.accentBlue} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.menuTitle}>{t('testNotification')}</Text>
-                <Text style={s.menuDesc}>{t('testNotificationDesc')}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleTestNotification}
-                style={s.testNotifBtn}
-              >
-                <Text style={s.testNotifBtnText}>{t('testBtn')}</Text>
-              </TouchableOpacity>
-            </View>
           </Animated.View>
 
           {/* KELUAR AKUN */}
@@ -1265,19 +1239,6 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 1,
-  },
-  testNotifBtn: {
-    backgroundColor: Colors.accentBlueSoft,
-    borderWidth: 1,
-    borderColor: Colors.accentBlue,
-    borderRadius: Radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  testNotifBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.accentBlue,
   },
   langSegment: {
     flexDirection: 'row',
