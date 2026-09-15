@@ -22,6 +22,7 @@ export type Transaction = {
   image_url: string | null;
   transaction_date: string;
   created_at: string;
+  updated_at?: string | null;
   // Dari join profiles
   user_display_name?: string;
   user_email?: string;
@@ -50,6 +51,7 @@ type WorkspaceContextType = {
   updateWorkspace: (id: string, name: string) => Promise<boolean>;
   generateInviteLink: () => Promise<string | null>;
   addTransaction: (tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'>) => Promise<boolean>;
+  updateTransaction: (id: string, updates: Partial<Pick<Transaction, 'category' | 'transaction_date' | 'description' | 'amount'>>) => Promise<boolean>;
   deleteTransaction: (id: string) => Promise<boolean>;
   refetchTransactions: () => Promise<void>;
   summary: Summary;
@@ -525,21 +527,107 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const updateTransaction = async (
+    id: string,
+    updates: Partial<Pick<Transaction, 'category' | 'transaction_date' | 'description' | 'amount'>>
+  ): Promise<boolean> => {
+    if (!id || !activeWorkspace) return false;
+
+    const now = new Date().toISOString();
+    const prev = transactions;
+
+    // Optimistic update
+    setTransactions(list =>
+      list.map(t => {
+        if (t.id !== id) return t;
+        return {
+          ...t,
+          ...updates,
+          updated_at: now,
+        };
+      })
+    );
+
+    try {
+      // 1. Coba update dengan updated_at
+      let { data, error } = await supabase
+        .from('transactions')
+        .update({
+          ...updates,
+          updated_at: now,
+        })
+        .eq('id', id)
+        .select('*, profiles(display_name, email)');
+
+      // 2. Jika kolom updated_at belum ada di DB (error code 42703), retry tanpa updated_at
+      if (error && (error.code === '42703' || error.message?.includes('updated_at'))) {
+        const fallback = await supabase
+          .from('transactions')
+          .update(updates)
+          .eq('id', id)
+          .select('*, profiles(display_name, email)');
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error) {
+        console.error('updateTransaction Supabase error:', error);
+        setTransactions(prev);
+        return false;
+      }
+
+      const updatedRow = data && data[0];
+      const nextList = prev.map(t => {
+        if (t.id !== id) return t;
+        return {
+          ...t,
+          ...updates,
+          updated_at: updatedRow?.updated_at ?? now,
+          user_display_name: updatedRow?.profiles?.display_name ?? t.user_display_name,
+          user_email: updatedRow?.profiles?.email ?? t.user_email,
+        };
+      });
+
+      setTransactions(nextList);
+      await writeCache(CACHE_TX_KEY(activeWorkspace.id), nextList);
+      return true;
+    } catch (err) {
+      console.error('updateTransaction exception:', err);
+      setTransactions(prev);
+      return false;
+    }
+  };
+
   const deleteTransaction = async (id: string): Promise<boolean> => {
+    if (!id) return false;
+
     // Optimistic delete
     const prev = transactions;
     setTransactions(t => t.filter(tx => tx.id !== id));
 
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        console.error('deleteTransaction Supabase error:', error);
+        setTransactions(prev);
+        return false;
+      }
+
+      if (activeWorkspace) {
+        const updated = prev.filter(t => t.id !== id);
+        await writeCache(CACHE_TX_KEY(activeWorkspace.id), updated);
+      }
+      return true;
+    } catch (err) {
+      console.error('deleteTransaction exception:', err);
       setTransactions(prev);
       return false;
     }
-    if (activeWorkspace) {
-      const updated = prev.filter(t => t.id !== id);
-      await writeCache(CACHE_TX_KEY(activeWorkspace.id), updated);
-    }
-    return true;
   };
 
   const refreshWorkspaces = async (): Promise<void> => {
@@ -741,7 +829,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       workspaces, activeWorkspace, transactions,
       loadingWorkspaces, loadingTx,
       setActiveWorkspace, createWorkspace, deleteWorkspace, updateWorkspace,
-      generateInviteLink, addTransaction, deleteTransaction,
+      generateInviteLink, addTransaction, updateTransaction, deleteTransaction,
       refetchTransactions, summary,
       refreshWorkspaces, joinWorkspace,
       leaveWorkspace, removeMember,

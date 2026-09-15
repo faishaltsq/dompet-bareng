@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
   RefreshControl,
   Image,
 } from 'react-native';
@@ -133,12 +134,27 @@ export default function HomeScreen() {
   };
 
   const handleDelete = (id: string) => {
+    const doDelete = async () => {
+      const ok = await deleteTransaction(id);
+      if (!ok) {
+        Alert.alert('Gagal', t('deleteTransactionFailed') || 'Gagal menghapus transaksi dari server.');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Apakah kamu yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.');
+      if (confirmed) {
+        doDelete();
+      }
+      return;
+    }
+
     Alert.alert('Hapus Transaksi', 'Tindakan ini tidak dapat dibatalkan.', [
       { text: 'Batal', style: 'cancel' },
       {
         text: 'Hapus',
         style: 'destructive',
-        onPress: () => deleteTransaction(id),
+        onPress: doDelete,
       },
     ]);
   };
@@ -422,7 +438,14 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={s.txDetails}>
-                  <Text style={s.txTitle}>{item.category}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.txTitle}>{item.category}</Text>
+                    {Boolean(item.updated_at) && (
+                      <View style={s.editedTag}>
+                        <Text style={s.editedTagText}>{t('editedTag')}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={s.txSubtitle} numberOfLines={1}>
                     {item.description || item.transaction_date}
                   </Text>
@@ -915,6 +938,19 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.textDark,
+  },
+  editedTag: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: Radius.xs,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  editedTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
   },
   txSubtitle: {
     fontSize: 12,

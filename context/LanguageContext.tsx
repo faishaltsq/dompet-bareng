@@ -171,6 +171,22 @@ const translations = {
     noNotifications: 'Belum Ada Notifikasi',
     noNotificationsDesc: 'Pemberitahuan terkait aktivitas dompetmu akan muncul di sini.',
     adminNoteLabel: 'Catatan dari Pengurus/Admin:',
+
+    // Edit & Detail Transaksi
+    editTransaction: 'Ubah Transaksi',
+    editTransactionSubtitle: 'Perbarui tanggal atau kategori transaksi ini',
+    transactionDate: 'Tanggal Transaksi',
+    transactionCategory: 'Kategori Transaksi',
+    editedTag: 'diubah',
+    lastEditedAt: 'Terakhir Diubah',
+    deleteTransactionConfirm: 'Apakah kamu yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.',
+    deleteTransactionSuccess: 'Transaksi berhasil dihapus.',
+    deleteTransactionFailed: 'Gagal menghapus transaksi dari server.',
+    updateTransactionSuccess: 'Perubahan transaksi berhasil disimpan.',
+    updateTransactionFailed: 'Gagal menyimpan perubahan transaksi.',
+    deleteTransactionBtn: 'Hapus Transaksi Ini',
+    quickToday: 'Hari Ini',
+    quickYesterday: 'Kemarin',
   },
   en: {
     // Navigation / Tabs
@@ -337,6 +353,22 @@ const translations = {
     noNotifications: 'No Notifications',
     noNotificationsDesc: 'Updates regarding your wallet activities will appear here.',
     adminNoteLabel: 'Note from Admin:',
+
+    // Edit & Detail Transaksi
+    editTransaction: 'Edit Transaction',
+    editTransactionSubtitle: 'Update date or category of this transaction',
+    transactionDate: 'Transaction Date',
+    transactionCategory: 'Transaction Category',
+    editedTag: 'edited',
+    lastEditedAt: 'Last Edited',
+    deleteTransactionConfirm: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+    deleteTransactionSuccess: 'Transaction deleted successfully.',
+    deleteTransactionFailed: 'Failed to delete transaction from server.',
+    updateTransactionSuccess: 'Transaction changes saved successfully.',
+    updateTransactionFailed: 'Failed to save transaction changes.',
+    deleteTransactionBtn: 'Delete This Transaction',
+    quickToday: 'Today',
+    quickYesterday: 'Yesterday',
   },
 };
 
