@@ -63,7 +63,8 @@ type WorkspaceContextType = {
   uploadReceiptImage: (uri: string, base64?: string | null) => Promise<string | null>;
   budgets: WorkspaceBudget[];
   setBudget: (category: string, amount: number) => Promise<boolean>;
-  deleteBudget: (category: string) => Promise<boolean>;
+  updateBudget: (id: string, category: string, amount: number, oldCategory?: string) => Promise<boolean>;
+  deleteBudget: (categoryOrId: string) => Promise<boolean>;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType>({} as WorkspaceContextType);
@@ -792,16 +793,52 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const deleteBudget = async (category: string): Promise<boolean> => {
+  const updateBudget = async (
+    id: string,
+    category: string,
+    amount: number,
+    oldCategory?: string
+  ): Promise<boolean> => {
     if (!activeWorkspace) return false;
-    const now = new Date();
+
+    // Cek duplikasi jika kategori diubah
+    if (oldCategory && oldCategory.toLowerCase() !== category.toLowerCase()) {
+      const exists = budgets.some(
+        b => b.id !== id && b.category.toLowerCase() === category.toLowerCase()
+      );
+      if (exists) {
+        Alert.alert(
+          'Kategori Sudah Ada',
+          `Batas anggaran untuk kategori "${category}" sudah ada. Silakan pilih kategori lain atau ubah anggaran yang ada.`
+        );
+        return false;
+      }
+    }
+
     const { error } = await supabase
       .from('workspace_budgets')
-      .delete()
-      .eq('workspace_id', activeWorkspace.id)
-      .eq('category', category)
-      .eq('month', now.getMonth())
-      .eq('year', now.getFullYear());
+      .update({ category, amount })
+      .eq('id', id);
+
+    if (!error) {
+      await fetchBudgets();
+      return true;
+    }
+    console.error('updateBudget error:', error);
+    return false;
+  };
+
+  const deleteBudget = async (categoryOrId: string): Promise<boolean> => {
+    if (!activeWorkspace) return false;
+    const now = new Date();
+    const isUuid = /^[0-9a-fA-F-]{36}$/.test(categoryOrId);
+    let query = supabase.from('workspace_budgets').delete().eq('workspace_id', activeWorkspace.id);
+    if (isUuid) {
+      query = query.eq('id', categoryOrId);
+    } else {
+      query = query.eq('category', categoryOrId).eq('month', now.getMonth()).eq('year', now.getFullYear());
+    }
+    const { error } = await query;
     if (!error) {
       await fetchBudgets();
       return true;
@@ -835,7 +872,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       leaveWorkspace, removeMember,
       uploadWorkspaceImage,
       uploadReceiptImage,
-      budgets, setBudget, deleteBudget,
+      budgets, setBudget, updateBudget, deleteBudget,
     }}>
       {children}
     </WorkspaceContext.Provider>

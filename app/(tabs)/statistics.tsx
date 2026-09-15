@@ -6,13 +6,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useState, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useWorkspace } from '@/context/WorkspaceContext';
-import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES } from '@/lib/utils';
+import { useWorkspace, WorkspaceBudget } from '@/context/WorkspaceContext';
+import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES, formatCurrencyInput } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedProgressBar } from '@/components/Animated';
@@ -30,9 +32,10 @@ export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
   const { t, language } = useLanguage();
   const MONTHS = language === 'id' ? MONTHS_ID : MONTHS_EN;
-  const { activeWorkspace, transactions, loadingTx, budgets, setBudget, deleteBudget } = useWorkspace();
+  const { activeWorkspace, transactions, loadingTx, budgets, setBudget, updateBudget, deleteBudget } = useWorkspace();
   const isAdmin = activeWorkspace?.role === 'admin';
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<WorkspaceBudget | null>(null);
   const [budgetCategory, setBudgetCategory] = useState(EXPENSE_CATEGORIES[0] as string);
   const [budgetAmount, setBudgetAmount] = useState('');
   const [savingBudget, setSavingBudget] = useState(false);
@@ -113,15 +116,76 @@ export default function StatisticsScreen() {
     }));
   }, [byCategory, totalForTab]);
 
+  const handleOpenAddBudget = () => {
+    setEditingBudget(null);
+    const existingCategories = new Set(budgets.map(b => b.category));
+    const available = EXPENSE_CATEGORIES.find(cat => !existingCategories.has(cat)) || EXPENSE_CATEGORIES[0];
+    setBudgetCategory(available);
+    setBudgetAmount('');
+    setBudgetModalVisible(true);
+  };
+
+  const handleOpenEditBudget = (b: WorkspaceBudget) => {
+    if (!isAdmin) return;
+    setEditingBudget(b);
+    setBudgetCategory(b.category);
+    setBudgetAmount(formatCurrencyInput(b.amount.toString()));
+    setBudgetModalVisible(true);
+  };
+
   const handleSaveBudget = async () => {
     const raw = budgetAmount.replace(/[^0-9]/g, '');
     const num = parseInt(raw, 10);
-    if (!num || num <= 0) return;
+    if (!num || num <= 0) {
+      Alert.alert('Perhatian', 'Masukkan nominal anggaran yang valid (lebih dari 0).');
+      return;
+    }
+
     setSavingBudget(true);
-    await setBudget(budgetCategory, num);
+    let ok = false;
+    if (editingBudget) {
+      ok = await updateBudget(editingBudget.id, budgetCategory, num, editingBudget.category);
+    } else {
+      ok = await setBudget(budgetCategory, num);
+    }
     setSavingBudget(false);
-    setBudgetModalVisible(false);
-    setBudgetAmount('');
+
+    if (ok) {
+      setBudgetModalVisible(false);
+      setEditingBudget(null);
+      setBudgetAmount('');
+    }
+  };
+
+  const handleDeleteBudget = (budget: WorkspaceBudget) => {
+    const doDelete = async () => {
+      setSavingBudget(true);
+      const ok = await deleteBudget(budget.id);
+      setSavingBudget(false);
+      if (ok) {
+        setBudgetModalVisible(false);
+        setEditingBudget(null);
+        setBudgetAmount('');
+      } else {
+        Alert.alert('Gagal', 'Gagal menghapus batas anggaran.');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('deleteBudgetConfirm') || `Hapus batas anggaran untuk kategori "${budget.category}"?`)) {
+        doDelete();
+      }
+      return;
+    }
+
+    Alert.alert(
+      t('deleteBudgetBtn') || 'Hapus Anggaran',
+      t('deleteBudgetConfirm') || `Hapus batas anggaran untuk kategori "${budget.category}"?`,
+      [
+        { text: t('cancel') || 'Batal', style: 'cancel' },
+        { text: t('budgetDelete') || 'Hapus', style: 'destructive', onPress: doDelete },
+      ]
+    );
   };
 
   return (
@@ -298,7 +362,7 @@ export default function StatisticsScreen() {
                 {isAdmin && (
                   <TouchableOpacity
                     style={s.setBudgetBtn}
-                    onPress={() => setBudgetModalVisible(true)}
+                    onPress={handleOpenAddBudget}
                   >
                     <Text style={s.setBudgetBtnText}>+ {t('setBudget')}</Text>
                   </TouchableOpacity>
@@ -309,7 +373,7 @@ export default function StatisticsScreen() {
                 <View style={s.noBudgetBox}>
                   <Text style={s.noBudgetText}>{t('noBudgetYet')}</Text>
                   {isAdmin && (
-                    <TouchableOpacity onPress={() => setBudgetModalVisible(true)}>
+                    <TouchableOpacity onPress={handleOpenAddBudget}>
                       <Text style={s.noBudgetAction}>+ {t('setBudgetTarget')}</Text>
                     </TouchableOpacity>
                   )}
@@ -323,15 +387,34 @@ export default function StatisticsScreen() {
                   const isOver = pct > 100;
                   const isWarning = pct >= 75 && !isOver;
                   const barColor = isOver ? Colors.expense : isWarning ? '#FF9800' : Colors.savings;
+                  const catMeta = getCategoryMeta(b.category);
 
                   return (
-                    <View key={b.id} style={s.budgetCard}>
+                    <TouchableOpacity
+                      key={b.id}
+                      style={s.budgetCard}
+                      onPress={() => handleOpenEditBudget(b)}
+                      disabled={!isAdmin}
+                      activeOpacity={0.7}
+                    >
                       <View style={s.budgetTopRow}>
-                        <Text style={s.budgetCategoryName}>{b.category}</Text>
-                        <View style={[s.budgetStatusBadge, { backgroundColor: isOver ? Colors.expenseSoft : isWarning ? '#FFF3E0' : Colors.savingsSoft }]}>
-                          <Text style={[s.budgetStatusText, { color: barColor }]}>
-                            {isOver ? `Overbudget (+${pct - 100}%)` : `${pct}%`}
-                          </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={[s.budgetCatIconCircle, { backgroundColor: catMeta.bg }]}>
+                            <Ionicons name={catMeta.icon || 'receipt-outline'} size={15} color={catMeta.color} />
+                          </View>
+                          <Text style={s.budgetCategoryName}>{b.category}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={[s.budgetStatusBadge, { backgroundColor: isOver ? Colors.expenseSoft : isWarning ? '#FFF3E0' : Colors.savingsSoft }]}>
+                            <Text style={[s.budgetStatusText, { color: barColor }]}>
+                              {isOver ? `Overbudget (+${pct - 100}%)` : `${pct}%`}
+                            </Text>
+                          </View>
+                          {isAdmin && (
+                            <View style={s.budgetEditAffordance}>
+                              <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                            </View>
+                          )}
                         </View>
                       </View>
                       <AnimatedProgressBar
@@ -345,7 +428,7 @@ export default function StatisticsScreen() {
                         <Text style={s.budgetSpentText}>{t('budgetSpent')}: {formatRupiah(spent)}</Text>
                         <Text style={s.budgetTotalText}>{t('budgetQuota')}: {formatRupiah(b.amount)}</Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })
               )}
@@ -403,52 +486,121 @@ export default function StatisticsScreen() {
         </View>
       </ScrollView>
 
-      {/* MODAL ATUR ANGGARAN */}
+      {/* MODAL ATUR / UBAH ANGGARAN */}
       <SwipeableModal
         visible={budgetModalVisible}
-        onClose={() => setBudgetModalVisible(false)}
+        onClose={() => {
+          setBudgetModalVisible(false);
+          setEditingBudget(null);
+        }}
       >
-        <Text style={s.sheetTitle}>{t('setBudgetTitle')}</Text>
-        <Text style={s.sheetSubtitle}>{t('setBudgetSubtitle')}</Text>
+        <Text style={s.sheetTitle}>
+          {editingBudget ? t('editBudgetTitle') : t('setBudgetTitle')}
+        </Text>
+        <Text style={s.sheetSubtitle}>
+          {editingBudget ? t('editBudgetSubtitle') : t('setBudgetSubtitle')}
+        </Text>
 
-        {/* Category horizontal scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        {/* Category selector */}
+        <Text style={s.inputSectionLabel}>{t('categoryLabel') || 'Kategori'}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
           {EXPENSE_CATEGORIES.map(cat => {
             const isSelected = budgetCategory === cat;
+            const cMeta = getCategoryMeta(cat);
             return (
               <TouchableOpacity
                 key={cat}
-                style={[s.catChip, isSelected && s.catChipActive]}
+                style={[
+                  s.catChip,
+                  isSelected && {
+                    backgroundColor: cMeta.bg,
+                    borderColor: cMeta.color,
+                    borderWidth: 1.5,
+                  },
+                ]}
                 onPress={() => setBudgetCategory(cat)}
+                activeOpacity={0.7}
               >
-                <Text style={[s.catChipText, isSelected && s.catChipTextActive]}>{cat}</Text>
+                <Ionicons
+                  name={cMeta.icon || 'receipt-outline'}
+                  size={14}
+                  color={isSelected ? cMeta.color : Colors.textSecondary}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  style={[
+                    s.catChipText,
+                    isSelected && { color: cMeta.color, fontWeight: '800' },
+                  ]}
+                >
+                  {cat}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
+        {/* Nominal input */}
+        <Text style={s.inputSectionLabel}>Nominal Batas Anggaran</Text>
         <TextInput
           style={s.sheetInput}
           value={budgetAmount}
-          onChangeText={setBudgetAmount}
+          onChangeText={val => setBudgetAmount(formatCurrencyInput(val))}
           placeholder={t('budgetPlaceholder')}
           placeholderTextColor={Colors.textMuted}
           keyboardType="number-pad"
         />
 
+        {/* Quick Amount Row */}
+        <View style={s.quickAmountRow}>
+          {['500.000', '1.000.000', '2.000.000', '5.000.000'].map(amt => (
+            <TouchableOpacity
+              key={amt}
+              style={s.quickAmountBtn}
+              onPress={() => setBudgetAmount(amt)}
+              activeOpacity={0.7}
+            >
+              <Text style={s.quickAmountBtnText}>Rp {amt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Save button */}
         <TouchableOpacity
           style={[s.sheetBtn, savingBudget && { opacity: 0.6 }]}
           onPress={handleSaveBudget}
           disabled={savingBudget}
+          activeOpacity={0.8}
         >
           {savingBudget ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.sheetBtnText}>{t('saveBudgetBtn')}</Text>
+            <Text style={s.sheetBtnText}>
+              {editingBudget ? t('saveChangesBtn') : t('saveBudgetBtn')}
+            </Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setBudgetModalVisible(false)} style={s.cancelBtn}>
+        {/* Delete budget button (if in editing mode) */}
+        {editingBudget && (
+          <TouchableOpacity
+            style={s.deleteBudgetBtn}
+            onPress={() => handleDeleteBudget(editingBudget)}
+            disabled={savingBudget}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.expense} style={{ marginRight: 6 }} />
+            <Text style={s.deleteBudgetBtnText}>{t('deleteBudgetBtn')}</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          onPress={() => {
+            setBudgetModalVisible(false);
+            setEditingBudget(null);
+          }}
+          style={s.cancelBtn}
+        >
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
@@ -715,6 +867,21 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  budgetCatIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  budgetEditAffordance: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   budgetCategoryName: {
     fontSize: 14,
     fontWeight: '700',
@@ -745,6 +912,47 @@ const s = StyleSheet.create({
   },
 
   // ── Modal Budget ────────────────────────────────────────────────────────────
+  inputSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textDark,
+    marginBottom: 6,
+  },
+  quickAmountRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  quickAmountBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.cardAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  quickAmountBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  deleteBudgetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.expenseSoft,
+    borderWidth: 1,
+    borderColor: '#FFD7DB',
+    marginTop: 4,
+  },
+  deleteBudgetBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.expense,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
