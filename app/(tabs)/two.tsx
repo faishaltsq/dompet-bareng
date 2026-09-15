@@ -380,11 +380,6 @@ export default function SettingsScreen() {
                     <Text style={s.userAvatarInitial}>{userInitial}</Text>
                   </View>
                 )}
-                {isRegisteredUser && (
-                  <View style={s.googleAvatarBadge}>
-                    <Text style={s.googleAvatarBadgeText}>G</Text>
-                  </View>
-                )}
               </View>
 
               <View style={s.userInfo}>
@@ -988,24 +983,6 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.primary,
     position: 'relative',
-  },
-  googleAvatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#4285F4',
-  },
-  googleAvatarBadgeText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#4285F4',
   },
   userAvatarImage: {
     width: 60,
