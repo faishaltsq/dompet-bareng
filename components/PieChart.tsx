@@ -18,6 +18,8 @@ interface PieChartProps {
   donutRadius?: number;
   formatValue?: (val: number) => string;
   onSlicePress?: (slice: PieSlice | null) => void;
+  /** Prefix "-" on displayed values (for expense tab) */
+  showNegative?: boolean;
 }
 
 // Convert polar coordinates to cartesian x,y
@@ -48,6 +50,7 @@ export default function PieChart({
   donutRadius: holeRatio = 0.55,
   formatValue,
   onSlicePress,
+  showNegative = false,
 }: PieChartProps) {
   const [activeSlice, setActiveSlice] = useState<PieSlice | null>(null);
 
@@ -56,10 +59,12 @@ export default function PieChart({
   const r = size / 2 - 6; // outer radius (leave 6px padding for stroke)
   const innerR = r * holeRatio;
 
+  const prefix = showNegative ? '-' : '';
+
   const fmt = formatValue ?? ((v: number) => {
-    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}jt`;
-    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}rb`;
-    return v.toString();
+    if (v >= 1_000_000) return `${prefix}${(v / 1_000_000).toFixed(1)}jt`;
+    if (v >= 1_000) return `${prefix}${(v / 1_000).toFixed(0)}rb`;
+    return `${prefix}${v}`;
   });
 
   // Build slices — filter zero-value to avoid degenerate arcs

@@ -101,18 +101,14 @@ export default function StatisticsScreen() {
   const totalForTab = tab === 'expense' ? monthSummary.expense : monthSummary.income;
   const balance = monthSummary.income - monthSummary.expense;
 
-  // Pie chart slices
-  const SLICE_COLORS = [
-    '#059669', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6',
-    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
-  ];
+  // Pie chart slices — warna mengikuti kategori transaksi
   const pieSlices = useMemo<PieSlice[]>(() => {
     if (totalForTab === 0) return [];
-    return byCategory.map(([cat, amount], i) => ({
+    return byCategory.map(([cat, amount]) => ({
       key: cat,
       label: cat,
       value: amount,
-      color: SLICE_COLORS[i % SLICE_COLORS.length],
+      color: getCategoryMeta(cat).color,
       percentage: (amount / totalForTab) * 100,
     }));
   }, [byCategory, totalForTab]);
@@ -276,7 +272,8 @@ export default function StatisticsScreen() {
                     data={pieSlices}
                     total={totalForTab}
                     size={200}
-                    formatValue={(v) => formatRupiah(v)}
+                    showNegative={tab === 'expense'}
+                    formatValue={(v) => formatRupiah(tab === 'expense' ? -v : v)}
                   />
                 ) : (
                   <View style={s.pieEmptyWrap}>
