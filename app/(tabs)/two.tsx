@@ -32,6 +32,7 @@ import {
   cancelAllReminders,
   isReminderEnabled,
 } from '@/lib/notifications';
+import { checkAndApplyUpdate } from '@/lib/updates';
 
 type Member = {
   user_id: string;
@@ -113,6 +114,21 @@ export default function SettingsScreen() {
     } else {
       await cancelAllReminders();
     }
+  };
+
+  // OTA Update
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    const result = await checkAndApplyUpdate();
+    setCheckingUpdate(false);
+    const titles: Record<string, string> = {
+      updated: '✅',
+      no_update: '👍',
+      not_supported: 'ℹ️',
+      error: '⚠️',
+    };
+    Alert.alert(titles[result.status] || 'Update', result.message);
   };
 
   const fetchMembers = useCallback(async () => {
@@ -678,7 +694,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Pilihan Bahasa (Language Selector) */}
-            <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
+            <View style={s.menuRow}>
               <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
                 <Ionicons name="globe-outline" size={18} color={Colors.primary} />
               </View>
@@ -702,6 +718,28 @@ export default function SettingsScreen() {
                   <Text style={[s.langBtnText, language === 'en' && s.langBtnTextActive]}>EN</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Periksa Pembaruan (OTA Updates) */}
+            <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
+              <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
+                <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.menuTitle}>{t('checkUpdate')}</Text>
+                <Text style={s.menuDesc}>{t('checkUpdateDesc')}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleCheckUpdate}
+                disabled={checkingUpdate}
+                style={[s.updateBtn, checkingUpdate && { opacity: 0.6 }]}
+              >
+                {checkingUpdate ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={s.updateBtnText}>{t('checkUpdateBtn')}</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
           </Animated.View>
@@ -1216,6 +1254,21 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 1,
+  },
+  updateBtn: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    minWidth: 70,
+    alignItems: 'center' as const,
+  },
+  updateBtnText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.primary,
   },
   langSegment: {
     flexDirection: 'row',
