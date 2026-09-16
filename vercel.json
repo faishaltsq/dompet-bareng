@@ -5,16 +5,12 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/invite/(.*)",
-      "destination": "/invite/[token].html"
+      "source": "/invite/:token",
+      "destination": "/invite/%5Btoken%5D"
     },
     {
-      "source": "/transaction/(.*)",
-      "destination": "/transaction/[id].html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/transaction/:id",
+      "destination": "/transaction/%5Bid%5D"
     }
   ]
 }
