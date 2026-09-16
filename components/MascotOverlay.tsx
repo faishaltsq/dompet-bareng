@@ -451,15 +451,15 @@ export function MascotOverlay() {
             {aiOnline === null && (
               <View style={s.aiBanner}>
                 <ActivityIndicator size="small" color={Colors.textMuted} />
-                <Text style={s.aiBannerText}>Memeriksa koneksi AI...</Text>
+                <Text style={s.aiBannerText}>Otter Finansial AI sedang disiapkan...</Text>
               </View>
             )}
             {aiOnline === false && (
               <View style={[s.aiBanner, s.aiBannerOffline]}>
-                <Text style={s.aiBannerIcon}>📡</Text>
+                <Text style={s.aiBannerIcon}>🔧</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Mode Offline — Analisis Lokal Aktif</Text>
-                  <Text style={s.aiBannerSub}>Chip tanya cepat tetap berfungsi. Ketik prompt tidak tersedia.</Text>
+                  <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Otter Finansial AI sedang maintenance</Text>
+                  <Text style={s.aiBannerSub}>Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!</Text>
                 </View>
               </View>
             )}
@@ -537,7 +537,7 @@ export function MascotOverlay() {
             <View style={s.inputDock}>
               <TextInput
                 style={[s.inputField, aiOnline === false && s.inputFieldDisabled]}
-                placeholder={aiOnline === false ? 'AI offline — gunakan chip di atas' : 'Ketik transaksi / tanya keuangan...'}
+                placeholder={aiOnline === false ? 'Otter AI sedang maintenance — pilih chip di atas' : 'Ketik transaksi / tanya keuangan...'}
                 placeholderTextColor={Colors.textMuted}
                 value={input}
                 onChangeText={setInput}
