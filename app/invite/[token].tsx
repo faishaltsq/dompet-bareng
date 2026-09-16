@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,7 +76,8 @@ export default function JoinWorkspaceScreen() {
     try {
       const ok = await joinWorkspace(workspace.id, 'member');
       if (ok) {
-        Alert.alert('Berhasil! 🎉', `Kamu resmi bergabung dengan dompet "${workspace.name}"`);
+        // Beri waktu state workspace terupdate sebelum navigate
+        await new Promise(r => setTimeout(r, 300));
         router.replace('/(tabs)');
       } else {
         Alert.alert('Gagal', 'Tidak dapat bergabung. Pastikan kamu memiliki izin atau tautan belum kedaluwarsa.');
@@ -153,7 +154,53 @@ export default function JoinWorkspaceScreen() {
         </View>
 
         {/* ACTION BUTTON */}
-        {isRegisteredUser ? (
+        {Platform.OS === 'web' ? (
+          <View style={{ width: '100%', gap: 12 }}>
+            <TouchableOpacity
+              style={styles.openAppBtn}
+              onPress={() => {
+                window.location.href = `dompetbareng://invite/${token}`;
+              }}
+            >
+              <Text style={styles.openAppBtnText}>📱 Buka di Aplikasi</Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>atau gunakan browser</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {isRegisteredUser ? (
+              <TouchableOpacity
+                style={[styles.primaryBtn, joining && styles.btnDisabled]}
+                onPress={handleJoin}
+                disabled={joining}
+              >
+                {joining ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Gabung via Browser</Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.googleBtn, loggingIn && styles.btnDisabled]}
+                onPress={handleGoogleLogin}
+                disabled={loggingIn}
+              >
+                {loggingIn ? (
+                  <ActivityIndicator color="#111" size="small" />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 20 }}>🌐</Text>
+                    <Text style={styles.googleBtnText}>Masuk dengan Google (Browser)</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : isRegisteredUser ? (
           <TouchableOpacity
             style={[styles.primaryBtn, joining && styles.btnDisabled]}
             onPress={handleJoin}
@@ -375,5 +422,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.textDark,
+  },
+  openAppBtn: {
+    width: '100%',
+    backgroundColor: Colors.primaryDark,
+    paddingVertical: 16,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.clayButton,
+    borderBottomWidth: 3,
+    borderBottomColor: '#3A1508',
+  },
+  openAppBtnText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  dividerText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '600',
   },
 });

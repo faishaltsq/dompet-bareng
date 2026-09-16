@@ -677,6 +677,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (target) {
         activeRef.current = target;
         setActiveWorkspaceState(target);
+        // Persist active workspace ke AsyncStorage
+        AsyncStorage.setItem(CACHE_ACTIVE_WS_KEY(user.id), target.id).catch(() => {});
       }
       await writeCache(CACHE_WS_KEY(user.id), wsList);
     }
