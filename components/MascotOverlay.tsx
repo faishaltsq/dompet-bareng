@@ -448,21 +448,6 @@ export function MascotOverlay() {
             </View>
 
             {/* Offline / Checking Banner */}
-            {aiOnline === null && (
-              <View style={s.aiBanner}>
-                <ActivityIndicator size="small" color={Colors.textMuted} />
-                <Text style={s.aiBannerText}>Otter Finansial AI sedang disiapkan...</Text>
-              </View>
-            )}
-            {aiOnline === false && (
-              <View style={[s.aiBanner, s.aiBannerOffline]}>
-                <Text style={s.aiBannerIcon}>🔧</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Otter Finansial AI sedang maintenance</Text>
-                  <Text style={s.aiBannerSub}>Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!</Text>
-                </View>
-              </View>
-            )}
 
             {/* Scroll Content: Bubble + Chips + Action Card */}
             <ScrollView
@@ -531,6 +516,23 @@ export function MascotOverlay() {
                   ))}
                 </View>
               </View>
+
+              {/* AI Status — di bawah TANYA CEPAT */}
+              {aiOnline === null && (
+                <View style={s.aiBanner}>
+                  <ActivityIndicator size="small" color={Colors.textMuted} />
+                  <Text style={s.aiBannerText}>Otter Finansial AI sedang disiapkan...</Text>
+                </View>
+              )}
+              {aiOnline === false && (
+                <View style={[s.aiBanner, s.aiBannerOffline]}>
+                  <Text style={s.aiBannerIcon}>🔧</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Otter Finansial AI sedang maintenance</Text>
+                    <Text style={s.aiBannerSub}>Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!</Text>
+                  </View>
+                </View>
+              )}
             </ScrollView>
 
             {/* Input Dock */}
