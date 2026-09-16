@@ -32,7 +32,7 @@ import {
   cancelAllReminders,
   isReminderEnabled,
 } from '@/lib/notifications';
-import { checkAndApplyUpdate } from '@/lib/updates';
+import { checkAndApplyUpdate, getCurrentUpdateInfo } from '@/lib/updates';
 
 type Member = {
   user_id: string;
@@ -118,18 +118,29 @@ export default function SettingsScreen() {
 
   // OTA Update
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updatePhase, setUpdatePhase] = useState<'idle' | 'checking' | 'downloading' | 'done'>('idle');
+  const [updateResult, setUpdateResult] = useState<{ status: string; message: string } | null>(null);
+
   const handleCheckUpdate = async () => {
+    setUpdatePhase('checking');
     setCheckingUpdate(true);
+    setUpdateResult(null);
+
     const result = await checkAndApplyUpdate();
+
+    // Jika ada update → tunjukkan fase downloading sebelum reload
+    if (result.status === 'updated') {
+      setUpdatePhase('downloading');
+      // reloadAsync() sudah dipanggil di dalam checkAndApplyUpdate, tapi
+      // jika kita sampai di sini artinya belum reload → tampilkan hasil saja
+    }
+
+    setUpdatePhase('done');
     setCheckingUpdate(false);
-    const titles: Record<string, string> = {
-      updated: '✅',
-      no_update: '👍',
-      not_supported: 'ℹ️',
-      error: '⚠️',
-    };
-    Alert.alert(titles[result.status] || 'Update', result.message);
+    setUpdateResult(result);
   };
+
+  const updateInfo = getCurrentUpdateInfo();
 
   const fetchMembers = useCallback(async () => {
     if (!activeWorkspace) return;
@@ -954,6 +965,64 @@ export default function SettingsScreen() {
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
+
+      {/* ── MODAL: OTA Update Status ── */}
+      <SwipeableModal
+        visible={updatePhase !== 'idle'}
+        onClose={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
+      >
+        {/* Checking / Downloading phase */}
+        {(updatePhase === 'checking' || updatePhase === 'downloading') && (
+          <View style={s.updateModalBody}>
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 16 }} />
+            <Text style={s.updateModalTitle}>
+              {updatePhase === 'downloading' ? 'Mengunduh Update...' : 'Memeriksa Update...'}
+            </Text>
+            <Text style={s.updateModalSub}>
+              {updatePhase === 'downloading'
+                ? 'Update ditemukan dan sedang diunduh. Aplikasi akan restart otomatis.'
+                : 'Menghubungi server Expo untuk memeriksa versi terbaru...'}
+            </Text>
+          </View>
+        )}
+
+        {/* Done phase */}
+        {updatePhase === 'done' && updateResult && (() => {
+          const cfg = {
+            updated:       { icon: '🚀' as const, color: Colors.income,   title: 'Update Berhasil!',        bg: Colors.incomeSoft },
+            no_update:     { icon: '✅' as const, color: Colors.income,   title: 'Sudah Versi Terbaru',     bg: Colors.incomeSoft },
+            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: 'Info',                  bg: Colors.accentBlueSoft },
+            error:         { icon: '⚠️' as const, color: Colors.expense,  title: 'Gagal Memeriksa Update',  bg: Colors.expenseSoft },
+          }[updateResult.status] ?? { icon: 'ℹ️' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
+
+          return (
+            <View style={s.updateModalBody}>
+              <View style={[s.updateModalIconWrap, { backgroundColor: cfg.bg }]}>
+                <Text style={{ fontSize: 36 }}>{cfg.icon}</Text>
+              </View>
+              <Text style={[s.updateModalTitle, { color: cfg.color }]}>{cfg.title}</Text>
+              <Text style={s.updateModalSub}>{updateResult.message}</Text>
+              {/* Info versi saat ini */}
+              {updateInfo.runtimeVersion && (
+                <View style={s.updateVersionRow}>
+                  <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+                  <Text style={s.updateVersionText}>
+                    Runtime v{updateInfo.runtimeVersion}
+                    {updateInfo.channel ? ` • channel: ${updateInfo.channel}` : ''}
+                    {updateInfo.isEmbedded ? ' • embedded' : ''}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={s.updateModalCloseBtn}
+                onPress={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
+              >
+                <Text style={s.updateModalCloseBtnText}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
+      </SwipeableModal>
     </View>
   );
 }
@@ -1454,6 +1523,62 @@ const s = StyleSheet.create({
   },
   cancelBtnText: {
     color: Colors.textMuted,
+    fontSize: 14,
+  },
+
+  // ── OTA Update Modal ──
+  updateModalBody: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  updateModalIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  updateModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.textDark,
+    textAlign: 'center',
+  },
+  updateModalSub: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 19,
+    paddingHorizontal: 16,
+  },
+  updateVersionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: Colors.cardAlt,
+    borderRadius: Radius.full,
+  },
+  updateVersionText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  updateModalCloseBtn: {
+    marginTop: 14,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 36,
+    ...Shadows.clayButton,
+  },
+  updateModalCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
     fontSize: 14,
   },
 });
