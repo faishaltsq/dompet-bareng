@@ -897,7 +897,7 @@ export default function SettingsScreen() {
           style={s.sheetInput}
           value={joinInput}
           onChangeText={setJoinInput}
-          placeholder="dompetbareng://invite/... atau kode token"
+          placeholder="https://dompet-bareng.vercel.app/invite/... atau kode token"
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}

@@ -41,13 +41,32 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  // Handle deep link OAuth callback: extract session tokens from URL
+  // Handle deep link: OAuth callback + invite link
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
     const handleUrl = async (url: string) => {
       try {
         const parsed = new URL(url);
+        const path = parsed.pathname;
+
+        // 1. Invite link: https://dompet-bareng.vercel.app/invite/TOKEN
+        //    atau dompetbareng://invite/TOKEN
+        const inviteMatch = path.match(/\/invite\/([a-zA-Z0-9\-_]+)/);
+        if (inviteMatch) {
+          const token = inviteMatch[1];
+          // Expo Router handle navigasi — import router tidak tersedia di sini,
+          // pakai Linking redirect ke scheme native
+          const nativeUrl = `dompetbareng://invite/${token}`;
+          if (url.startsWith('http')) {
+            // HTTPS link masuk via intentFilter → navigate ke route native
+            await Linking.openURL(nativeUrl);
+          }
+          // Jika sudah native scheme, expo-router otomatis handle via file-based routing
+          return;
+        }
+
+        // 2. OAuth callback: ada access_token / code di URL
         const hash = parsed.hash ? parsed.hash.substring(1) : '';
         const hashParams = new URLSearchParams(hash);
         const searchParams = parsed.searchParams;

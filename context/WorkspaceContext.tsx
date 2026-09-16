@@ -483,10 +483,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .single();
 
     if (error || !data) return null;
-    const link = `dompetbareng://invite/${data.token}`;
+    const link = `https://dompet-bareng.vercel.app/invite/${data.token}`;
     await Share.share({
       message: `Gabung ke dompet "${activeWorkspace.name}" di DompetBareng:\n${link}`,
       title: 'Undangan DompetBareng',
+      url: link,
     });
     return link;
   };

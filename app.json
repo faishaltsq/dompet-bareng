@@ -35,6 +35,11 @@
               "scheme": "https",
               "host": "dompetbareng.app",
               "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "dompet-bareng.vercel.app",
+              "pathPrefix": "/invite"
             }
           ],
           "category": [
