@@ -51,6 +51,17 @@ export default function JoinWorkspaceScreen() {
         } else {
           setErrorMsg('Data dompet tidak ditemukan.');
         }
+
+        // Khusus Web di mobile browser: auto-redirect ke native app via custom scheme
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isMobile) {
+            // Coba buka aplikasi secara otomatis setelah 500ms
+            setTimeout(() => {
+              window.location.href = `dompetbareng://invite/${token}`;
+            }, 500);
+          }
+        }
       }
       setLoading(false);
     };
