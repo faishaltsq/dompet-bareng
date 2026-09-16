@@ -783,7 +783,7 @@ export default function SettingsScreen() {
         />
 
         <TouchableOpacity
-          style={[s.sheetBtn, savingProfileName && { opacity: 0.6 }]}
+          style={[s.sheetBtn, { marginTop: 16 }, savingProfileName && { opacity: 0.6 }]}
           onPress={handleSaveProfileName}
           disabled={savingProfileName}
         >
@@ -794,7 +794,7 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={s.cancelBtn}>
+        <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
@@ -869,7 +869,7 @@ export default function SettingsScreen() {
         />
 
         <TouchableOpacity
-          style={[s.sheetBtn, savingWsEdit && { opacity: 0.6 }]}
+          style={[s.sheetBtn, { marginTop: 16 }, savingWsEdit && { opacity: 0.6 }]}
           onPress={handleSaveWsEdit}
           disabled={savingWsEdit}
         >
@@ -880,7 +880,7 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={s.cancelBtn}>
+        <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
@@ -903,11 +903,11 @@ export default function SettingsScreen() {
           autoCorrect={false}
         />
 
-        <TouchableOpacity style={s.sheetBtn} onPress={handleJoinWithInput}>
+        <TouchableOpacity style={[s.sheetBtn, { marginTop: 16 }]} onPress={handleJoinWithInput}>
           <Text style={s.sheetBtnText}>{t('joinWalletBtn')}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={s.cancelBtn}>
+        <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>

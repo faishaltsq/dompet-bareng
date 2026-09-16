@@ -61,7 +61,7 @@ function CreateWorkspaceModal({
   return (
     <SwipeableModal visible={visible} onClose={onClose}>
       <Text style={s.sheetTitle}>{t('createNewWallet')}</Text>
-      <Text style={s.sheetSubtitle}>{t('createWalletSubtitle')}</Text>
+      <Text style={[s.sheetSubtitle, { marginBottom: 16 }]}>{t('createWalletSubtitle')}</Text>
 
       <TextInput
         style={s.sheetInput}
@@ -70,10 +70,12 @@ function CreateWorkspaceModal({
         value={name}
         onChangeText={setName}
         autoFocus
+        returnKeyType="done"
+        onSubmitEditing={handleCreate}
       />
 
       <TouchableOpacity
-        style={[s.sheetBtn, creating && { opacity: 0.6 }]}
+        style={[s.sheetBtn, { marginTop: 16 }, creating && { opacity: 0.6 }]}
         onPress={handleCreate}
         disabled={creating}
       >
@@ -84,7 +86,7 @@ function CreateWorkspaceModal({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
+      <TouchableOpacity onPress={onClose} style={[s.cancelBtn, { marginTop: 8 }]}>
         <Text style={s.cancelBtnText}>{t('cancel')}</Text>
       </TouchableOpacity>
     </SwipeableModal>

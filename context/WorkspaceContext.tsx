@@ -150,6 +150,31 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           };
         });
 
+      // Auto-heal: cari workspace yang created_by user tapi belum ada di membership
+      const { data: owned } = await supabase
+        .from('workspaces')
+        .select('id, name, image_url')
+        .eq('created_by', user.id);
+
+      if (owned) {
+        for (const ow of owned) {
+          if (!ws.some(w => w.id === ow.id)) {
+            // Insert membership yang hilang
+            await supabase.from('workspace_members').insert({
+              workspace_id: ow.id,
+              user_id: user.id,
+              role: 'admin',
+            }).then(() => {});
+            ws.push({
+              id: ow.id,
+              name: ow.name,
+              role: 'admin' as const,
+              image_url: ow.image_url ?? null,
+            });
+          }
+        }
+      }
+
       setWorkspaces(ws);
 
       // Jika user tidak lagi memiliki dompet (misal dikeluarkan dari satu-satunya dompet)
@@ -329,17 +354,25 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .select()
       .single();
 
-    if (wsErr || !ws) return null;
+    if (wsErr || !ws) {
+      console.error('createWorkspace error:', wsErr);
+      return null;
+    }
 
-    await supabase.from('workspace_members').insert({
+    const { error: memberErr } = await supabase.from('workspace_members').insert({
       workspace_id: ws.id,
       user_id: user.id,
       role: 'admin',
     });
 
+    if (memberErr && memberErr.code !== '23505') {
+      console.error('workspace_members insert error:', memberErr);
+      // Jangan return null jika workspace sudah dibuat, tetap simpan lokal
+    }
+
     const newWs: Workspace = { id: ws.id, name: ws.name, role: 'admin' };
     setWorkspaces(prev => {
-      const updated = [...prev, newWs];
+      const updated = [...prev.filter(w => w.id !== newWs.id), newWs];
       writeCache(CACHE_WS_KEY(user.id), updated);
       return updated;
     });

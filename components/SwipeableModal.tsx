@@ -118,7 +118,8 @@ export default function SwipeableModal({
         />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
           style={s.keyboardWrap}
           pointerEvents="box-none"
         >
