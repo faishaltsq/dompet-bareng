@@ -12,6 +12,10 @@ export async function scheduleDailyReminder(_hour = 20, _minute = 0): Promise<vo
   // no-op on web
 }
 
+export async function onDailyReminderReceived(): Promise<void> {
+  // no-op on web
+}
+
 export async function cancelAllReminders(): Promise<void> {
   // no-op on web
 }

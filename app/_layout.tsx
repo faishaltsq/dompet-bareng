@@ -13,6 +13,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
+import { onDailyReminderReceived } from '@/lib/notifications';
 
 export {
   ErrorBoundary,
@@ -89,6 +90,27 @@ export default function RootLayout() {
     // Warm: app already open, deep link arrives
     const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
     return () => sub.remove();
+  }, []);
+
+  // Listen untuk notifikasi harian yang diterima (foreground) → rotasi pesan untuk hari berikutnya
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    let notifSub: { remove: () => void } | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const Notifications = require('expo-notifications');
+      notifSub = Notifications.addNotificationReceivedListener((notification: any) => {
+        const data = notification?.request?.content?.data;
+        if (data?.type === 'daily_reminder') {
+          onDailyReminderReceived().catch(() => {});
+        }
+      });
+    } catch {}
+
+    return () => {
+      notifSub?.remove();
+    };
   }, []);
 
   if (!loaded) return null;
