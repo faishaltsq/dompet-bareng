@@ -30,7 +30,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { parseTransaction, chatWithContext, ParsedTransaction } from '@/lib/gemini';
+import { parseTransaction, chatWithContext, isAIAvailable, ParsedTransaction } from '@/lib/gemini';
 import { formatRupiah, getCategoryMeta } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import {
@@ -40,6 +40,9 @@ import {
   CompanionState,
   FinancialSnapshot,
   MascotMood,
+  QuickChipId,
+  getFallbackChipResponse,
+  getFallbackFreeResponse,
 } from '@/lib/companion';
 
 const MASCOT_SIZE = 72;
@@ -72,6 +75,14 @@ export function MascotOverlay() {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
+  const [aiOnline, setAiOnline] = useState<boolean | null>(null); // null = belum dicek
+
+  // Cek koneksi AI saat modal dibuka
+  useEffect(() => {
+    if (modalVisible) {
+      isAIAvailable().then(setAiOnline);
+    }
+  }, [modalVisible]);
 
   // Tooltip mini auto-popup
   const [tooltipText, setTooltipText] = useState<string | null>(null);
@@ -240,10 +251,20 @@ export function MascotOverlay() {
   }));
 
   // AI Chat & Quick Chips Handler
-  const triggerAi = async (promptText: string) => {
+  const triggerAi = async (promptText: string, chipId?: QuickChipId) => {
     setLoading(true);
     setLastUserPrompt(promptText);
     setParsedTx(null);
+
+    // Jika AI offline → pakai template fallback
+    if (aiOnline === false) {
+      const reply = chipId
+        ? getFallbackChipResponse(chipId, snap, companion.mood)
+        : getFallbackFreeResponse(promptText, snap, companion.mood);
+      setSpeech(reply);
+      setLoading(false);
+      return;
+    }
 
     try {
       const txSummary = {
@@ -264,7 +285,12 @@ export function MascotOverlay() {
       const reply = await chatWithContext(promptText, txSummary, history);
       setSpeech(reply);
     } catch (e: any) {
-      Alert.alert('AI Gagal', e?.message || 'Gagal menghubungi AI.');
+      // AI gagal → fallback ke template
+      setAiOnline(false);
+      const reply = chipId
+        ? getFallbackChipResponse(chipId, snap, companion.mood)
+        : getFallbackFreeResponse(promptText, snap, companion.mood);
+      setSpeech(reply);
     } finally {
       setLoading(false);
     }
@@ -275,20 +301,25 @@ export function MascotOverlay() {
     if (!text || loading) return;
     setInput('');
 
-    const hasNumber = /\d/.test(text) || /\b(ribu|ratus|jt|rb|k)\b/i.test(text);
-    if (hasNumber) {
-      setLoading(true);
-      try {
-        const parsed = await parseTransaction(text);
-        setParsedTx(parsed);
-        const meta = getCategoryMeta(parsed.category);
-        setSpeech(
-          `${meta.emoji} Transaksi terdeteksi!\n${parsed.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\nTekan tombol di bawah untuk simpan ya!`
-        );
-        setLastUserPrompt(text);
-        setLoading(false);
-        return;
-      } catch {}
+    // Jika AI online & input mengandung nominal → coba parse transaksi
+    if (aiOnline !== false) {
+      const hasNumber = /\d/.test(text) || /\b(ribu|ratus|jt|rb|k)\b/i.test(text);
+      if (hasNumber) {
+        setLoading(true);
+        try {
+          const parsed = await parseTransaction(text);
+          setParsedTx(parsed);
+          const meta = getCategoryMeta(parsed.category);
+          setSpeech(
+            `${meta.emoji} Transaksi terdeteksi!\n${parsed.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\nTekan tombol di bawah untuk simpan ya!`
+          );
+          setLastUserPrompt(text);
+          setLoading(false);
+          return;
+        } catch {
+          // parse gagal → lanjut ke triggerAi
+        }
+      }
     }
 
     await triggerAi(text);
@@ -416,6 +447,23 @@ export function MascotOverlay() {
               </TouchableOpacity>
             </View>
 
+            {/* Offline / Checking Banner */}
+            {aiOnline === null && (
+              <View style={s.aiBanner}>
+                <ActivityIndicator size="small" color={Colors.textMuted} />
+                <Text style={s.aiBannerText}>Memeriksa koneksi AI...</Text>
+              </View>
+            )}
+            {aiOnline === false && (
+              <View style={[s.aiBanner, s.aiBannerOffline]}>
+                <Text style={s.aiBannerIcon}>📡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Mode Offline — Analisis Lokal Aktif</Text>
+                  <Text style={s.aiBannerSub}>Chip tanya cepat tetap berfungsi. Ketik prompt tidak tersedia.</Text>
+                </View>
+              </View>
+            )}
+
             {/* Scroll Content: Bubble + Chips + Action Card */}
             <ScrollView
               style={s.sheetScroll}
@@ -474,7 +522,7 @@ export function MascotOverlay() {
                     <TouchableOpacity
                       key={chip.id}
                       style={s.chipBtn}
-                      onPress={() => triggerAi(chip.prompt)}
+                      onPress={() => triggerAi(chip.prompt, chip.id as QuickChipId)}
                       disabled={loading}
                       activeOpacity={0.7}
                     >
@@ -488,19 +536,19 @@ export function MascotOverlay() {
             {/* Input Dock */}
             <View style={s.inputDock}>
               <TextInput
-                style={s.inputField}
-                placeholder="Ketik transaksi / tanya keuangan..."
+                style={[s.inputField, aiOnline === false && s.inputFieldDisabled]}
+                placeholder={aiOnline === false ? 'AI offline — gunakan chip di atas' : 'Ketik transaksi / tanya keuangan...'}
                 placeholderTextColor={Colors.textMuted}
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={handleSend}
                 returnKeyType="send"
-                editable={!loading}
+                editable={!loading && aiOnline !== false}
               />
               <TouchableOpacity
-                style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnDisabled]}
+                style={[s.sendBtn, (!input.trim() || loading || aiOnline === false) && s.sendBtnDisabled]}
                 onPress={handleSend}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || aiOnline === false}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -812,5 +860,43 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     marginTop: -2,
+  },
+
+  // AI Status Banner
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: Colors.cardAlt,
+    borderRadius: Radius.sm,
+    marginBottom: 4,
+  },
+  aiBannerOffline: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FFCC80',
+  },
+  aiBannerIcon: {
+    fontSize: 18,
+  },
+  aiBannerText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  aiBannerTextOffline: {
+    color: '#E65100',
+    fontWeight: '700',
+  },
+  aiBannerSub: {
+    fontSize: 11,
+    color: '#BF360C',
+    marginTop: 1,
+  },
+  inputFieldDisabled: {
+    backgroundColor: Colors.cardAlt,
+    opacity: 0.6,
   },
 });

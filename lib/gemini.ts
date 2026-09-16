@@ -89,6 +89,41 @@ async function callAI(messages: AIMessage[]): Promise<string> {
 }
 
 /**
+ * Cek apakah AI API dapat dijangkau. Kirim ping singkat, return true/false.
+ * Timeout 5 detik agar tidak menggantung UI.
+ */
+export async function isAIAvailable(): Promise<boolean> {
+  if (!AI_API_KEY) return false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const endpoint = AI_BASE_URL.includes('generativelanguage.googleapis.com')
+      ? `${AI_BASE_URL}?key=${AI_API_KEY}`
+      : `${AI_BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        stream: false,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    // 200-499 dianggap online (termasuk 400 bad request = server reachable)
+    return res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse teks natural language bahasa Indonesia ke objek transaksi terstruktur.
  * Contoh: "makan bakso 25rb" -> { type: "expense", amount: 25000, category: "Makanan", description: "..." }
  */
