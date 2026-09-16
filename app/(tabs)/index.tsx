@@ -295,24 +295,23 @@ export default function HomeScreen() {
             </PressableScale>
           </View>
 
-          {/* Mini Two-Column Metrics */}
+          {/* Mini Two-Column Metrics — separate clay mini-cards */}
           <View style={s.metricsRow}>
-            <View style={s.metricItem}>
+            <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
-                <View style={[s.dotIndicator, { backgroundColor: Colors.income }]} />
-                <Text style={s.metricLabel}>{t('income')}</Text>
+                <Ionicons name="arrow-up-circle" size={18} color="#34D399" />
+                <Text style={[s.metricLabel, { color: '#D1FAE5' }]}>{t('income')}</Text>
               </View>
-              <Text style={[s.metricValue, { color: Colors.income }]}>
+              <Text style={[s.metricValue, { color: '#6EE7B7' }]}>
                 {formatRupiah(summary.income)}
               </Text>
             </View>
-            <View style={s.metricDivider} />
-            <View style={s.metricItem}>
+            <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
-                <View style={[s.dotIndicator, { backgroundColor: Colors.expense }]} />
-                <Text style={s.metricLabel}>{t('expense')}</Text>
+                <Ionicons name="arrow-down-circle" size={18} color="#FCA5A5" />
+                <Text style={[s.metricLabel, { color: '#FECACA' }]}>{t('expense')}</Text>
               </View>
-              <Text style={[s.metricValue, { color: Colors.expense }]}>
+              <Text style={[s.metricValue, { color: '#FCA5A5' }]}>
                 {formatRupiah(summary.expense)}
               </Text>
             </View>
@@ -780,37 +779,38 @@ const s = StyleSheet.create({
   // Metrics
   metricsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: Radius.md,
-    padding: 12,
+    gap: 10,
   },
   metricItem: {
     flex: 1,
-    gap: 4,
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  metricIncome: {
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(110, 231, 183, 0.35)',
+  },
+  metricExpense: {
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(252, 165, 165, 0.35)',
   },
   metricHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  dotIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
   metricLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)',
   },
   metricValue: {
     fontSize: 14,
-    fontWeight: '700',
-  },
-  metricDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    marginHorizontal: 12,
+    fontWeight: '800',
+    color: '#fff',
   },
 
   // Budget
