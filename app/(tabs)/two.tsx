@@ -961,7 +961,7 @@ export default function SettingsScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -998,12 +998,14 @@ const s = StyleSheet.create({
   // ── User Card ─────────────────────────────────────────────────────────────
   userCard: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: 16,
+    borderRadius: Radius.xl,
+    padding: 18,
     gap: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
-    ...Shadows.card,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.borderDark,
+    ...Shadows.clayCard,
   },
   userCardMainRow: {
     flexDirection: 'row',

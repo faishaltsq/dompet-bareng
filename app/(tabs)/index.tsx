@@ -577,12 +577,12 @@ const s = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  // 1. FinWise Top Bar
+  // 1. Top Bar — Clay Chestnut
   headerContainer: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
   },
   finTopBar: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
@@ -735,13 +735,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
-  // Hero Card (FinWise Emerald/Dark Card)
+  // Hero Card — Clay Warm Chestnut (3D puffy)
   heroCard: {
-    backgroundColor: '#0E3E28', // FinWise deep emerald
-    borderRadius: Radius.lg,
-    padding: 20,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xl,
+    padding: 22,
     gap: 16,
-    ...Shadows.card,
+    ...Shadows.clayCard,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryLight,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -831,54 +833,60 @@ const s = StyleSheet.create({
     color: Colors.primaryLight,
   },
 
-  // Quick actions
+  // Quick actions — Clay pillowy cards
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
-    gap: 10,
+    marginTop: 18,
+    gap: 12,
   },
   quickActionBtn: {
     flex: 1,
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    paddingVertical: 14,
     alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
+    gap: 8,
+    borderWidth: 1.5,
     borderColor: Colors.border,
-    ...Shadows.card,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.borderDark,
+    ...Shadows.clayButton,
   },
   quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.textDark,
   },
 
-  // Segmented Control
+  // Segmented Control — Clay pill
   periodSegment: {
     flexDirection: 'row',
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.cardAlt,
     borderRadius: Radius.full,
-    padding: 4,
-    marginTop: 18,
+    padding: 5,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   periodPill: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 9,
     alignItems: 'center',
     borderRadius: Radius.full,
   },
   periodPillActive: {
     backgroundColor: Colors.card,
-    ...Shadows.card,
+    ...Shadows.clayButton,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   periodPillText: {
     fontSize: 12,
@@ -909,24 +917,26 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Transaction item (FinWise list row)
+  // Transaction item — Clay row card
   txItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    padding: 14,
+    borderRadius: Radius.lg,
+    padding: 16,
     marginHorizontal: 16,
-    marginBottom: 10,
-    borderWidth: 1,
+    marginBottom: 12,
+    borderWidth: 1.5,
     borderColor: Colors.border,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.borderDark,
     gap: 12,
-    ...Shadows.card,
+    ...Shadows.clayCard,
   },
   txIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
