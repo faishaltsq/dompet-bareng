@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -211,7 +212,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      const redirectUri = Linking.createURL('/');
+      // Gunakan scheme native explicitly: dompetbareng://
+      const redirectUri = makeRedirectUri({
+        scheme: 'dompetbareng',
+        path: '',
+      });
 
       if (Platform.OS === 'web') {
         await supabase.auth.signInWithOAuth({
@@ -241,6 +246,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!data?.url) throw new Error('No OAuth URL returned');
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+      // Tutup browser tab agar kembali ke app native
+      WebBrowser.dismissBrowser();
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
         return;

@@ -11,6 +11,8 @@ import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
+import * as Linking from 'expo-linking';
+import { supabase } from '@/lib/supabase';
 
 export {
   ErrorBoundary,
@@ -38,6 +40,37 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [loaded]);
+
+  // Handle deep link OAuth callback: extract session tokens from URL
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const handleUrl = async (url: string) => {
+      try {
+        const parsed = new URL(url);
+        const hash = parsed.hash ? parsed.hash.substring(1) : '';
+        const hashParams = new URLSearchParams(hash);
+        const searchParams = parsed.searchParams;
+
+        const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+        const code = searchParams.get('code');
+
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        } else if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        }
+      } catch (_) {}
+    };
+
+    // Cold start: app opened via deep link
+    Linking.getInitialURL().then(url => { if (url) handleUrl(url); });
+
+    // Warm: app already open, deep link arrives
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => sub.remove();
+  }, []);
 
   if (!loaded) return null;
 
