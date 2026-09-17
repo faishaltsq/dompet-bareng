@@ -119,7 +119,7 @@ async function callAI(messages: AIMessage[]): Promise<string> {
 export async function isAIAvailable(): Promise<boolean> {
   try {
     // Gunakan cache sync dulu agar tidak menunggu Supabase fetch
-    const baseUrl = (getRemoteConfigSync('ai_base_url', process.env.EXPO_PUBLIC_AI_BASE_URL || 'https://sing-wallpapers-response-discussing.trycloudflare.com/v1')).trim();
+    const baseUrl = (getRemoteConfigSync('ai_base_url', process.env.EXPO_PUBLIC_AI_BASE_URL || 'https://loqson.tailf969bb.ts.net/v1')).trim();
     const apiKey = (getRemoteConfigSync('ai_api_key', process.env.EXPO_PUBLIC_AI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY || '')).trim();
     const model = (getRemoteConfigSync('ai_model', process.env.EXPO_PUBLIC_AI_MODEL || 'ag/gemini-3.8-flash-high')).trim();
 
