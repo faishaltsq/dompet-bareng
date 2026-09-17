@@ -568,7 +568,7 @@ export function MascotOverlay() {
               {aiOnline === null && (
                 <View style={s.aiBanner}>
                   <ActivityIndicator size="small" color={Colors.textMuted} />
-                  <Text style={s.aiBannerText}>Otter Finansial AI sedang disiapkan...</Text>
+                  <Text style={s.aiBannerText}>Mengecek koneksi Otter AI (maks 15 detik)...</Text>
                 </View>
               )}
               {aiOnline === false && (

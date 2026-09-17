@@ -126,7 +126,7 @@ export async function isAIAvailable(): Promise<boolean> {
     if (!apiKey) return false;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15 detik agar aman di koneksi mobile
     const endpoint = baseUrl.includes('generativelanguage.googleapis.com')
       ? `${baseUrl}?key=${apiKey}`
       : `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
@@ -136,6 +136,7 @@ export async function isAIAvailable(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'DompetBareng/1.0',
       },
       body: JSON.stringify({
         model,
@@ -148,7 +149,8 @@ export async function isAIAvailable(): Promise<boolean> {
     clearTimeout(timeout);
     // 200-499 dianggap online (termasuk 400 bad request = server reachable)
     return res.status < 500;
-  } catch {
+  } catch (e: any) {
+    console.warn('[isAIAvailable] ping failed:', e?.message || e);
     return false;
   }
 }
