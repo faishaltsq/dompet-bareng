@@ -300,16 +300,6 @@ export function MascotOverlay() {
     setLastUserPrompt(promptText);
     setParsedTx(null);
 
-    // Jika AI offline → pakai template fallback
-    if (aiOnline === false) {
-      const reply = chipId
-        ? getFallbackChipResponse(chipId, snap, companion.mood)
-        : getFallbackFreeResponse(promptText, snap, companion.mood);
-      setSpeech(reply);
-      setLoading(false);
-      return;
-    }
-
     try {
       const txSummary = {
         totalIncome: snap.income,
@@ -345,24 +335,22 @@ export function MascotOverlay() {
     if (!text || loading) return;
     setInput('');
 
-    // Jika AI online & input mengandung nominal → coba parse transaksi
-    if (aiOnline !== false) {
-      const hasNumber = /\d/.test(text) || /\b(ribu|ratus|jt|rb|k)\b/i.test(text);
-      if (hasNumber) {
-        setLoading(true);
-        try {
-          const parsed = await parseTransaction(text);
-          setParsedTx(parsed);
-          const meta = getCategoryMeta(parsed.category);
-          setSpeech(
-            `${meta.emoji} Transaksi terdeteksi!\n${parsed.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\nTekan tombol di bawah untuk simpan ya!`
-          );
-          setLastUserPrompt(text);
-          setLoading(false);
-          return;
-        } catch {
-          // parse gagal → lanjut ke triggerAi
-        }
+    // Input mengandung nominal → coba parse transaksi dulu
+    const hasNumber = /\d/.test(text) || /\b(ribu|ratus|jt|rb|k)\b/i.test(text);
+    if (hasNumber) {
+      setLoading(true);
+      try {
+        const parsed = await parseTransaction(text);
+        setParsedTx(parsed);
+        const meta = getCategoryMeta(parsed.category);
+        setSpeech(
+          `${meta.emoji} Transaksi terdeteksi!\n${parsed.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\nTekan tombol di bawah untuk simpan ya!`
+        );
+        setLastUserPrompt(text);
+        setLoading(false);
+        return;
+      } catch {
+        // parse gagal → lanjut ke triggerAi
       }
     }
 
@@ -602,19 +590,19 @@ export function MascotOverlay() {
             {/* Input Dock */}
             <View style={s.inputDock}>
               <TextInput
-                style={[s.inputField, aiOnline === false && s.inputFieldDisabled]}
-                placeholder={aiOnline === false ? 'Otter AI sedang maintenance — pilih chip di atas' : 'Ketik transaksi / tanya keuangan...'}
+                style={s.inputField}
+                placeholder="Ketik transaksi / tanya keuangan..."
                 placeholderTextColor={Colors.textMuted}
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={handleSend}
                 returnKeyType="send"
-                editable={!loading && aiOnline !== false}
+                editable={!loading}
               />
               <TouchableOpacity
-                style={[s.sendBtn, (!input.trim() || loading || aiOnline === false) && s.sendBtnDisabled]}
+                style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnDisabled]}
                 onPress={handleSend}
-                disabled={!input.trim() || loading || aiOnline === false}
+                disabled={!input.trim() || loading}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
