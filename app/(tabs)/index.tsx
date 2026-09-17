@@ -302,7 +302,7 @@ export default function HomeScreen() {
             <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
                 <Ionicons name="arrow-up-circle" size={18} color="#34D399" />
-                <Text style={[s.metricLabel, { color: '#D1FAE5' }]}>{t('income')}</Text>
+                <Text style={[s.metricLabel, { color: '#E6FFFA' }]}>{t('income')}</Text>
               </View>
               <Text style={[s.metricValue, { color: '#6EE7B7' }]}>
                 {formatRupiah(summary.income)}
@@ -310,8 +310,8 @@ export default function HomeScreen() {
             </View>
             <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-down-circle" size={18} color="#FCA5A5" />
-                <Text style={[s.metricLabel, { color: '#FECACA' }]}>{t('expense')}</Text>
+                <Ionicons name="arrow-down-circle" size={18} color="#F87171" />
+                <Text style={[s.metricLabel, { color: '#FFE4E6' }]}>{t('expense')}</Text>
               </View>
               <Text style={[s.metricValue, { color: '#FCA5A5' }]}>
                 {formatRupiah(summary.expense)}
@@ -319,17 +319,24 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Budget Progress Bar */}
+          {/* Budget Progress Bar — health gradient */}
           <View style={s.budgetSection}>
             <View style={s.budgetHeader}>
               <Text style={s.budgetTitle}>{t('budgetUsed')}</Text>
-              <Text style={s.budgetPercent}>{budgetPercent}%</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[s.budgetPercent, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>{budgetPercent}%</Text>
+                <View style={[s.budgetBadge, { backgroundColor: budgetPercent <= 50 ? 'rgba(16,185,129,0.25)' : budgetPercent <= 80 ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)' }]}>
+                  <Text style={[s.budgetBadgeText, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>
+                    {budgetPercent <= 50 ? 'Sehat' : budgetPercent <= 80 ? 'Waspada' : 'Kritis'}
+                  </Text>
+                </View>
+              </View>
             </View>
             <AnimatedProgressBar
               progress={budgetPercent}
-              color={budgetPercent > 80 ? Colors.expense : Colors.primary}
-              trackColor="rgba(255,255,255,0.25)"
-              height={7}
+              color={budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171'}
+              trackColor="rgba(255,255,255,0.15)"
+              height={8}
             />
           </View>
         </Animated.View>
@@ -790,14 +797,14 @@ const s = StyleSheet.create({
     gap: 6,
   },
   metricIncome: {
-    backgroundColor: 'rgba(16, 185, 129, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(110, 231, 183, 0.35)',
+    backgroundColor: 'rgba(16, 185, 129, 0.30)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(110, 231, 183, 0.6)',
   },
   metricExpense: {
-    backgroundColor: 'rgba(239, 68, 68, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(252, 165, 165, 0.35)',
+    backgroundColor: 'rgba(239, 68, 68, 0.30)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(252, 165, 165, 0.6)',
   },
   metricHeader: {
     flexDirection: 'row',
@@ -806,13 +813,13 @@ const s = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.95)',
   },
   metricValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFFFFF',
   },
 
   // Budget
@@ -833,6 +840,16 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: Colors.primaryLight,
+  },
+  budgetBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  budgetBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 
   // Quick actions — Clay pillowy cards
