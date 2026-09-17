@@ -13,6 +13,8 @@ import {
   Dimensions,
   PanResponder,
   Animated as RNAnimated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -76,11 +78,24 @@ export function MascotOverlay() {
   const [input, setInput] = useState('');
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
   const [aiOnline, setAiOnline] = useState<boolean | null>(null); // null = belum dicek
+  const [checkingAi, setCheckingAi] = useState(false);
 
-  // Cek koneksi AI saat modal dibuka
+  const checkAiStatus = async () => {
+    setCheckingAi(true);
+    try {
+      const ok = await isAIAvailable();
+      setAiOnline(ok);
+    } catch {
+      setAiOnline(false);
+    } finally {
+      setCheckingAi(false);
+    }
+  };
+
+  // Cek koneksi AI setiap kali modal dibuka
   useEffect(() => {
     if (modalVisible) {
-      isAIAvailable().then(setAiOnline);
+      checkAiStatus();
     }
   }, [modalVisible]);
 
@@ -414,6 +429,10 @@ export function MascotOverlay() {
             onPress={() => setModalVisible(false)}
           />
 
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+          >
           <RNAnimated.View
             style={[
               s.bottomSheet,
@@ -531,6 +550,18 @@ export function MascotOverlay() {
                     <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Otter Finansial AI sedang maintenance</Text>
                     <Text style={s.aiBannerSub}>Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!</Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={checkAiStatus}
+                    disabled={checkingAi}
+                    style={s.retryBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {checkingAi ? (
+                      <ActivityIndicator size="small" color="#E65100" />
+                    ) : (
+                      <Text style={s.retryBtnText}>🔄 Cek</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               )}
             </ScrollView>
@@ -560,6 +591,7 @@ export function MascotOverlay() {
               </TouchableOpacity>
             </View>
           </RNAnimated.View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -900,5 +932,16 @@ const s = StyleSheet.create({
   inputFieldDisabled: {
     backgroundColor: Colors.cardAlt,
     opacity: 0.6,
+  },
+  retryBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    backgroundColor: '#FFE0B2',
+  },
+  retryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E65100',
   },
 });
