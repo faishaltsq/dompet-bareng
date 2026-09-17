@@ -78,9 +78,10 @@ export function MascotOverlay() {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
-  const [aiOnline, setAiOnline] = useState<boolean | null>(null); // null = belum dicek
+  const [aiOnline, setAiOnline] = useState<boolean | null>(null);
   const [checkingAi, setCheckingAi] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [panicStopped, setPanicStopped] = useState(false); // stop getar setelah diklik
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -137,6 +138,10 @@ export function MascotOverlay() {
       prevMoodRef.current = companion.mood;
       setTooltipText(companion.greeting.slice(0, 60) + '...');
       const timer = setTimeout(() => setTooltipText(null), 15000);
+      // Reset panicStopped jika mood berubah (kondisi baru = user belum dismiss)
+      if (companion.mood === 'PANIC' || companion.mood === 'WARNING') {
+        setPanicStopped(false);
+      }
       return () => clearTimeout(timer);
     }
   }, [companion.mood, companion.greeting]);
@@ -251,7 +256,7 @@ export function MascotOverlay() {
         true
       );
       moodRotate.value = 0;
-    } else if (companion.mood === 'PANIC') {
+    } else if (companion.mood === 'PANIC' && !panicStopped) {
       moodRotate.value = withRepeat(
         withSequence(
           withTiming(-4, { duration: 100 }),
@@ -266,7 +271,7 @@ export function MascotOverlay() {
         -1,
         true
       );
-    } else if (companion.mood === 'WARNING') {
+    } else if (companion.mood === 'WARNING' && !panicStopped) {
       moodRotate.value = withRepeat(
         withSequence(
           withTiming(-2, { duration: 400 }),
@@ -278,6 +283,7 @@ export function MascotOverlay() {
       );
       moodScale.value = 1;
     } else {
+      moodRotate.value = withTiming(0, { duration: 200 });
       moodScale.value = withRepeat(
         withSequence(
           withTiming(1.03, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
@@ -286,9 +292,8 @@ export function MascotOverlay() {
         -1,
         true
       );
-      moodRotate.value = 0;
     }
-  }, [companion.mood]);
+  }, [companion.mood, panicStopped]);
 
   const animatedMoodStyle = useAnimatedStyle(() => ({
     transform: [{ scale: moodScale.value }, { rotate: `${moodRotate.value}deg` }],
@@ -413,6 +418,7 @@ export function MascotOverlay() {
           onPress={() => {
             setTooltipText(null);
             setSpeech(companion.greeting);
+            setPanicStopped(true);
             setModalVisible(true);
           }}
           style={s.mascotTouch}
