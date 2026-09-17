@@ -3,20 +3,42 @@
  * Mendukung:
  * 1. 9Router via Tunneling / Tailscale (OpenAI-compatible /v1/chat/completions)
  * 2. Google Generative Language API (Gemini fallback)
+ * 
+ * Konfigurasi URL dan Model mendukung Remote Config via tabel Supabase `app_configs`,
+ * sehingga URL tunneling dapat diganti kapan saja tanpa rebuild APK / rilis OTA baru.
  */
 
-const AI_BASE_URL =
+import { getRemoteConfig } from './remoteConfig';
+
+const DEFAULT_AI_BASE_URL =
   process.env.EXPO_PUBLIC_AI_BASE_URL ||
   'https://rb4hc5v.abc-tunnel.us/v1';
 
-const AI_API_KEY =
+const DEFAULT_AI_API_KEY =
   process.env.EXPO_PUBLIC_AI_API_KEY ||
   process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
   '';
 
-const AI_MODEL =
+const DEFAULT_AI_MODEL =
   process.env.EXPO_PUBLIC_AI_MODEL ||
   'ag/gemini-3.8-flash-high';
+
+/**
+ * Resolusi konfigurasi AI aktif (Remote Config Supabase > ENV build).
+ */
+export async function getAIConfig(): Promise<{ baseUrl: string; apiKey: string; model: string }> {
+  const [remoteBaseUrl, remoteModel, remoteApiKey] = await Promise.all([
+    getRemoteConfig('ai_base_url', DEFAULT_AI_BASE_URL),
+    getRemoteConfig('ai_model', DEFAULT_AI_MODEL),
+    getRemoteConfig('ai_api_key', DEFAULT_AI_API_KEY),
+  ]);
+
+  return {
+    baseUrl: (remoteBaseUrl || DEFAULT_AI_BASE_URL).trim(),
+    model: (remoteModel || DEFAULT_AI_MODEL).trim(),
+    apiKey: (remoteApiKey || DEFAULT_AI_API_KEY).trim(),
+  };
+}
 
 export type ParsedTransaction = {
   type: 'income' | 'expense';
@@ -34,18 +56,20 @@ export type AIMessage = {
  * Pemanggilan universal ke AI provider (9Router / OpenAI format atau Google format).
  */
 async function callAI(messages: AIMessage[]): Promise<string> {
-  if (!AI_API_KEY) {
+  const { baseUrl, apiKey, model } = await getAIConfig();
+
+  if (!apiKey) {
     throw new Error('API Key AI belum diisi di .env (EXPO_PUBLIC_AI_API_KEY)');
   }
 
   // Fallback jika menggunakan endpoint langsung Google AI Studio
-  if (AI_BASE_URL.includes('generativelanguage.googleapis.com')) {
+  if (baseUrl.includes('generativelanguage.googleapis.com')) {
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
-    const res = await fetch(`${AI_BASE_URL}?key=${AI_API_KEY}`, {
+    const res = await fetch(`${baseUrl}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents }),
@@ -61,17 +85,17 @@ async function callAI(messages: AIMessage[]): Promise<string> {
   }
 
   // Standar 9Router / OpenAI-compatible endpoint
-  const endpoint = `${AI_BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+  const endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
 
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${AI_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'User-Agent': 'DompetBareng/1.0 (Mobile; Expo)',
     },
     body: JSON.stringify({
-      model: AI_MODEL,
+      model,
       stream: false,
       messages,
       temperature: 0.3,
@@ -93,22 +117,24 @@ async function callAI(messages: AIMessage[]): Promise<string> {
  * Timeout 5 detik agar tidak menggantung UI.
  */
 export async function isAIAvailable(): Promise<boolean> {
-  if (!AI_API_KEY) return false;
   try {
+    const { baseUrl, apiKey, model } = await getAIConfig();
+    if (!apiKey) return false;
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    const endpoint = AI_BASE_URL.includes('generativelanguage.googleapis.com')
-      ? `${AI_BASE_URL}?key=${AI_API_KEY}`
-      : `${AI_BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+    const endpoint = baseUrl.includes('generativelanguage.googleapis.com')
+      ? `${baseUrl}?key=${apiKey}`
+      : `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
 
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model,
         stream: false,
         messages: [{ role: 'user', content: 'ping' }],
         max_tokens: 1,

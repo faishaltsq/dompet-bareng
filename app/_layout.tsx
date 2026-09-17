@@ -14,6 +14,7 @@ import { MascotOverlay } from '@/components/MascotOverlay';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { onDailyReminderReceived } from '@/lib/notifications';
+import { initRemoteConfig } from '@/lib/remoteConfig';
 
 export {
   ErrorBoundary,
@@ -41,6 +42,11 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [loaded]);
+
+  // Inisialisasi Remote Config (AI Base URL, model, dsb.)
+  useEffect(() => {
+    initRemoteConfig().catch(() => {});
+  }, []);
 
   // Handle deep link: OAuth callback + invite link
   useEffect(() => {
