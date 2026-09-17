@@ -455,7 +455,7 @@ export function MascotOverlay() {
             style={[
               s.bottomSheet,
               {
-                paddingBottom: keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 16),
+                paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : Math.max(insets.bottom, 16),
                 transform: [{ translateY: sheetTranslateY }],
               },
             ]}
