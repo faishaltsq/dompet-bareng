@@ -46,6 +46,7 @@ export default function TransactionDetailScreen() {
   const [editCategory, setEditCategory] = useState(tx?.category || '');
   const [editDate, setEditDate] = useState(tx?.transaction_date || '');
   const [editDesc, setEditDesc] = useState(tx?.description || '');
+  const [editAmount, setEditAmount] = useState(tx?.amount?.toString() || '');
 
   if (!tx) {
     return (
@@ -70,6 +71,7 @@ export default function TransactionDetailScreen() {
     setEditCategory(tx.category);
     setEditDate(tx.transaction_date);
     setEditDesc(tx.description || '');
+    setEditAmount(tx.amount.toString());
     setEditModalVisible(true);
   };
 
@@ -90,6 +92,11 @@ export default function TransactionDetailScreen() {
   };
 
   const handleSaveEdit = async () => {
+    const cleanAmount = parseInt(editAmount.replace(/\D/g, ''), 10);
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      Alert.alert('Perhatian', 'Nominal harus lebih dari 0.');
+      return;
+    }
     if (!editCategory.trim()) {
       Alert.alert('Perhatian', 'Kategori transaksi tidak boleh kosong.');
       return;
@@ -102,6 +109,7 @@ export default function TransactionDetailScreen() {
 
     setIsSaving(true);
     const ok = await updateTransaction(tx.id, {
+      amount: cleanAmount,
       category: editCategory.trim(),
       transaction_date: cleanDate,
       description: editDesc.trim() || null,
@@ -194,9 +202,11 @@ export default function TransactionDetailScreen() {
               </View>
             )}
           </View>
-          <Text style={s.heroAmount}>
-            {isIncome ? '+' : '-'}{formatRupiah(tx.amount)}
-          </Text>
+          <TouchableOpacity onPress={handleOpenEdit} activeOpacity={0.8}>
+            <Text style={s.heroAmount}>
+              {isIncome ? '+' : '-'}{formatRupiah(tx.amount)}
+            </Text>
+          </TouchableOpacity>
           <View style={[s.heroBadge, {
             flexDirection: 'row',
             alignItems: 'center',
@@ -317,8 +327,26 @@ export default function TransactionDetailScreen() {
         <Text style={s.modalSubtitle}>{t('editTransactionSubtitle')}</Text>
 
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+          {/* Nominal */}
+          <Text style={s.inputLabel}>Nominal (Rp)</Text>
+          <View style={s.amountInputRow}>
+            <Text style={s.amountPrefix}>Rp</Text>
+            <TextInput
+              style={s.amountInput}
+              value={editAmount}
+              onChangeText={v => setEditAmount(v.replace(/\D/g, ''))}
+              placeholder="0"
+              placeholderTextColor={Colors.textMuted}
+              keyboardType="number-pad"
+              returnKeyType="done"
+            />
+          </View>
+          {editAmount ? (
+            <Text style={s.amountHint}>{formatRupiah(parseInt(editAmount || '0', 10))}</Text>
+          ) : null}
+
           {/* Kategori */}
-          <Text style={s.inputLabel}>{t('transactionCategory')}</Text>
+          <Text style={[s.inputLabel, { marginTop: 16 }]}>{t('transactionCategory')}</Text>
           <View style={s.categoryChipsWrap}>
             {availableCategories.map(cat => {
               const cMeta = getCategoryMeta(cat);
@@ -786,6 +814,36 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 4,
+  },
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.card,
+    paddingHorizontal: 14,
+    height: 52,
+    gap: 6,
+  },
+  amountPrefix: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '900',
+    color: Colors.textDark,
+    height: 52,
+  },
+  amountHint: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginTop: 4,
+    marginLeft: 2,
   },
   textInput: {
     height: 44,
