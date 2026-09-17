@@ -12,7 +12,7 @@ import { getRemoteConfig, getRemoteConfigSync } from './remoteConfig';
 
 const DEFAULT_AI_BASE_URL =
   process.env.EXPO_PUBLIC_AI_BASE_URL ||
-  'https://rb4hc5v.abc-tunnel.us/v1';
+  'https://loqson.tailf969bb.ts.net/v1';
 
 const DEFAULT_AI_API_KEY =
   process.env.EXPO_PUBLIC_AI_API_KEY ||
