@@ -15,6 +15,7 @@ import {
   Animated as RNAnimated,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -79,6 +80,27 @@ export function MascotOverlay() {
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
   const [aiOnline, setAiOnline] = useState<boolean | null>(null); // null = belum dicek
   const [checkingAi, setCheckingAi] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e: any) => {
+      setKeyboardHeight(e.endCoordinates?.height || 0);
+    };
+    const onHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
 
   const checkAiStatus = async () => {
     setCheckingAi(true);
@@ -429,15 +451,11 @@ export function MascotOverlay() {
             onPress={() => setModalVisible(false)}
           />
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
-          >
           <RNAnimated.View
             style={[
               s.bottomSheet,
               {
-                paddingBottom: Math.max(insets.bottom, 16),
+                paddingBottom: keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 16),
                 transform: [{ translateY: sheetTranslateY }],
               },
             ]}
@@ -470,7 +488,10 @@ export function MascotOverlay() {
 
             {/* Scroll Content: Bubble + Chips + Action Card */}
             <ScrollView
-              style={s.sheetScroll}
+              style={[
+                s.sheetScroll,
+                keyboardHeight > 0 && { maxHeight: Math.max(120, SCREEN_HEIGHT - keyboardHeight - 240) },
+              ]}
               contentContainerStyle={s.sheetScrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -591,7 +612,6 @@ export function MascotOverlay() {
               </TouchableOpacity>
             </View>
           </RNAnimated.View>
-          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -671,7 +691,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
-    maxHeight: SCREEN_HEIGHT * 0.65,
+    maxHeight: SCREEN_HEIGHT * 0.75,
     paddingHorizontal: 18,
     paddingTop: 10,
     shadowColor: '#000',
