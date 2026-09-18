@@ -13,7 +13,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
-import { onDailyReminderReceived } from '@/lib/notifications';
+import { onDailyReminderReceived, refreshDailyReminderSchedule } from '@/lib/notifications';
 import { initRemoteConfig } from '@/lib/remoteConfig';
 
 export {
@@ -99,8 +99,12 @@ export default function RootLayout() {
   }, []);
 
   // Listen untuk notifikasi harian yang diterima (foreground) → rotasi pesan untuk hari berikutnya
+  // + top-up jadwal setiap kali app dibuka
   useEffect(() => {
     if (Platform.OS === 'web') return;
+
+    // Top-up jadwal notifikasi saat app startup
+    refreshDailyReminderSchedule().catch(() => {});
 
     let notifSub: { remove: () => void } | null = null;
     try {

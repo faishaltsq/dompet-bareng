@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
 const REMINDER_KEY = '@db:daily_reminder_enabled';
+const LAST_MSG_KEY = '@db:last_reminder_idx';
 
 let Notifications: typeof import('expo-notifications') | null = null;
 
@@ -92,9 +93,21 @@ const REMINDER_POOL: ReminderTemplate[] = [
   },
 ];
 
-/** Pilih pesan acak dari pool */
-function pickRandomReminder(): ReminderTemplate {
-  return REMINDER_POOL[Math.floor(Math.random() * REMINDER_POOL.length)];
+/** Pilih pesan acak dari pool — hindari repeat pesan terakhir */
+async function pickRandomReminder(): Promise<ReminderTemplate> {
+  let lastIdx = -1;
+  try {
+    const stored = await AsyncStorage.getItem(LAST_MSG_KEY);
+    if (stored !== null) lastIdx = parseInt(stored, 10);
+  } catch {}
+
+  let idx: number;
+  do {
+    idx = Math.floor(Math.random() * REMINDER_POOL.length);
+  } while (idx === lastIdx && REMINDER_POOL.length > 1);
+
+  try { await AsyncStorage.setItem(LAST_MSG_KEY, String(idx)); } catch {}
+  return REMINDER_POOL[idx];
 }
 
 // ── Fungsi utama ─────────────────────────────────────────────────────────────
@@ -153,59 +166,64 @@ export async function scheduleDailyReminder(hour = 20, minute = 0): Promise<void
 
     await Notifications.cancelAllScheduledNotificationsAsync();
 
-    // Pilih pesan acak untuk jadwal berikutnya
-    const msg = pickRandomReminder();
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: msg.title,
-        body: msg.body,
-        sound: 'default',
-        data: { type: 'daily_reminder' },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+    // Jadwalkan 5 hari ke depan — masing-masing pesan BERBEDA
+    // Pakai trigger DATE (waktu absolut) bukan DAILY repeating agar konten bisa bervariasi
+    const now = new Date();
+    for (let i = 0; i < 5; i++) {
+      const msg = await pickRandomReminder();
+      const fireDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + i,
         hour,
         minute,
-        channelId: Platform.OS === 'android' ? 'daily-reminder' : undefined,
-      },
-    });
+        0,
+      );
+      // Lewati jam yang sudah lewat hari ini
+      if (fireDate <= now) continue;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: msg.title,
+          body: msg.body,
+          sound: 'default',
+          data: { type: 'daily_reminder' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireDate,
+          channelId: Platform.OS === 'android' ? 'daily-reminder' : undefined,
+        },
+      });
+    }
 
     await AsyncStorage.setItem(REMINDER_KEY, 'true');
-
-    // Simpan ke histori — gunakan pesan yang sama dengan yang dijadwalkan
-    await saveToHistory(msg.title, msg.body);
   } catch {
     // Silently fail
   }
 }
 
-/** Dipanggil oleh listener notifikasi ketika notif harian diterima — rotasi pesan + simpan histori */
-export async function onDailyReminderReceived(): Promise<void> {
-  const msg = pickRandomReminder();
-  await saveToHistory(msg.title, msg.body);
-
-  // Reschedule dengan pesan baru agar besok beda lagi
+/**
+ * Dipanggil saat app dibuka (AppState foreground) — top-up jadwal notifikasi
+ * agar selalu ada 5 hari ke depan dengan pesan bervariasi.
+ */
+export async function refreshDailyReminderSchedule(hour = 20, minute = 0): Promise<void> {
   try {
     const stored = await AsyncStorage.getItem(REMINDER_KEY);
     if (stored !== 'true' || !Notifications) return;
 
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: msg.title,
-        body: msg.body,
-        sound: 'default',
-        data: { type: 'daily_reminder' },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 20,
-        minute: 0,
-        channelId: Platform.OS === 'android' ? 'daily-reminder' : undefined,
-      },
-    });
+    // Cek berapa notif yang masih terjadwal — top-up jika < 3
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    const dailyPending = pending.filter(n => n.content.data?.type === 'daily_reminder');
+    if (dailyPending.length >= 3) return; // masih cukup, tidak perlu reschedule
+
+    await scheduleDailyReminder(hour, minute);
   } catch {}
+}
+
+/** @deprecated Tetap ada untuk kompatibilitas listener lama */
+export async function onDailyReminderReceived(): Promise<void> {
+  await refreshDailyReminderSchedule();
 }
 
 export async function cancelAllReminders(): Promise<void> {
@@ -233,7 +251,7 @@ export async function sendTestNotification(): Promise<void> {
     const granted = await requestNotificationPermission();
     if (!granted) return;
 
-    const msg = pickRandomReminder();
+    const msg = await pickRandomReminder();
 
     await Notifications.scheduleNotificationAsync({
       content: {
