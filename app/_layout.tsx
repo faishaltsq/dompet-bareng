@@ -1,6 +1,6 @@
 import { useFonts } from 'expo-font';
 import { Platform } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments, router as expoRouter } from 'expo-router';
 import * as SplashScreen from '@/lib/splash';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
+import OfflineBanner from '@/components/OfflineBanner';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { onDailyReminderReceived, refreshDailyReminderSchedule } from '@/lib/notifications';
@@ -62,14 +63,9 @@ export default function RootLayout() {
         const inviteMatch = path.match(/\/invite\/([a-zA-Z0-9\-_]+)/);
         if (inviteMatch) {
           const token = inviteMatch[1];
-          // Expo Router handle navigasi — import router tidak tersedia di sini,
-          // pakai Linking redirect ke scheme native
-          const nativeUrl = `dompetbareng://invite/${token}`;
-          if (url.startsWith('http')) {
-            // HTTPS link masuk via intentFilter → navigate ke route native
-            await Linking.openURL(nativeUrl);
-          }
-          // Jika sudah native scheme, expo-router otomatis handle via file-based routing
+          // Gunakan expo-router imperative navigation — tidak memanggil Linking.openURL
+          // sehingga tidak terjadi loop infinite intent di Android
+          expoRouter.push({ pathname: '/invite/[token]', params: { token } });
           return;
         }
 
@@ -162,12 +158,15 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <OfflineBanner />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="invite/[token]" options={{ title: 'Gabung Workspace', presentation: 'modal' }} />
         <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="privacy" options={{ title: 'Kebijakan Privasi' }} />
+        <Stack.Screen name="terms" options={{ title: 'Ketentuan Layanan' }} />
       </Stack>
       {session && <MascotOverlay />}
     </ThemeProvider>

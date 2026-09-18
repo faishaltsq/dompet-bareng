@@ -297,16 +297,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ponytail: dev staging login via Supabase anonymous sign-in, switch to strictly Google OAuth when launching to store
   const signInDevGuest = async () => {
     try {
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error) {
-        // Fallback email dengan format domain valid
-        const randomId = Math.random().toString(36).substring(2, 9);
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: `tester_${randomId}@gmail.com`,
-          password: 'TesterPassword123!',
-        });
-        if (signUpError) throw signUpError;
-      }
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
     } catch (e: any) {
       console.error('Dev sign-in error:', e?.message || e);
     }

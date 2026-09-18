@@ -486,7 +486,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     base64?: string | null
   ): Promise<string | null> => {
     try {
-      const fileName = `receipt_${Date.now()}.jpg`;
+      const uid = user?.id || 'anonymous';
+      const folder = activeWorkspace ? `${activeWorkspace.id}/${uid}` : uid;
+      const fileName = `${folder}/receipt_${Date.now()}.jpg`;
       let fileData: Uint8Array | Blob;
 
       if (base64) {

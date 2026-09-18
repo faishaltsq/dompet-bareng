@@ -3,6 +3,7 @@ import {
   ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Shadows, Radius } from '@/constants/theme';
@@ -74,7 +75,21 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Text style={s.disclaimer}>
-          Dengan masuk, kamu menyetujui Ketentuan Layanan dan Kebijakan Privasi.
+          Dengan masuk, kamu menyetujui{' '}
+          <Text
+            style={s.disclaimerLink}
+            onPress={() => WebBrowser.openBrowserAsync('https://dompet-bareng.vercel.app/terms')}
+          >
+            Ketentuan Layanan
+          </Text>
+          {' '}dan{' '}
+          <Text
+            style={s.disclaimerLink}
+            onPress={() => WebBrowser.openBrowserAsync('https://dompet-bareng.vercel.app/privacy')}
+          >
+            Kebijakan Privasi
+          </Text>
+          .
         </Text>
 
         {/* Dev bypass: hanya tampil saat development */}
@@ -146,6 +161,7 @@ const s = StyleSheet.create({
   googleText: { fontSize: 16, fontWeight: '700', color: Colors.textDark },
 
   disclaimer: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  disclaimerLink: { color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
 
   devBtn: {
     borderWidth: 1.5,
