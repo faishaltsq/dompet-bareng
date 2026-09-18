@@ -197,9 +197,9 @@ export default function SettingsScreen() {
     if (ok) {
       setEditProfileModalVisible(false);
       fetchMembers();
-      Alert.alert('Berhasil', 'Nama profil berhasil diperbarui.');
+      Alert.alert(t('alertSuccess'), t('alertProfileUpdated'));
     } else {
-      Alert.alert('Gagal', 'Tidak dapat memperbarui nama profil.');
+      Alert.alert(t('alertFailed'), t('alertProfileUpdateFailed'));
     }
   };
 
@@ -209,7 +209,7 @@ export default function SettingsScreen() {
     if (!activeWorkspace) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Izin Dibutuhkan', 'Izinkan akses galeri untuk mengganti foto dompet.');
+      Alert.alert(t('alertPermissionRequired'), t('alertGalleryPermission'));
       return;
     }
 
@@ -247,19 +247,19 @@ export default function SettingsScreen() {
   const handleDeleteWorkspace = () => {
     if (!activeWorkspace) return;
     Alert.alert(
-      'Hapus Dompet?',
-      `Seluruh data transaksi di dompet "${activeWorkspace.name}" akan dihapus permanen.`,
+      t('alertDeleteWallet'),
+      `${t('alertDeleteWalletBody')} ("${activeWorkspace.name}")`,
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Hapus Dompet',
+          text: t('alertDeleteWalletBtn'),
           style: 'destructive',
           onPress: async () => {
             setDeletingWs(true);
             const ok = await deleteWorkspace(activeWorkspace.id);
             setDeletingWs(false);
             if (!ok) {
-              Alert.alert('Gagal', 'Gagal menghapus dompet. Hanya pembuat dompet yang dapat menghapus.');
+              Alert.alert(t('alertFailed'), t('alertDeleteWalletFailed'));
             }
           },
         },
@@ -270,19 +270,19 @@ export default function SettingsScreen() {
   const handleLeaveWorkspace = () => {
     if (!activeWorkspace) return;
     Alert.alert(
-      'Keluar dari Dompet?',
-      `Kamu tidak akan dapat mengakses riwayat transaksi "${activeWorkspace.name}" lagi.`,
+      t('alertLeaveWallet'),
+      `${t('alertLeaveWalletBody')} ("${activeWorkspace.name}")`,
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Keluar Dompet',
+          text: t('alertLeaveWalletBtn'),
           style: 'destructive',
           onPress: async () => {
             setLeavingWs(true);
             const ok = await leaveWorkspace(activeWorkspace.id);
             setLeavingWs(false);
             if (!ok) {
-              Alert.alert('Gagal', 'Tidak dapat keluar dari dompet.');
+              Alert.alert(t('alertFailed'), t('alertLeaveWalletFailed'));
             }
           },
         },
@@ -307,12 +307,12 @@ export default function SettingsScreen() {
         setMemberToKick(null);
         setKickReason('');
         fetchMembers();
-        Alert.alert('Berhasil! 👋', 'Anggota telah dikeluarkan dan diberi notifikasi.');
+        Alert.alert(t('alertSuccess'), t('alertKickSuccess'));
       } else {
-        Alert.alert('Gagal', 'Tidak dapat mengeluarkan anggota. Pastikan kamu memiliki hak admin.');
+        Alert.alert(t('alertFailed'), t('alertKickFailed'));
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Terjadi kesalahan sistem.');
+      Alert.alert(t('alertError'), e?.message || t('alertSystemError'));
     } finally {
       setKicking(false);
     }

@@ -88,7 +88,7 @@ export default function AddTransactionModal() {
   const handleSubmit = async () => {
     const num = parseCurrencyInput(amount);
     if (isNaN(num) || num <= 0) {
-      Alert.alert('Perhatian', 'Masukkan nominal yang valid.');
+      Alert.alert(t('alertAttention'), t('alertAmountInvalid'));
       return;
     }
     setSubmitting(true);
@@ -101,11 +101,11 @@ export default function AddTransactionModal() {
         // Upload gagal — tanya user mau lanjut tanpa gambar atau batal
         const proceed = await new Promise<boolean>((resolve) => {
           Alert.alert(
-            'Gagal Unggah Struk',
-            'Gambar struk gagal diunggah. Simpan transaksi tanpa struk?',
+            t('alertReceiptUploadFailed'),
+            t('alertReceiptUploadBody'),
             [
-              { text: 'Batal', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Simpan Tanpa Struk', onPress: () => resolve(true) },
+              { text: t('cancel'), style: 'cancel', onPress: () => resolve(false) },
+              { text: t('alertReceiptSaveWithout'), onPress: () => resolve(true) },
             ],
           );
         });
@@ -129,7 +129,7 @@ export default function AddTransactionModal() {
       image_url: imageUrl,
       transaction_date: new Date().toISOString().split('T')[0],
     }).catch(() => {
-      Alert.alert('Gagal', 'Transaksi gagal disimpan. Coba lagi.');
+      Alert.alert(t('alertFailed'), t('alertTxSaveFailed'));
     });
   };
 

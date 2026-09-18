@@ -107,6 +107,8 @@ export default function HomeScreen() {
     createWorkspace,
     deleteTransaction,
     summary,
+    hasMoreTx,
+    loadMoreTransactions,
     refetchTransactions,
   } = useWorkspace();
 
@@ -422,6 +424,11 @@ export default function HomeScreen() {
         keyExtractor={item => item.id}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={{ paddingBottom: 40 }}
+        onEndReached={() => { if (hasMoreTx) loadMoreTransactions(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={hasMoreTx ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
+        ) : null}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

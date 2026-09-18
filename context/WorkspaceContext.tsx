@@ -55,6 +55,8 @@ type WorkspaceContextType = {
   deleteTransaction: (id: string) => Promise<boolean>;
   refetchTransactions: () => Promise<void>;
   summary: Summary;
+  hasMoreTx: boolean;
+  loadMoreTransactions: () => Promise<void>;
   refreshWorkspaces: () => Promise<void>;
   joinWorkspace: (workspaceId: string, role?: 'admin' | 'member') => Promise<boolean>;
   leaveWorkspace: (workspaceId: string) => Promise<boolean>;
@@ -93,6 +95,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [budgets, setBudgetsState] = useState<WorkspaceBudget[]>([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
   const [loadingTx, setLoadingTx] = useState(false);
+  const [hasMoreTx, setHasMoreTx] = useState(false);
   const activeRef = useRef<Workspace | null>(null);
 
   // Setters that sync to ref for realtime closures
@@ -245,7 +248,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .eq('workspace_id', target.id)
       .order('transaction_date', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(500);
 
     if (error) {
       console.error('fetchTransactions error for ws', target.id, ':', error);
@@ -261,6 +264,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           profiles: undefined,
         }));
         setTransactions(mapped as Transaction[]);
+        setHasMoreTx(mapped.length === 500);
         await writeCache(CACHE_TX_KEY(target.id), mapped);
       } else if (error && !cached) {
         setTransactions([]);
@@ -270,6 +274,35 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refetchTransactions = useCallback(() => fetchTransactions(), [fetchTransactions]);
+
+  const loadMoreTransactions = useCallback(async () => {
+    const target = activeRef.current;
+    if (!target || !hasMoreTx || loadingTx) return;
+
+    const from = transactions.length;
+    const to = from + 199; // load next 200 items
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, profiles(display_name, email)')
+      .eq('workspace_id', target.id)
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (!error && data && data.length > 0) {
+      const mapped = data.map((t: any) => ({
+        ...t,
+        user_display_name: t.profiles?.display_name ?? null,
+        user_email: t.profiles?.email ?? null,
+        profiles: undefined,
+      }));
+      setTransactions(prev => [...prev, ...(mapped as Transaction[])]);
+      setHasMoreTx(data.length === 200);
+    } else {
+      setHasMoreTx(false);
+    }
+  }, [hasMoreTx, loadingTx, transactions.length]);
 
   // ── Effects ──────────────────────────────────────────────────────────────────
 
@@ -933,7 +966,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       loadingWorkspaces, loadingTx,
       setActiveWorkspace, createWorkspace, deleteWorkspace, updateWorkspace,
       generateInviteLink, addTransaction, updateTransaction, deleteTransaction,
-      refetchTransactions, summary,
+      refetchTransactions, summary, hasMoreTx, loadMoreTransactions,
       refreshWorkspaces, joinWorkspace,
       leaveWorkspace, removeMember,
       uploadWorkspaceImage,
