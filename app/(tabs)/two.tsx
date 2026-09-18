@@ -490,8 +490,14 @@ export default function SettingsScreen() {
                   {activeWorkspace?.name || t('selectWallet')}
                 </Text>
                 <View style={[s.rolePill, isAdmin ? s.rolePillAdmin : s.rolePillMember]}>
+                  <Ionicons
+                    name={isAdmin ? 'ribbon-outline' : 'person-outline'}
+                    size={11}
+                    color={isAdmin ? Colors.primaryDark : Colors.accentBlue}
+                    style={{ marginRight: 4 }}
+                  />
                   <Text style={[s.rolePillText, isAdmin ? s.rolePillTextAdmin : s.rolePillTextMember]}>
-                    {isAdmin ? `👑 ${t('roleOwner')}` : `👤 ${t('roleMember')}`}
+                    {isAdmin ? t('roleOwner') : t('roleMember')}
                   </Text>
                 </View>
               </View>
@@ -1254,6 +1260,8 @@ const s = StyleSheet.create({
     color: Colors.textDark,
   },
   rolePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
