@@ -9,8 +9,8 @@ import {
   Dimensions,
   StyleProp,
   ViewStyle,
-  KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
@@ -37,6 +37,18 @@ export default function SwipeableModal({
 }: SwipeableModalProps) {
   const [internalVisible, setInternalVisible] = useState(visible);
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const [kbHeight, setKbHeight] = useState(0);
+
+  // Keyboard listener — deteksi tinggi keyboard aktual
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e: any) => setKbHeight(e.endCoordinates?.height || 0);
+    const onHide = () => setKbHeight(0);
+    const s1 = Keyboard.addListener(showEvt, onShow);
+    const s2 = Keyboard.addListener(hideEvt, onHide);
+    return () => { s1.remove(); s2.remove(); };
+  }, []);
 
   // Buka animasi slide up saat visible = true
   useEffect(() => {
@@ -110,38 +122,37 @@ export default function SwipeableModal({
       onRequestClose={handleClose}
     >
       <View style={s.overlay} pointerEvents="box-none">
-        {/* Transparent backdrop — tap area di atas sheet untuk menutup */}
+        {/* Transparent backdrop */}
         <TouchableOpacity
           style={s.backdrop}
           activeOpacity={1}
           onPress={handleClose}
         />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
-          style={s.keyboardWrap}
-          pointerEvents="box-none"
+        {/* Animated Sheet — terangkat otomatis saat keyboard muncul */}
+        <Animated.View
+          style={[
+            s.sheet,
+            {
+              maxHeight: kbHeight > 0
+                ? Math.min(maxHeight, SCREEN_HEIGHT - kbHeight - 40)
+                : maxHeight,
+              paddingBottom: kbHeight > 0 ? kbHeight + 16 : 0,
+              transform: [{ translateY }],
+            },
+            style,
+          ]}
         >
-          {/* Animated Sheet */}
-          <Animated.View
-            style={[
-              s.sheet,
-              { maxHeight, transform: [{ translateY }] },
-              style,
-            ]}
-          >
-            {/* Drag Handle & Gesture Area */}
-            <View {...panResponder.panHandlers} style={s.dragZone}>
-              {showHandle && <View style={s.handle} />}
-            </View>
+          {/* Drag Handle & Gesture Area */}
+          <View {...panResponder.panHandlers} style={s.dragZone}>
+            {showHandle && <View style={s.handle} />}
+          </View>
 
-            {/* Sheet Content */}
-            <View style={[s.content, contentStyle]}>
-              {children}
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
+          {/* Sheet Content */}
+          <View style={[s.content, contentStyle]}>
+            {children}
+          </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -156,10 +167,6 @@ const s = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'transparent',
-  },
-  keyboardWrap: {
-    width: '100%',
-    justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: Colors.surface,

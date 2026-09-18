@@ -382,20 +382,29 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const deleteWorkspace = async (id: string): Promise<boolean> => {
     if (!user) return false;
-    // Optimistic remove
     const prev = workspaces;
     const newList = workspaces.filter(w => w.id !== id);
     setWorkspaces(newList);
-    if (activeWorkspace?.id === id) setActiveWorkspace(newList[0] ?? null as any);
+
+    if (activeWorkspace?.id === id) {
+      if (newList.length > 0) {
+        setActiveWorkspace(newList[0]);
+      } else {
+        // Semua dompet dihapus — bersihkan semua state
+        activeRef.current = null;
+        setActiveWorkspaceState(null);
+        setTransactions([]);
+        setBudgetsState([]);
+        AsyncStorage.removeItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => {});
+      }
+    }
 
     const { error } = await supabase.from('workspaces').delete().eq('id', id);
     if (error) {
-      // Rollback
       setWorkspaces(prev);
       return false;
     }
     await writeCache(CACHE_WS_KEY(user.id), newList);
-    // Clear tx cache for deleted ws
     try { await AsyncStorage.removeItem(CACHE_TX_KEY(id)); } catch {}
     return true;
   };
@@ -732,7 +741,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const newList = workspaces.filter(w => w.id !== workspaceId);
     setWorkspaces(newList);
     if (activeWorkspace?.id === workspaceId) {
-      setActiveWorkspace(newList[0] ?? null as any);
+      if (newList.length > 0) {
+        setActiveWorkspace(newList[0]);
+      } else {
+        activeRef.current = null;
+        setActiveWorkspaceState(null);
+        setTransactions([]);
+        setBudgetsState([]);
+        if (user) AsyncStorage.removeItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => {});
+      }
     }
     if (user) await writeCache(CACHE_WS_KEY(user.id), newList);
     return true;
