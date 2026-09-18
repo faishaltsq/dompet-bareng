@@ -11,6 +11,7 @@ import {
   ViewStyle,
   Platform,
   Keyboard,
+  BackHandler,
 } from 'react-native';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
@@ -39,7 +40,15 @@ export default function SwipeableModal({
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const [kbHeight, setKbHeight] = useState(0);
 
-  // Keyboard listener — deteksi tinggi keyboard aktual
+  // Android hardware back button handler
+  useEffect(() => {
+    if (!internalVisible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true; // prevent exit app
+    });
+    return () => sub.remove();
+  }, [internalVisible]);
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';

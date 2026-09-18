@@ -287,7 +287,7 @@ export default function HomeScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={s.heroAmount}>{formatRupiah(summary.balance)}</Text>
+              <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatRupiah(summary.balance)}</Text>
             </View>
             <PressableScale
               style={s.heroActionPlus}

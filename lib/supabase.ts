@@ -18,7 +18,17 @@ const storage = {
   },
 };
 
+/** Fetch wrapper dengan AbortController timeout 10 detik untuk semua Supabase call */
+function fetchWithTimeout(url: RequestInfo, opts: RequestInit = {}): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10_000);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: fetchWithTimeout as any,
+  },
   auth: {
     storage,
     autoRefreshToken: true,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Share, Alert } from 'react-native';
+import { Share, Alert, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -343,6 +343,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(wmChannel);
     };
   }, [user, fetchWorkspaces]);
+
+  // Reconnect saat app kembali ke foreground — re-fetch data & channels
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        fetchWorkspaces();
+        if (activeRef.current) fetchTransactions();
+      }
+    });
+    return () => sub.remove();
+  }, [fetchWorkspaces]);
 
   // ── CRUD ──────────────────────────────────────────────────────────────────────
 

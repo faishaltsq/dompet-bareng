@@ -93,10 +93,27 @@ export default function AddTransactionModal() {
     }
     setSubmitting(true);
 
-    // Upload receipt first (blocking) — biasanya cepat, tapi harus sebelum navigate
+    // Upload receipt first (blocking)
     let imageUrl: string | null = null;
     if (receiptUri) {
       imageUrl = await uploadReceiptImage(receiptUri, receiptBase64);
+      if (!imageUrl) {
+        // Upload gagal — tanya user mau lanjut tanpa gambar atau batal
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Gagal Unggah Struk',
+            'Gambar struk gagal diunggah. Simpan transaksi tanpa struk?',
+            [
+              { text: 'Batal', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Simpan Tanpa Struk', onPress: () => resolve(true) },
+            ],
+          );
+        });
+        if (!proceed) {
+          setSubmitting(false);
+          return;
+        }
+      }
     }
 
     // Navigate back immediately — optimistic insert handles the rest in background

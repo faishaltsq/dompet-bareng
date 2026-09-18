@@ -335,9 +335,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (_) {}
       }
 
-      // 4. Khusus Native/Umum: bersihkan AsyncStorage
+      // 4. Khusus Native/Umum: bersihkan cache data user tanpa menghapus preferensi perangkat (bahasa/notif)
       try {
-        await AsyncStorage.clear();
+        const allKeys = await AsyncStorage.getAllKeys();
+        const userKeys = allKeys.filter(
+          k => !k.startsWith('@dompetbareng_app_language') && !k.startsWith('@db:daily_reminder')
+        );
+        await AsyncStorage.multiRemove(userKeys);
       } catch (_) {}
     } catch (e) {
       console.error('SignOut error:', e);
