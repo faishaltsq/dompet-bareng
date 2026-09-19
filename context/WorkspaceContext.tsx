@@ -587,11 +587,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
       // Coba panggil Share.share bawaan (native share sheet)
       try {
-        await Share.share({
-          message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:\n${link}`,
-          title: 'Undangan Dompet Bareng',
-          url: link,
+        const shareContent = Platform.select({
+          ios: {
+            message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:`,
+            url: link,
+            title: 'Undangan Dompet Bareng',
+          },
+          default: {
+            // Android & Web: tidak menyertakan `url` terpisah karena Android menggabungkan `message` + `url` sehingga link menjadi ganda
+            message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:\n${link}`,
+            title: 'Undangan Dompet Bareng',
+          },
         });
+        await Share.share(shareContent);
       } catch (shareErr) {
         // Abaikan error cancel / unsupported di browser tertentu
         console.log('Share.share not supported or dismissed:', shareErr);

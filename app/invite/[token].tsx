@@ -11,12 +11,19 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
 export default function JoinWorkspaceScreen() {
-  const { token } = useLocalSearchParams<{ token: string }>();
+  const { token: rawToken } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { user, signInWithGoogle, signInDevGuest } = useAuth();
   const { joinWorkspace } = useWorkspace();
+
+  // Dapatkan token valid (hindari placeholder static export '[token]')
+  const token = (rawToken && rawToken !== '[token]' && rawToken !== '%5Btoken%5D')
+    ? rawToken
+    : (typeof window !== 'undefined'
+        ? window.location.pathname.match(/\/invite\/([^/?#]+)/)?.[1]
+        : null);
 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
