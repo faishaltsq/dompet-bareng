@@ -105,17 +105,10 @@ export function MascotOverlay() {
     };
   }, []);
 
-  const [aiDebugUrl, setAiDebugUrl] = useState('');
-
   const checkAiStatus = async () => {
     setCheckingAi(true);
     try {
-      const { getRemoteConfigSync } = await import('@/lib/remoteConfig');
-      const url = getRemoteConfigSync('ai_base_url', process.env.EXPO_PUBLIC_AI_BASE_URL || '(no url)');
-      setAiDebugUrl(url);
-      console.log('[AI] checking url:', url);
       const ok = await isAIAvailable();
-      console.log('[AI] isAIAvailable:', ok);
       setAiOnline(ok);
     } catch {
       setAiOnline(false);
@@ -580,11 +573,6 @@ export function MascotOverlay() {
                   <View style={{ flex: 1 }}>
                     <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>{t('mascotAiOffline')}</Text>
                     <Text style={s.aiBannerSub}>{t('mascotAiOfflineSub')}</Text>
-                    {aiDebugUrl ? (
-                      <Text style={{ fontSize: 9, color: '#BF360C', opacity: 0.7, marginTop: 2 }} numberOfLines={1}>
-                        URL: {aiDebugUrl}
-                      </Text>
-                    ) : null}
                   </View>
                   <TouchableOpacity
                     onPress={checkAiStatus}
