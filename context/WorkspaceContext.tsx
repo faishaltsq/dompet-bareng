@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Share, Alert, AppState } from 'react-native';
+import { Share, Alert, AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -565,20 +565,43 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const generateInviteLink = async (): Promise<string | null> => {
     if (!activeWorkspace || !user) return null;
-    const { data, error } = await supabase
-      .from('workspace_invites')
-      .insert({ workspace_id: activeWorkspace.id, created_by: user.id })
-      .select('token')
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('workspace_invites')
+        .insert({ workspace_id: activeWorkspace.id, created_by: user.id })
+        .select('token')
+        .single();
 
-    if (error || !data) return null;
-    const link = `https://dompet-bareng.vercel.app/invite/${data.token}`;
-    await Share.share({
-      message: `Gabung ke dompet "${activeWorkspace.name}" di DompetBareng:\n${link}`,
-      title: 'Undangan DompetBareng',
-      url: link,
-    });
-    return link;
+      if (error || !data) {
+        console.error('generateInviteLink error:', error);
+        return null;
+      }
+      const link = `https://dompet-bareng.vercel.app/invite/${data.token}`;
+
+      // Salin otomatis ke clipboard jika di web
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(link);
+        } catch (_) {}
+      }
+
+      // Coba panggil Share.share bawaan (native share sheet)
+      try {
+        await Share.share({
+          message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:\n${link}`,
+          title: 'Undangan Dompet Bareng',
+          url: link,
+        });
+      } catch (shareErr) {
+        // Abaikan error cancel / unsupported di browser tertentu
+        console.log('Share.share not supported or dismissed:', shareErr);
+      }
+
+      return link;
+    } catch (e) {
+      console.error('generateInviteLink exception:', e);
+      return null;
+    }
   };
 
   const addTransaction = async (

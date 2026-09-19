@@ -16,7 +16,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -165,7 +165,36 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     fetchMembers();
-  }, [fetchMembers]);
+
+    if (!activeWorkspace) return;
+
+    // Realtime channel: update anggota otomatis saat ada yang bergabung / keluar
+    const channel = supabase
+      .channel(`ws_members:${activeWorkspace.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workspace_members',
+          filter: `workspace_id=eq.${activeWorkspace.id}`,
+        },
+        () => {
+          fetchMembers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMembers, activeWorkspace?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMembers();
+    }, [fetchMembers])
+  );
 
   // ── Profile Handlers ──────────────────────────────────────────────────────
 
@@ -334,8 +363,21 @@ export default function SettingsScreen() {
       return;
     }
     setSharing(true);
-    await generateInviteLink();
-    setSharing(false);
+    try {
+      const link = await generateInviteLink();
+      if (link && Platform.OS === 'web') {
+        Alert.alert(
+          'Link Undangan Berhasil Dibuat 📋',
+          `Link undangan sudah disalin ke clipboard:\n\n${link}\n\nBagikan link ini ke temanmu agar mereka bisa bergabung!`
+        );
+      } else if (!link) {
+        Alert.alert(t('alertFailed'), 'Tidak dapat membuat link undangan. Pastikan kamu terhubung ke internet.');
+      }
+    } catch (e: any) {
+      Alert.alert(t('alertError'), e?.message || t('alertSystemError'));
+    } finally {
+      setSharing(false);
+    }
   };
 
   const handleJoinWithInput = () => {

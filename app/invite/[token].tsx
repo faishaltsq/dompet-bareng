@@ -53,17 +53,6 @@ export default function JoinWorkspaceScreen() {
         } else {
           setErrorMsg(t('inviteWalletNotFound'));
         }
-
-        // Khusus Web di mobile browser: auto-redirect ke native app via custom scheme
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-          if (isMobile) {
-            // Coba buka aplikasi secara otomatis setelah 500ms
-            setTimeout(() => {
-              window.location.href = `dompetbareng://invite/${token}`;
-            }, 500);
-          }
-        }
       }
       setLoading(false);
     };
@@ -74,6 +63,12 @@ export default function JoinWorkspaceScreen() {
   const handleGoogleLogin = async () => {
     try {
       setLoggingIn(true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && token) {
+        try {
+          window.sessionStorage?.setItem('pending_invite_token', token);
+          window.localStorage?.setItem('pending_invite_token', token);
+        } catch (_) {}
+      }
       await signInWithGoogle();
     } catch (e: any) {
       Alert.alert(t('alertFailed'), e?.message || t('alertGoogleLoginFailed'));

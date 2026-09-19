@@ -51,7 +51,22 @@ export default function RootLayout() {
 
   // Handle deep link: OAuth callback + invite link
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+      try {
+        const pendingToken = window.sessionStorage?.getItem('pending_invite_token')
+          || window.localStorage?.getItem('pending_invite_token');
+        if (pendingToken) {
+          window.sessionStorage?.removeItem('pending_invite_token');
+          window.localStorage?.removeItem('pending_invite_token');
+          if (!window.location.pathname.includes(`/invite/${pendingToken}`)) {
+            setTimeout(() => {
+              expoRouter.push({ pathname: '/invite/[token]', params: { token: pendingToken } });
+            }, 300);
+          }
+        }
+      } catch (_) {}
+      return;
+    }
 
     const handleUrl = async (url: string) => {
       try {

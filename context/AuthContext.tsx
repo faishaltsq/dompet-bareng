@@ -214,10 +214,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       if (Platform.OS === 'web') {
+        const redirectUrl = typeof window !== 'undefined'
+          ? (window.location.origin + window.location.pathname)
+          : undefined;
         await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: redirectUrl,
             scopes: 'email profile openid',
           },
         });

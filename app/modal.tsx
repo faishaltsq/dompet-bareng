@@ -155,7 +155,7 @@ export default function AddTransactionModal() {
       */}
       <KeyboardAvoidingView
         style={s.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
         keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
       >
         <ScrollView
@@ -425,7 +425,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 15,
+    fontSize: 16,
     backgroundColor: Colors.card,
     minHeight: 80,
     textAlignVertical: 'top',
