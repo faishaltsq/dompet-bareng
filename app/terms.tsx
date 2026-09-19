@@ -7,22 +7,22 @@ export default function TermsOfService() {
     <View style={s.root}>
       <Stack.Screen options={{ title: 'Ketentuan Layanan', headerShown: Platform.OS !== 'web' }} />
       <ScrollView contentContainerStyle={s.content}>
-        {Platform.OS === 'web' && <Text style={s.title}>Ketentuan Layanan — DompetBareng</Text>}
+        {Platform.OS === 'web' && <Text style={s.title}>Ketentuan Layanan — Dompet Bareng</Text>}
         <Text style={s.updated}>Terakhir diperbarui: 18 September 2026</Text>
 
         <Text style={s.h2}>1. Penerimaan Ketentuan</Text>
         <Text style={s.p}>
-          Dengan menggunakan DompetBareng, kamu menyetujui ketentuan ini. Jika tidak setuju, harap hentikan penggunaan aplikasi.
+          Dengan menggunakan Dompet Bareng, kamu menyetujui ketentuan ini. Jika tidak setuju, harap hentikan penggunaan aplikasi.
         </Text>
 
         <Text style={s.h2}>2. Penggunaan Layanan</Text>
         <Text style={s.p}>
-          DompetBareng adalah aplikasi pencatatan keuangan bersama. Kamu bertanggung jawab atas keakuratan data yang kamu masukkan. Kami tidak bertanggung jawab atas keputusan keuangan yang dibuat berdasarkan data dalam aplikasi.
+          Dompet Bareng adalah aplikasi pencatatan keuangan bersama. Kamu bertanggung jawab atas keakuratan data yang kamu masukkan. Kami tidak bertanggung jawab atas keputusan keuangan yang dibuat berdasarkan data dalam aplikasi.
         </Text>
 
         <Text style={s.h2}>3. Akun & Keamanan</Text>
         <Text style={s.p}>
-          Akun DompetBareng terhubung ke akun Google-mu. Kamu bertanggung jawab menjaga keamanan akses Google-mu. Laporkan segera jika ada akses tidak sah ke dompetbareng@gmail.com.
+          Akun Dompet Bareng terhubung ke akun Google-mu. Kamu bertanggung jawab menjaga keamanan akses Google-mu. Laporkan segera jika ada akses tidak sah ke dompetbareng@gmail.com.
         </Text>
 
         <Text style={s.h2}>4. Dompet Bersama</Text>

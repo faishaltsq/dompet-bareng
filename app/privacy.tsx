@@ -7,12 +7,12 @@ export default function PrivacyPolicy() {
     <View style={s.root}>
       <Stack.Screen options={{ title: 'Kebijakan Privasi', headerShown: Platform.OS !== 'web' }} />
       <ScrollView contentContainerStyle={s.content}>
-        {Platform.OS === 'web' && <Text style={s.title}>Kebijakan Privasi — DompetBareng</Text>}
+        {Platform.OS === 'web' && <Text style={s.title}>Kebijakan Privasi — Dompet Bareng</Text>}
         <Text style={s.updated}>Terakhir diperbarui: 18 September 2026</Text>
 
         <Text style={s.h2}>1. Data yang Kami Kumpulkan</Text>
         <Text style={s.p}>
-          DompetBareng mengumpulkan data berikut melalui autentikasi Google OAuth:{'\n'}
+          Dompet Bareng mengumpulkan data berikut melalui autentikasi Google OAuth:{'\n'}
           • Nama tampilan dan alamat email Google{'\n'}
           • Foto profil Google (opsional){'\n'}
           {'\n'}Data keuangan yang kamu catat (transaksi, kategori, deskripsi, budget) disimpan di server Supabase yang terenkripsi.

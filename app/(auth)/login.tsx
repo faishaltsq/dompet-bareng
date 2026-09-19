@@ -55,7 +55,7 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
         </View>
-        <Text style={s.title}>DompetBareng</Text>
+        <Text style={s.title}>Dompet Bareng</Text>
         <Text style={s.subtitle}>{t('loginSubtitle')}</Text>
       </View>
 

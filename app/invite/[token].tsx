@@ -47,9 +47,9 @@ export default function JoinWorkspaceScreen() {
       } else {
         const ws = Array.isArray(data.workspaces) ? data.workspaces[0] : (data.workspaces as any);
         if (ws && ws.id) {
-          setWorkspace({ id: ws.id, name: ws.name || 'DompetBareng' });
+          setWorkspace({ id: ws.id, name: ws.name || 'Dompet Bareng' });
         } else if (data.workspace_id) {
-          setWorkspace({ id: data.workspace_id, name: 'DompetBareng' });
+          setWorkspace({ id: data.workspace_id, name: 'Dompet Bareng' });
         } else {
           setErrorMsg(t('inviteWalletNotFound'));
         }
