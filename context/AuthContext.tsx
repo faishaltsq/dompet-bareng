@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
+import { signInWithGoogleNative, signOutGoogleNative } from '../lib/nativeGoogleAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -212,12 +213,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // Gunakan scheme native explicitly: dompetbareng://
-      const redirectUri = makeRedirectUri({
-        scheme: 'dompetbareng',
-        path: '',
-      });
-
       if (Platform.OS === 'web') {
         await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -228,6 +223,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         return;
       }
+
+      // ── Mobile Native Flow (Google Play Services) ──
+      // Menghilangkan popup browser & URL supabase.co secara total
+      try {
+        const nativeAuth = await signInWithGoogleNative();
+        if (!nativeAuth) {
+          // Pengguna menutup / membatalkan dialog Google
+          return;
+        }
+
+        const { data: idTokenData, error: idTokenError } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: nativeAuth.idToken,
+        });
+
+        if (idTokenError) throw idTokenError;
+
+        if (idTokenData?.session) {
+          setSession(idTokenData.session);
+          setUser(idTokenData.session.user);
+          await fetchProfile(idTokenData.session.user.id, idTokenData.session.user);
+          return;
+        }
+      } catch (nativeErr: any) {
+        console.warn(
+          '[Auth] Native Google Sign-In error / fallback to browser:',
+          nativeErr?.message || nativeErr
+        );
+        // Jika di Expo Go (di mana module native belum ter-compile), biarkan lanjut ke browser fallback di bawah
+      }
+
+      // ── Mobile Browser Fallback (untuk Expo Go atau jika Play Services tidak tersedia) ──
+      const redirectUri = makeRedirectUri({
+        scheme: 'dompetbareng',
+        path: '',
+      });
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -344,6 +375,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // 4. Khusus Native/Umum: bersihkan cache data user tanpa menghapus preferensi perangkat (bahasa/notif)
       try {
+        if (Platform.OS !== 'web') {
+          await signOutGoogleNative();
+        }
         const allKeys = await AsyncStorage.getAllKeys();
         const userKeys = allKeys.filter(
           k => !k.startsWith('@dompetbareng_app_language') && !k.startsWith('@db:daily_reminder')
