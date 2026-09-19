@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 /**
  * Global offline banner — shows a non-intrusive top bar when device loses connectivity.
@@ -8,6 +9,7 @@ import { Colors } from '@/constants/theme';
  * ponytail: upgrade to @react-native-community/netinfo when adding offline queue.
  */
 export default function OfflineBanner() {
+  const { t } = useLanguage();
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function OfflineBanner() {
       };
     }
 
-    // Native: lightweight probe every 15s + on app foreground
+    // Native: lightweight probe every 30s + on app foreground only
     let timer: ReturnType<typeof setInterval>;
 
     const probe = async () => {
@@ -43,11 +45,21 @@ export default function OfflineBanner() {
       }
     };
 
+    const startTimer = () => {
+      clearInterval(timer);
+      timer = setInterval(probe, 30_000);
+    };
+
     probe();
-    timer = setInterval(probe, 15_000);
+    startTimer();
 
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') probe();
+      if (state === 'active') {
+        probe();
+        startTimer();
+      } else {
+        clearInterval(timer);
+      }
     });
 
     return () => {
@@ -60,7 +72,7 @@ export default function OfflineBanner() {
 
   return (
     <View style={s.banner}>
-      <Text style={s.text}>⚡ Tidak ada koneksi internet</Text>
+      <Text style={s.text}>{t('offlineBanner')}</Text>
     </View>
   );
 }

@@ -9,7 +9,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import { NotificationProvider } from '@/context/NotificationContext';
-import { LanguageProvider } from '@/context/LanguageContext';
+import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
 import OfflineBanner from '@/components/OfflineBanner';
 import * as Linking from 'expo-linking';
@@ -83,7 +83,7 @@ export default function RootLayout() {
         } else if (accessToken && refreshToken) {
           await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
         }
-      } catch (_) {}
+      } catch (e) { console.warn('[deep-link] handleUrl error:', e); }
     };
 
     // Cold start: app opened via deep link
@@ -139,6 +139,7 @@ function RootLayoutNav() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (loading) return;
@@ -162,7 +163,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="invite/[token]" options={{ title: 'Gabung Workspace', presentation: 'modal' }} />
+        <Stack.Screen name="invite/[token]" options={{ title: t('screenTitleJoinWorkspace'), presentation: 'modal' }} />
         <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="privacy" options={{ title: 'Kebijakan Privasi' }} />

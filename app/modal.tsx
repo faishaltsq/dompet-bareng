@@ -62,7 +62,7 @@ export default function AddTransactionModal() {
   const handlePickReceipt = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Izin Dibutuhkan', 'Izinkan akses galeri untuk menambah foto struk.');
+      Alert.alert(t('alertPermissionRequired'), t('alertGalleryPermission'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -129,7 +129,7 @@ export default function AddTransactionModal() {
       category,
       description: description.trim() || null,
       image_url: imageUrl,
-      transaction_date: new Date().toISOString().split('T')[0],
+      transaction_date: new Date().toLocaleDateString('en-CA'),
     }).catch(() => {
       Alert.alert(t('alertFailed'), t('alertTxSaveFailed'));
     });

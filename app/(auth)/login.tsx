@@ -5,11 +5,13 @@ import {
 import { useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
 export default function LoginScreen() {
   const { signInWithGoogle, signInDevGuest } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -18,7 +20,7 @@ export default function LoginScreen() {
     try {
       await signInWithGoogle();
     } catch (e: any) {
-      Alert.alert('Login Gagal', e?.message || 'Coba lagi.');
+      Alert.alert(t('alertLoginFailed'), e?.message || t('alertFailed'));
     } finally {
       clearTimeout(timeout);
       setLoading(false);
@@ -54,7 +56,7 @@ export default function LoginScreen() {
           />
         </View>
         <Text style={s.title}>DompetBareng</Text>
-        <Text style={s.subtitle}>Manajemen keuangan bersama{'\n'}untuk keluarga & organisasi</Text>
+        <Text style={s.subtitle}>{t('loginSubtitle')}</Text>
       </View>
 
       {/* Clay bottom sheet */}

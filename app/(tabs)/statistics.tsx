@@ -9,7 +9,8 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,19 +45,31 @@ export default function StatisticsScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   // Flexible date filter (replaces old selectedMonth)
-  const nowDate = new Date();
-  const nowMonth = nowDate.getMonth();
-  const nowYear = nowDate.getFullYear();
-  const daysInNowMonth = new Date(nowYear, nowMonth + 1, 0).getDate();
+  const getDefaultFilter = useCallback((): DateFilterState => {
+    const d = new Date();
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    const days = new Date(y, m + 1, 0).getDate();
+    return {
+      type: 'month',
+      label: `${MONTHS[m]} ${y}`,
+      monthIndex: m,
+      year: y,
+      startDate: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+      endDate: `${y}-${String(m + 1).padStart(2, '0')}-${String(days).padStart(2, '0')}`,
+    };
+  }, [MONTHS]);
 
-  const [dateFilter, setDateFilter] = useState<DateFilterState>({
-    type: 'month',
-    label: `${MONTHS[nowMonth]} ${nowYear}`,
-    monthIndex: nowMonth,
-    year: nowYear,
-    startDate: `${nowYear}-${String(nowMonth + 1).padStart(2, '0')}-01`,
-    endDate: `${nowYear}-${String(nowMonth + 1).padStart(2, '0')}-${String(daysInNowMonth).padStart(2, '0')}`,
-  });
+  const [dateFilter, setDateFilter] = useState<DateFilterState>(() => getDefaultFilter());
+
+  // Refresh default month filter when screen comes back into focus
+  // so stale month/year doesn't linger across midnight or month boundaries
+  useFocusEffect(useCallback(() => {
+    setDateFilter(prev => {
+      if (prev.type !== 'month') return prev; // user picked a custom range — don't clobber
+      return getDefaultFilter();
+    });
+  }, [getDefaultFilter]));
 
   const filtered = useMemo(() => {
     if (!activeWorkspace) return [];
@@ -137,7 +150,7 @@ export default function StatisticsScreen() {
     const raw = budgetAmount.replace(/[^0-9]/g, '');
     const num = parseInt(raw, 10);
     if (!num || num <= 0) {
-      Alert.alert('Perhatian', 'Masukkan nominal anggaran yang valid (lebih dari 0).');
+      Alert.alert(t('alertAttention'), t('alertBudgetAmountInvalid'));
       return;
     }
 
@@ -167,7 +180,7 @@ export default function StatisticsScreen() {
         setEditingBudget(null);
         setBudgetAmount('');
       } else {
-        Alert.alert('Gagal', 'Gagal menghapus batas anggaran.');
+        Alert.alert(t('alertFailed'), t('alertDeleteBudgetFailed'));
       }
     };
 
@@ -437,7 +450,7 @@ export default function StatisticsScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                           <View style={[s.budgetStatusBadge, { backgroundColor: isOver ? Colors.expenseSoft : isWarning ? '#FFF3E0' : Colors.savingsSoft }]}>
                             <Text style={[s.budgetStatusText, { color: barColor }]}>
-                              {isOver ? `Overbudget (+${pct - 100}%)` : `${pct}%`}
+                              {isOver ? `${t('budgetOverbudget')} (+${pct - 100}%)` : `${pct}%`}
                             </Text>
                           </View>
                           {isAdmin && (
@@ -571,7 +584,7 @@ export default function StatisticsScreen() {
         </ScrollView>
 
         {/* Nominal input */}
-        <Text style={s.inputSectionLabel}>Nominal Batas Anggaran</Text>
+        <Text style={s.inputSectionLabel}>{t('labelBudgetAmount')}</Text>
         <TextInput
           style={s.sheetInput}
           value={budgetAmount}

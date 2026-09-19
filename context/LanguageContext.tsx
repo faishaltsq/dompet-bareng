@@ -27,6 +27,7 @@ const translations = {
     saveBtn: 'Simpan',
     close: 'Tutup',
     cancel: 'Batal',
+    delete: 'Hapus',
     byAuthor: 'oleh',
     today: 'Hari Ini',
     thisWeek: 'Minggu Ini',
@@ -219,6 +220,144 @@ const translations = {
     alertTxSaveFailed: 'Transaksi gagal disimpan. Coba lagi.',
     alertAmountInvalid: 'Masukkan nominal yang valid.',
     alertAttention: 'Perhatian',
+
+    // Budget health badges
+    budgetHealthy: 'Sehat',
+    budgetWarning: 'Waspada',
+    budgetCritical: 'Kritis',
+
+    // Budget overbudget label
+    budgetOverbudget: 'Overbudget',
+    labelBudgetAmount: 'Nominal Batas Anggaran',
+
+    // Transaction detail labels
+    labelRecordedAt: 'Dicatat Pada',
+    labelNote: 'Catatan',
+    labelRecordedBy: 'Dicatat oleh',
+    labelAmount: 'Nominal',
+    labelReceiptPhoto: 'Foto Struk / Nota',
+    labelTapZoom: 'Tap untuk memperbesar',
+    labelTapClose: 'Tap untuk menutup',
+    labelAmountRp: 'Nominal (Rp)',
+    labelMemberSuffix: '(Kamu)',
+
+    // Transaction detail header
+    detailTransactionTitle: 'Detail Transaksi',
+
+    // Alert: create wallet failed
+    alertCreateWalletFailed: 'Tidak dapat membuat dompet. Coba lagi.',
+
+    // Alert: cannot change wallet name
+    alertRenameWalletFailed: 'Tidak dapat mengubah nama dompet.',
+
+    // Alert: cannot upload workspace image
+    alertUploadImageFailed: 'Tidak dapat mengunggah gambar. Pastikan bucket storage aktif.',
+
+    // Alert: profile name empty
+    alertProfileNameEmpty: 'Nama profil tidak boleh kosong.',
+
+    // Alert: category empty
+    alertCategoryEmpty: 'Kategori transaksi tidak boleh kosong.',
+
+    // Alert: amount must be positive
+    alertAmountPositive: 'Nominal harus lebih dari 0.',
+
+    // Alert: delete budget failed
+    alertDeleteBudgetFailed: 'Gagal menghapus batas anggaran.',
+
+    // Alert: budget amount invalid
+    alertBudgetAmountInvalid: 'Masukkan nominal anggaran yang valid (lebih dari 0).',
+
+    // Alert: join input empty
+    alertJoinInputEmpty: 'Tempel link atau kode undangan terlebih dahulu.',
+
+    // Alert: join format invalid
+    alertJoinFormatInvalid: 'Format link atau kode undangan tidak valid.',
+
+    // Alert: sign out confirmation
+    alertSignOutTitle: 'Keluar Akun',
+    alertSignOutBody: 'Apakah kamu yakin ingin keluar?',
+    btnSignOut: 'Keluar',
+
+    // Alert: share login required
+    alertLoginRequired: 'Login Diperlukan 🔐',
+    alertLoginRequiredBody: 'Kamu harus masuk dengan akun Google terlebih dahulu sebelum dapat mengundang anggota ke dompet ini.',
+    btnLoginNow: 'Masuk Sekarang',
+
+    // Alert: daily reminder
+    alertReminderActive: 'Aktif! 🔔',
+    alertReminderBody: 'Pengingat harian dijadwalkan setiap jam 20:00.',
+
+    // Alert: notification web
+    alertNotifWebTitle: 'Info',
+    alertNotifWebBody: 'Notifikasi lokal hanya tersedia di aplikasi Android & iOS.',
+
+    // Alert: login failed (login screen)
+    alertLoginFailed: 'Login Gagal',
+
+    // Placeholder texts
+    placeholderProfileName: 'Contoh: Budi Pratama',
+    placeholderWalletName: 'Nama dompet baru',
+    placeholderJoinWallet: 'https://dompet-bareng.vercel.app/invite/... atau kode token',
+    placeholderTxNote: 'Keterangan transaksi...',
+
+    // Offline banner
+    offlineBanner: '⚡ Tidak ada koneksi internet',
+
+    // Invite screen
+    inviteCheckingLink: 'Memeriksa tautan undangan...',
+    inviteCannotJoinTitle: 'Tidak Dapat Bergabung',
+    inviteTokenNotFound: 'Token undangan tidak ditemukan.',
+    inviteLinkInvalid: 'Tautan undangan tidak valid atau masa berlakunya sudah habis.',
+    inviteWalletNotFound: 'Data dompet tidak ditemukan.',
+    inviteLinkError: 'Terjadi kesalahan memuat tautan.',
+    inviteTitle: 'Undangan Bergabung',
+    inviteLeadDesc: 'Kamu diundang untuk mengelola keuangan bersama di dompet ini.',
+    inviteAccountConnected: 'Akun Terhubung',
+    inviteJoinAsBody: 'Kamu akan bergabung sebagai anggota menggunakan akun di atas.',
+    inviteLoginRequired: 'Login Diperlukan',
+    inviteLoginBody: 'Untuk bergabung dengan dompet bersama orang lain, kamu harus login dengan akun Google agar identitasmu terverifikasi dan transaksi tersinkronisasi.',
+    inviteBtnOpenApp: '📱 Buka di Aplikasi',
+    inviteDividerText: 'atau gunakan browser',
+    inviteBtnJoinBrowser: 'Gabung via Browser',
+    inviteBtnJoinGoogle: 'Masuk dengan Google (Browser)',
+    inviteBtnJoin: 'Gabung ke Dompet Ini',
+    inviteBtnSignInGoogle: 'Masuk dengan Google',
+    inviteBackToHome: 'Kembali ke Beranda',
+    alertInviteJoinFailed: 'Tidak dapat bergabung. Pastikan kamu memiliki izin atau tautan belum kedaluwarsa.',
+    alertGoogleLoginFailed: 'Terjadi kesalahan saat login Google.',
+
+    // Screen title in header
+    screenTitleJoinWorkspace: 'Gabung Workspace',
+
+    // OTA update modal texts
+    otaChecking: 'Memeriksa Update...',
+    otaDownloading: 'Mengunduh Update...',
+    otaDownloadingBody: 'Update ditemukan dan sedang diunduh. Aplikasi akan restart otomatis.',
+    otaCheckingBody: 'Menghubungi server Expo untuk memeriksa versi terbaru...',
+    otaTitleUpdated: 'Update Berhasil!',
+    otaTitleNoUpdate: 'Sudah Versi Terbaru',
+    otaTitleInfo: 'Info',
+    otaTitleError: 'Gagal Memeriksa Update',
+
+    // Mascot overlay UI
+    mascotLoading: 'Otter sedang memikirkan dompetmu...',
+    mascotQuickAsk: 'TANYA CEPAT',
+    mascotLastPrompt: 'Pertanyaan kamu:',
+    mascotQuickNote: '⚡ Catat Cepat',
+    mascotCategoryAmount: 'Kategori / Nominal:',
+    mascotAddToForm: '＋ Masukkan ke Form Transaksi',
+    mascotTxDetected: 'Transaksi terdeteksi!',
+    mascotPressToSave: 'Tekan tombol di bawah untuk simpan ya!',
+    mascotAiChecking: 'Mengecek koneksi Otter AI (maks 15 detik)...',
+    mascotAiOffline: 'Otter Finansial AI sedang maintenance',
+    mascotAiOfflineSub: 'Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!',
+    mascotRetryCheck: '🔄 Cek',
+    mascotInputPlaceholder: 'Ketik transaksi / tanya keuangan...',
+    mascotAccessLabel: 'Buka asisten keuangan Otter Finansial',
+
+    // Login screen subtitle
+    loginSubtitle: 'Manajemen keuangan bersama\nuntuk keluarga & organisasi',
   },
   en: {
     // Navigation / Tabs
@@ -241,6 +380,7 @@ const translations = {
     saveBtn: 'Save',
     close: 'Close',
     cancel: 'Cancel',
+    delete: 'Delete',
     byAuthor: 'by',
     today: 'Today',
     thisWeek: 'This Week',
@@ -433,6 +573,144 @@ const translations = {
     alertTxSaveFailed: 'Failed to save transaction. Please try again.',
     alertAmountInvalid: 'Please enter a valid amount.',
     alertAttention: 'Attention',
+
+    // Budget health badges
+    budgetHealthy: 'Healthy',
+    budgetWarning: 'Caution',
+    budgetCritical: 'Critical',
+
+    // Budget overbudget label
+    budgetOverbudget: 'Overbudget',
+    labelBudgetAmount: 'Category Budget Limit',
+
+    // Transaction detail labels
+    labelRecordedAt: 'Recorded At',
+    labelNote: 'Note',
+    labelRecordedBy: 'Recorded by',
+    labelAmount: 'Amount',
+    labelReceiptPhoto: 'Receipt / Bill Photo',
+    labelTapZoom: 'Tap to enlarge',
+    labelTapClose: 'Tap to close',
+    labelAmountRp: 'Amount (Rp)',
+    labelMemberSuffix: '(You)',
+
+    // Transaction detail header
+    detailTransactionTitle: 'Transaction Details',
+
+    // Alert: create wallet failed
+    alertCreateWalletFailed: 'Failed to create wallet. Please try again.',
+
+    // Alert: cannot change wallet name
+    alertRenameWalletFailed: 'Failed to rename wallet.',
+
+    // Alert: cannot upload workspace image
+    alertUploadImageFailed: 'Failed to upload image. Ensure storage bucket is active.',
+
+    // Alert: profile name empty
+    alertProfileNameEmpty: 'Profile name cannot be empty.',
+
+    // Alert: category empty
+    alertCategoryEmpty: 'Transaction category cannot be empty.',
+
+    // Alert: amount must be positive
+    alertAmountPositive: 'Amount must be greater than 0.',
+
+    // Alert: delete budget failed
+    alertDeleteBudgetFailed: 'Failed to delete budget limit.',
+
+    // Alert: budget amount invalid
+    alertBudgetAmountInvalid: 'Please enter a valid budget amount (greater than 0).',
+
+    // Alert: join input empty
+    alertJoinInputEmpty: 'Please paste an invite link or token code first.',
+
+    // Alert: join format invalid
+    alertJoinFormatInvalid: 'Invalid invite link or token format.',
+
+    // Alert: sign out confirmation
+    alertSignOutTitle: 'Sign Out',
+    alertSignOutBody: 'Are you sure you want to sign out?',
+    btnSignOut: 'Sign Out',
+
+    // Alert: share login required
+    alertLoginRequired: 'Login Required 🔐',
+    alertLoginRequiredBody: 'You must sign in with a Google account before you can invite members to this wallet.',
+    btnLoginNow: 'Sign In Now',
+
+    // Alert: daily reminder
+    alertReminderActive: 'Active! 🔔',
+    alertReminderBody: 'Daily reminder scheduled every day at 20:00.',
+
+    // Alert: notification web
+    alertNotifWebTitle: 'Info',
+    alertNotifWebBody: 'Local notifications are only available on Android & iOS apps.',
+
+    // Alert: login failed (login screen)
+    alertLoginFailed: 'Sign In Failed',
+
+    // Placeholder texts
+    placeholderProfileName: 'e.g., Alex Johnson',
+    placeholderWalletName: 'New wallet name',
+    placeholderJoinWallet: 'https://dompet-bareng.vercel.app/invite/... or token code',
+    placeholderTxNote: 'Transaction description...',
+
+    // Offline banner
+    offlineBanner: '⚡ No internet connection',
+
+    // Invite screen
+    inviteCheckingLink: 'Checking invite link...',
+    inviteCannotJoinTitle: 'Unable to Join',
+    inviteTokenNotFound: 'Invite token not found.',
+    inviteLinkInvalid: 'Invite link is invalid or has expired.',
+    inviteWalletNotFound: 'Wallet data not found.',
+    inviteLinkError: 'An error occurred loading the invite link.',
+    inviteTitle: 'Join Invitation',
+    inviteLeadDesc: 'You have been invited to manage finances together in this wallet.',
+    inviteAccountConnected: 'Account Connected',
+    inviteJoinAsBody: 'You will join as a member using the account above.',
+    inviteLoginRequired: 'Sign In Required',
+    inviteLoginBody: 'To join a shared wallet with others, sign in with your Google account so your identity is verified and transactions sync.',
+    inviteBtnOpenApp: '📱 Open in App',
+    inviteDividerText: 'or use browser',
+    inviteBtnJoinBrowser: 'Join via Browser',
+    inviteBtnJoinGoogle: 'Sign In with Google (Browser)',
+    inviteBtnJoin: 'Join This Wallet',
+    inviteBtnSignInGoogle: 'Sign In with Google',
+    inviteBackToHome: 'Back to Home',
+    alertInviteJoinFailed: 'Unable to join. Ensure you have permission or the link has not expired.',
+    alertGoogleLoginFailed: 'An error occurred while signing in with Google.',
+
+    // Screen title in header
+    screenTitleJoinWorkspace: 'Join Workspace',
+
+    // OTA update modal texts
+    otaChecking: 'Checking for Updates...',
+    otaDownloading: 'Downloading Update...',
+    otaDownloadingBody: 'Update found and downloading. App will restart automatically.',
+    otaCheckingBody: 'Connecting to Expo server to check for latest version...',
+    otaTitleUpdated: 'Update Succeeded!',
+    otaTitleNoUpdate: 'Already Up to Date',
+    otaTitleInfo: 'Info',
+    otaTitleError: 'Failed to Check for Updates',
+
+    // Mascot overlay UI
+    mascotLoading: 'Otter is analyzing your wallet...',
+    mascotQuickAsk: 'QUICK ASK',
+    mascotLastPrompt: 'Your question:',
+    mascotQuickNote: '⚡ Quick Record',
+    mascotCategoryAmount: 'Category / Amount:',
+    mascotAddToForm: '＋ Add to Transaction Form',
+    mascotTxDetected: 'Transaction detected!',
+    mascotPressToSave: 'Press the button below to save!',
+    mascotAiChecking: 'Checking Otter AI connection (up to 15s)...',
+    mascotAiOffline: 'Otter Financial AI is in maintenance',
+    mascotAiOfflineSub: "Don't worry, I can still analyze your wallet using the chips above!",
+    mascotRetryCheck: '🔄 Check',
+    mascotInputPlaceholder: 'Type transaction / ask about finances...',
+    mascotAccessLabel: 'Open Otter Financial assistant',
+
+    // Login screen subtitle
+    loginSubtitle: 'Shared financial management\nfor family & organizations',
   },
 };
 

@@ -39,7 +39,7 @@ import { formatRupiah, getCategoryMeta } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import {
   evaluateCompanion,
-  QUICK_CHIPS,
+  getQuickChips,
   MASCOT_IMAGES,
   CompanionState,
   FinancialSnapshot,
@@ -56,7 +56,7 @@ export function MascotOverlay() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeWorkspace, transactions, summary } = useWorkspace();
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
 
   const snap: FinancialSnapshot = useMemo(() => {
     const byCategory = transactions.reduce<Record<string, number>>((acc, t) => {
@@ -72,7 +72,7 @@ export function MascotOverlay() {
     };
   }, [transactions, summary]);
 
-  const companion: CompanionState = useMemo(() => evaluateCompanion(snap), [snap]);
+  const companion: CompanionState = useMemo(() => evaluateCompanion(snap, language), [snap, language]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [speech, setSpeech] = useState<string>(companion.greeting);
@@ -329,8 +329,8 @@ export function MascotOverlay() {
       // AI gagal → fallback ke template
       setAiOnline(false);
       const reply = chipId
-        ? getFallbackChipResponse(chipId, snap, companion.mood)
-        : getFallbackFreeResponse(promptText, snap, companion.mood);
+        ? getFallbackChipResponse(chipId, snap, companion.mood, language)
+        : getFallbackFreeResponse(promptText, snap, companion.mood, language);
       setSpeech(reply);
     } finally {
       setLoading(false);
@@ -351,7 +351,7 @@ export function MascotOverlay() {
         setParsedTx(parsed);
         const meta = getCategoryMeta(parsed.category);
         setSpeech(
-          `${meta.emoji} Transaksi terdeteksi!\n${parsed.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\nTekan tombol di bawah untuk simpan ya!`
+          `${meta.emoji} ${t('mascotTxDetected')}\n${parsed.type === 'expense' ? t('expense') : t('income')} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\n${t('mascotPressToSave')}`
         );
         setLastUserPrompt(text);
         setLoading(false);
@@ -419,7 +419,7 @@ export function MascotOverlay() {
           activeOpacity={0.85}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel="Buka asisten keuangan Otter Finansial"
+          accessibilityLabel={t('mascotAccessLabel')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           onPress={() => {
             setTooltipText(null);
@@ -511,7 +511,7 @@ export function MascotOverlay() {
                 {loading ? (
                   <View style={s.loadingRow}>
                     <ActivityIndicator size="small" color={companion.color} />
-                    <Text style={s.loadingText}>Otter sedang memikirkan dompetmu...</Text>
+                    <Text style={s.loadingText}>{t('mascotLoading')}</Text>
                   </View>
                 ) : (
                   <Text style={s.speechText}>{speech}</Text>
@@ -519,7 +519,7 @@ export function MascotOverlay() {
 
                 {lastUserPrompt && (
                   <View style={s.lastPromptRow}>
-                    <Text style={s.lastPromptLabel}>Pertanyaan kamu:</Text>
+                    <Text style={s.lastPromptLabel}>{t('mascotLastPrompt')}</Text>
                     <Text style={s.lastPromptText} numberOfLines={1}>
                       "{lastUserPrompt}"
                     </Text>
@@ -530,27 +530,27 @@ export function MascotOverlay() {
               {parsedTx && (
                 <Animated.View entering={FadeInUp.duration(250)} style={s.actionCard}>
                   <View style={s.actionCardHeader}>
-                    <Text style={s.actionCardTitle}>⚡ Catat Cepat</Text>
+                    <Text style={s.actionCardTitle}>{t('mascotQuickNote')}</Text>
                     <TouchableOpacity onPress={() => setParsedTx(null)}>
                       <Text style={s.actionCardClose}>✕</Text>
                     </TouchableOpacity>
                   </View>
                   <View style={s.actionDetailRow}>
-                    <Text style={s.actionDetailLabel}>Kategori / Nominal:</Text>
+                    <Text style={s.actionDetailLabel}>{t('mascotCategoryAmount')}</Text>
                     <Text style={s.actionDetailValueBold}>
                       {parsedTx.category} • {formatRupiah(parsedTx.amount)}
                     </Text>
                   </View>
                   <TouchableOpacity style={s.actionCardBtn} onPress={handleApplyParsed}>
-                    <Text style={s.actionCardBtnText}>＋ Masukkan ke Form Transaksi</Text>
+                    <Text style={s.actionCardBtnText}>{t('mascotAddToForm')}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               )}
 
               <View style={s.chipsWrap}>
-                <Text style={s.chipsHeader}>TANYA CEPAT</Text>
+                <Text style={s.chipsHeader}>{t('mascotQuickAsk')}</Text>
                 <View style={s.chipsRow}>
-                  {QUICK_CHIPS.map(chip => (
+                  {getQuickChips(language).map(chip => (
                     <TouchableOpacity
                       key={chip.id}
                       style={s.chipBtn}
@@ -568,15 +568,15 @@ export function MascotOverlay() {
               {aiOnline === null && (
                 <View style={s.aiBanner}>
                   <ActivityIndicator size="small" color={Colors.textMuted} />
-                  <Text style={s.aiBannerText}>Mengecek koneksi Otter AI (maks 15 detik)...</Text>
+                  <Text style={s.aiBannerText}>{t('mascotAiChecking')}</Text>
                 </View>
               )}
               {aiOnline === false && (
                 <View style={[s.aiBanner, s.aiBannerOffline]}>
                   <Text style={s.aiBannerIcon}>🔧</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>Otter Finansial AI sedang maintenance</Text>
-                    <Text style={s.aiBannerSub}>Tenang, aku tetap bisa analisis dompetmu pakai chip di atas!</Text>
+                    <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>{t('mascotAiOffline')}</Text>
+                    <Text style={s.aiBannerSub}>{t('mascotAiOfflineSub')}</Text>
                     {aiDebugUrl ? (
                       <Text style={{ fontSize: 9, color: '#BF360C', opacity: 0.7, marginTop: 2 }} numberOfLines={1}>
                         URL: {aiDebugUrl}
@@ -592,7 +592,7 @@ export function MascotOverlay() {
                     {checkingAi ? (
                       <ActivityIndicator size="small" color="#E65100" />
                     ) : (
-                      <Text style={s.retryBtnText}>🔄 Cek</Text>
+                      <Text style={s.retryBtnText}>{t('mascotRetryCheck')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -603,7 +603,7 @@ export function MascotOverlay() {
             <View style={s.inputDock}>
               <TextInput
                 style={s.inputField}
-                placeholder="Ketik transaksi / tanya keuangan..."
+                placeholder={t('mascotInputPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 value={input}
                 onChangeText={setInput}

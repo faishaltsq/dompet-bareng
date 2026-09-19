@@ -104,13 +104,13 @@ export default function SettingsScreen() {
 
   const handleToggleReminder = async (val: boolean) => {
     if (Platform.OS === 'web') {
-      Alert.alert('Info', 'Notifikasi lokal hanya tersedia di aplikasi Android & iOS.');
+      Alert.alert(t('alertNotifWebTitle'), t('alertNotifWebBody'));
       return;
     }
     setDailyReminder(val);
     if (val) {
       await scheduleDailyReminder(20, 0);
-      Alert.alert('Aktif! 🔔', 'Pengingat harian dijadwalkan setiap jam 20:00.');
+      Alert.alert(t('alertReminderActive'), t('alertReminderBody'));
     } else {
       await cancelAllReminders();
     }
@@ -179,7 +179,7 @@ export default function SettingsScreen() {
       setLoggingIn(true);
       await signInWithGoogle();
     } catch (e: any) {
-      Alert.alert('Gagal Masuk', e?.message || 'Terjadi kesalahan saat masuk dengan Google.');
+      Alert.alert(t('alertFailed'), e?.message || t('alertGoogleLoginFailed'));
     } finally {
       setLoggingIn(false);
     }
@@ -188,7 +188,7 @@ export default function SettingsScreen() {
   const handleSaveProfileName = async () => {
     const trimmed = profileNameInput.trim();
     if (!trimmed) {
-      Alert.alert('Perhatian', 'Nama profil tidak boleh kosong.');
+      Alert.alert(t('alertAttention'), t('alertProfileNameEmpty'));
       return;
     }
     setSavingProfileName(true);
@@ -230,7 +230,7 @@ export default function SettingsScreen() {
       );
       setUploadingImage(false);
       if (!url) {
-        Alert.alert('Gagal', 'Tidak dapat mengunggah gambar. Pastikan bucket storage aktif.');
+        Alert.alert(t('alertFailed'), t('alertUploadImageFailed'));
       }
     }
   };
@@ -241,7 +241,7 @@ export default function SettingsScreen() {
     const ok = await updateWorkspace(activeWorkspace.id, editWsName.trim());
     setSavingWsEdit(false);
     if (ok) setEditWsModalVisible(false);
-    else Alert.alert('Gagal', 'Tidak dapat mengubah nama dompet.');
+    else Alert.alert(t('alertFailed'), t('alertRenameWalletFailed'));
   };
 
   const handleDeleteWorkspace = () => {
@@ -321,12 +321,12 @@ export default function SettingsScreen() {
   const handleShare = async () => {
     if (!isRegisteredUser) {
       Alert.alert(
-        'Login Diperlukan 🔐',
-        'Kamu harus masuk dengan akun Google terlebih dahulu sebelum dapat mengundang anggota ke dompet ini.',
+        t('alertLoginRequired'),
+        t('alertLoginRequiredBody'),
         [
-          { text: 'Batal', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Masuk Sekarang',
+            text: t('btnLoginNow'),
             onPress: () => router.push('/(auth)/login' as any),
           },
         ]
@@ -341,12 +341,12 @@ export default function SettingsScreen() {
   const handleJoinWithInput = () => {
     const raw = joinInput.trim();
     if (!raw) {
-      Alert.alert('Perhatian', 'Tempel link atau kode undangan terlebih dahulu.');
+      Alert.alert(t('alertAttention'), t('alertJoinInputEmpty'));
       return;
     }
     const token = raw.replace(/^.*invite\//i, '').replace(/[^a-zA-Z0-9]/g, '');
     if (!token) {
-      Alert.alert('Gagal', 'Format link atau kode undangan tidak valid.');
+      Alert.alert(t('alertFailed'), t('alertJoinFormatInvalid'));
       return;
     }
     setJoinModalVisible(false);
@@ -357,13 +357,13 @@ export default function SettingsScreen() {
   const handleSignOut = () => {
     if (Platform.OS === 'web') {
       // Alert.alert tidak support tombol di web
-      if (window.confirm('Keluar Akun — Apakah kamu yakin ingin keluar?')) {
+      if (window.confirm(`${t('alertSignOutTitle')} — ${t('alertSignOutBody')}`)) {
         signOut();
       }
     } else {
-      Alert.alert('Keluar Akun', 'Apakah kamu yakin ingin keluar?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Keluar', style: 'destructive', onPress: signOut },
+      Alert.alert(t('alertSignOutTitle'), t('alertSignOutBody'), [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('btnSignOut'), style: 'destructive', onPress: signOut },
       ]);
     }
   };
@@ -647,7 +647,7 @@ export default function SettingsScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.menuTitle}>
-                        {isMe ? `${memberName} (Kamu)` : memberName}
+                        {isMe ? `${memberName} ${t('labelMemberSuffix')}` : memberName}
                       </Text>
                       <Text style={s.menuDesc}>
                         {m.email ? m.email : `Bergabung ${new Date(m.joined_at).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US')}`}
@@ -783,7 +783,7 @@ export default function SettingsScreen() {
           style={s.sheetInput}
           value={profileNameInput}
           onChangeText={setProfileNameInput}
-          placeholder="Contoh: Budi Pratama"
+          placeholder={t('placeholderProfileName')}
           placeholderTextColor={Colors.textMuted}
           autoFocus
         />
@@ -869,7 +869,7 @@ export default function SettingsScreen() {
           style={s.sheetInput}
           value={editWsName}
           onChangeText={setEditWsName}
-          placeholder="Nama dompet baru"
+          placeholder={t('placeholderWalletName')}
           placeholderTextColor={Colors.textMuted}
           autoFocus
         />
@@ -903,7 +903,7 @@ export default function SettingsScreen() {
           style={s.sheetInput}
           value={joinInput}
           onChangeText={setJoinInput}
-          placeholder="https://dompet-bareng.vercel.app/invite/... atau kode token"
+          placeholder={t('placeholderJoinWallet')}
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -982,12 +982,12 @@ export default function SettingsScreen() {
           <View style={s.updateModalBody}>
             <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 16 }} />
             <Text style={s.updateModalTitle}>
-              {updatePhase === 'downloading' ? 'Mengunduh Update...' : 'Memeriksa Update...'}
+              {updatePhase === 'downloading' ? t('otaDownloading') : t('otaChecking')}
             </Text>
             <Text style={s.updateModalSub}>
               {updatePhase === 'downloading'
-                ? 'Update ditemukan dan sedang diunduh. Aplikasi akan restart otomatis.'
-                : 'Menghubungi server Expo untuk memeriksa versi terbaru...'}
+                ? t('otaDownloadingBody')
+                : t('otaCheckingBody')}
             </Text>
           </View>
         )}
@@ -995,10 +995,10 @@ export default function SettingsScreen() {
         {/* Done phase */}
         {updatePhase === 'done' && updateResult && (() => {
           const cfg = {
-            updated:       { icon: '🚀' as const, color: Colors.income,   title: 'Update Berhasil!',        bg: Colors.incomeSoft },
-            no_update:     { icon: '✅' as const, color: Colors.income,   title: 'Sudah Versi Terbaru',     bg: Colors.incomeSoft },
-            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: 'Info',                  bg: Colors.accentBlueSoft },
-            error:         { icon: '⚠️' as const, color: Colors.expense,  title: 'Gagal Memeriksa Update',  bg: Colors.expenseSoft },
+            updated:       { icon: '🚀' as const, color: Colors.income,   title: t('otaTitleUpdated'),        bg: Colors.incomeSoft },
+            no_update:     { icon: '✅' as const, color: Colors.income,   title: t('otaTitleNoUpdate'),     bg: Colors.incomeSoft },
+            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: t('otaTitleInfo'),                  bg: Colors.accentBlueSoft },
+            error:         { icon: '⚠️' as const, color: Colors.expense,  title: t('otaTitleError'),  bg: Colors.expenseSoft },
           }[updateResult.status] ?? { icon: 'ℹ️' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
 
           return (

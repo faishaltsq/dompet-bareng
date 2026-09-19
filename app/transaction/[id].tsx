@@ -99,16 +99,16 @@ export default function TransactionDetailScreen() {
   const handleSaveEdit = async () => {
     const cleanAmount = parseInt(editAmount.replace(/\D/g, ''), 10);
     if (isNaN(cleanAmount) || cleanAmount <= 0) {
-      Alert.alert('Perhatian', 'Nominal harus lebih dari 0.');
+      Alert.alert(t('alertAttention'), t('alertAmountPositive'));
       return;
     }
     if (!editCategory.trim()) {
-      Alert.alert('Perhatian', 'Kategori transaksi tidak boleh kosong.');
+      Alert.alert(t('alertAttention'), t('alertCategoryEmpty'));
       return;
     }
     const cleanDate = editDate.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
-      Alert.alert('Format Tanggal Salah', 'Gunakan format YYYY-MM-DD (contoh: 2026-09-15).');
+      Alert.alert(t('alertFailed'), t('dateFormatHint'));
       return;
     }
 
@@ -123,9 +123,9 @@ export default function TransactionDetailScreen() {
 
     if (ok) {
       setEditModalVisible(false);
-      Alert.alert('Berhasil ✅', t('updateTransactionSuccess'));
+      Alert.alert(t('alertSuccess'), t('updateTransactionSuccess'));
     } else {
-      Alert.alert('Gagal ⚠️', t('updateTransactionFailed'));
+      Alert.alert(t('alertFailed'), t('updateTransactionFailed'));
     }
   };
 
@@ -154,9 +154,9 @@ export default function TransactionDetailScreen() {
       t('deleteTransactionBtn'),
       t('deleteTransactionConfirm'),
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Hapus',
+          text: t('delete'),
           style: 'destructive',
           onPress: doDelete,
         },
@@ -166,7 +166,7 @@ export default function TransactionDetailScreen() {
 
   // Format jam dari created_at dan tanggal transaksi
   const createdAt = formatDateTime(tx.created_at);
-  const txDate = new Date(tx.transaction_date).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+  const txDate = new Date(tx.transaction_date + 'T00:00:00').toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -184,7 +184,7 @@ export default function TransactionDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Detail Transaksi</Text>
+        <Text style={s.headerTitle}>{t('detailTransactionTitle')}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -224,7 +224,7 @@ export default function TransactionDetailScreen() {
               color="#FFFFFF"
             />
             <Text style={s.heroBadgeText}>
-              {isIncome ? 'Pemasukan' : 'Pengeluaran'}
+              {isIncome ? t('income') : t('expense')}
             </Text>
           </View>
         </Animated.View>
@@ -250,7 +250,7 @@ export default function TransactionDetailScreen() {
           <View style={s.divider} />
           <DetailRow
             icon="time-outline"
-            label="Dicatat Pada"
+            label={t('labelRecordedAt')}
             value={createdAt}
             subValue={tx.updated_at ? `(${t('lastEditedAt')}: ${formatDateTime(tx.updated_at)})` : undefined}
           />
@@ -259,7 +259,7 @@ export default function TransactionDetailScreen() {
               <View style={s.divider} />
               <DetailRow
                 icon="document-text-outline"
-                label="Catatan"
+                label={t('labelNote')}
                 value={tx.description}
               />
             </>
@@ -267,13 +267,13 @@ export default function TransactionDetailScreen() {
           <View style={s.divider} />
           <DetailRow
             icon="person-outline"
-            label="Dicatat oleh"
-            value={tx.user_display_name || tx.user_email?.split('@')[0] || 'Anggota'}
+            label={t('labelRecordedBy')}
+            value={tx.user_display_name || tx.user_email?.split('@')[0] || t('roleMember')}
           />
           <View style={s.divider} />
           <DetailRow
             icon="cash-outline"
-            label="Nominal"
+            label={t('labelAmount')}
             value={formatRupiah(tx.amount)}
             valueColor={isIncome ? Colors.income : Colors.expense}
             valueBold
@@ -286,7 +286,7 @@ export default function TransactionDetailScreen() {
             <Animated.View entering={FadeIn.delay(160).duration(400)} style={s.receiptCard}>
               <View style={s.receiptCardHeader}>
                 <Ionicons name="image-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={s.receiptCardTitle}>Foto Struk / Nota</Text>
+                <Text style={s.receiptCardTitle}>{t('labelReceiptPhoto')}</Text>
               </View>
               <TouchableOpacity onPress={() => setReceiptZoom(true)} activeOpacity={0.85}>
                 <Image
@@ -296,7 +296,7 @@ export default function TransactionDetailScreen() {
                   accessible={true}
                   accessibilityLabel="Foto struk transaksi, tap untuk memperbesar"
                 />
-                <Text style={{ textAlign: 'center', fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>Tap untuk memperbesar</Text>
+                <Text style={{ textAlign: 'center', fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>{t('labelTapZoom')}</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -308,7 +308,7 @@ export default function TransactionDetailScreen() {
                   style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 }}
                   resizeMode="contain"
                 />
-                <Text style={{ color: '#fff', marginTop: 12, fontSize: 13, opacity: 0.7 }}>Tap untuk menutup</Text>
+                <Text style={{ color: '#fff', marginTop: 12, fontSize: 13, opacity: 0.7 }}>{t('labelTapClose')}</Text>
               </Pressable>
             </Modal>
           </>
@@ -353,7 +353,7 @@ export default function TransactionDetailScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
           {/* Nominal */}
-          <Text style={s.inputLabel}>Nominal (Rp)</Text>
+          <Text style={s.inputLabel}>{t('labelAmountRp')}</Text>
           <View style={s.amountInputRow}>
             <Text style={s.amountPrefix}>Rp</Text>
             <TextInput
@@ -454,12 +454,12 @@ export default function TransactionDetailScreen() {
           <Text style={s.dateHint}>{t('dateFormatHint')}</Text>
 
           {/* Catatan (Opsional) */}
-          <Text style={[s.inputLabel, { marginTop: 16 }]}>Catatan (Opsional)</Text>
+          <Text style={[s.inputLabel, { marginTop: 16 }]}>{t('noteOptional')}</Text>
           <TextInput
             style={s.textInput}
             value={editDesc}
             onChangeText={setEditDesc}
-            placeholder="Keterangan transaksi..."
+            placeholder={t('placeholderTxNote')}
             placeholderTextColor={Colors.textMuted}
             maxLength={100}
           />
@@ -502,6 +502,7 @@ function DetailRow({
   subValue?: string;
   onPress?: () => void;
 }) {
+  const { t } = useLanguage();
   const content = (
     <View style={dr.row}>
       <View style={dr.iconWrap}>
@@ -512,7 +513,7 @@ function DetailRow({
           <Text style={dr.label}>{label}</Text>
           {isEdited && (
             <View style={dr.editedTag}>
-              <Text style={dr.editedTagText}>diubah</Text>
+              <Text style={dr.editedTagText}>{t('editedTag')}</Text>
             </View>
           )}
         </View>

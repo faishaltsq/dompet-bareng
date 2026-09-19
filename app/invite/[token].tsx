@@ -7,12 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
 export default function JoinWorkspaceScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const { user, signInWithGoogle, signInDevGuest } = useAuth();
   const { joinWorkspace } = useWorkspace();
 
@@ -27,7 +29,7 @@ export default function JoinWorkspaceScreen() {
 
   useEffect(() => {
     if (!token) {
-      setErrorMsg('Token undangan tidak ditemukan.');
+      setErrorMsg(t('inviteTokenNotFound'));
       setLoading(false);
       return;
     }
@@ -41,15 +43,15 @@ export default function JoinWorkspaceScreen() {
         .single();
 
       if (error || !data) {
-        setErrorMsg('Tautan undangan tidak valid atau masa berlakunya sudah habis.');
+        setErrorMsg(t('inviteLinkInvalid'));
       } else {
         const ws = Array.isArray(data.workspaces) ? data.workspaces[0] : (data.workspaces as any);
         if (ws && ws.id) {
-          setWorkspace({ id: ws.id, name: ws.name || 'Dompet Bersama' });
+          setWorkspace({ id: ws.id, name: ws.name || 'DompetBareng' });
         } else if (data.workspace_id) {
-          setWorkspace({ id: data.workspace_id, name: 'Dompet Bersama' });
+          setWorkspace({ id: data.workspace_id, name: 'DompetBareng' });
         } else {
-          setErrorMsg('Data dompet tidak ditemukan.');
+          setErrorMsg(t('inviteWalletNotFound'));
         }
 
         // Khusus Web di mobile browser: auto-redirect ke native app via custom scheme
@@ -74,7 +76,7 @@ export default function JoinWorkspaceScreen() {
       setLoggingIn(true);
       await signInWithGoogle();
     } catch (e: any) {
-      Alert.alert('Gagal Login', e?.message || 'Terjadi kesalahan saat login Google.');
+      Alert.alert(t('alertFailed'), e?.message || t('alertGoogleLoginFailed'));
     } finally {
       setLoggingIn(false);
     }
@@ -91,10 +93,10 @@ export default function JoinWorkspaceScreen() {
         await new Promise(r => setTimeout(r, 300));
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Gagal', 'Tidak dapat bergabung. Pastikan kamu memiliki izin atau tautan belum kedaluwarsa.');
+        Alert.alert(t('alertFailed'), t('alertInviteJoinFailed'));
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Terjadi kesalahan sistem.');
+      Alert.alert(t('alertError'), e?.message || t('alertSystemError'));
     } finally {
       setJoining(false);
     }
@@ -104,7 +106,7 @@ export default function JoinWorkspaceScreen() {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Memeriksa tautan undangan...</Text>
+        <Text style={styles.loadingText}>{t('inviteCheckingLink')}</Text>
       </View>
     );
   }
@@ -113,10 +115,10 @@ export default function JoinWorkspaceScreen() {
     return (
       <View style={[styles.center, { paddingTop: insets.top, paddingHorizontal: 28 }]}>
         <Text style={{ fontSize: 54, marginBottom: 8 }}>⚠️</Text>
-        <Text style={styles.title}>Tidak Dapat Bergabung</Text>
-        <Text style={styles.desc}>{errorMsg ?? 'Terjadi kesalahan memuat tautan.'}</Text>
+        <Text style={styles.title}>{t('inviteCannotJoinTitle')}</Text>
+        <Text style={styles.desc}>{errorMsg ?? t('inviteLinkError')}</Text>
         <TouchableOpacity style={styles.outlineBtn} onPress={() => router.replace('/(tabs)')}>
-          <Text style={styles.outlineBtnText}>Kembali ke Beranda</Text>
+          <Text style={styles.outlineBtnText}>{t('inviteBackToHome')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -132,10 +134,10 @@ export default function JoinWorkspaceScreen() {
           <Text style={{ fontSize: 40 }}>👥</Text>
         </View>
 
-        <Text style={styles.headerSubtitle}>Undangan Bergabung</Text>
+        <Text style={styles.headerSubtitle}>{t('inviteTitle')}</Text>
         <Text style={styles.workspaceName}>{workspace.name}</Text>
         <Text style={styles.leadDesc}>
-          Kamu diundang untuk mengelola keuangan bersama di dompet ini.
+          {t('inviteLeadDesc')}
         </Text>
 
         {/* KARTU STATUS USER */}
@@ -144,21 +146,21 @@ export default function JoinWorkspaceScreen() {
             <View>
               <View style={styles.cardHeaderRow}>
                 <Text style={{ fontSize: 16 }}>✅</Text>
-                <Text style={styles.cardHeaderTitle}>Akun Terhubung</Text>
+                <Text style={styles.cardHeaderTitle}>{t('inviteAccountConnected')}</Text>
               </View>
               <Text style={styles.userEmailText}>{user?.email}</Text>
               <Text style={styles.cardSubText}>
-                Kamu akan bergabung sebagai anggota menggunakan akun di atas.
+                {t('inviteJoinAsBody')}
               </Text>
             </View>
           ) : (
             <View>
               <View style={styles.cardHeaderRow}>
                 <Text style={{ fontSize: 16 }}>🔐</Text>
-                <Text style={styles.cardHeaderTitle}>Login Diperlukan</Text>
+                <Text style={styles.cardHeaderTitle}>{t('inviteLoginRequired')}</Text>
               </View>
               <Text style={styles.cardSubText}>
-                Untuk bergabung dengan dompet bersama orang lain, kamu harus login dengan akun Google agar identitasmu terverifikasi dan transaksi tersinkronisasi.
+                {t('inviteLoginBody')}
               </Text>
             </View>
           )}
@@ -173,12 +175,12 @@ export default function JoinWorkspaceScreen() {
                 window.location.href = `dompetbareng://invite/${token}`;
               }}
             >
-              <Text style={styles.openAppBtnText}>📱 Buka di Aplikasi</Text>
+              <Text style={styles.openAppBtnText}>{t('inviteBtnOpenApp')}</Text>
             </TouchableOpacity>
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>atau gunakan browser</Text>
+              <Text style={styles.dividerText}>{t('inviteDividerText')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -191,7 +193,7 @@ export default function JoinWorkspaceScreen() {
                 {joining ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Gabung via Browser</Text>
+                  <Text style={styles.primaryBtnText}>{t('inviteBtnJoinBrowser')}</Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -205,7 +207,7 @@ export default function JoinWorkspaceScreen() {
                 ) : (
                   <>
                     <Text style={{ fontSize: 20 }}>🌐</Text>
-                    <Text style={styles.googleBtnText}>Masuk dengan Google (Browser)</Text>
+                    <Text style={styles.googleBtnText}>{t('inviteBtnJoinGoogle')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -220,7 +222,7 @@ export default function JoinWorkspaceScreen() {
             {joining ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.primaryBtnText}>Gabung ke Dompet Ini</Text>
+              <Text style={styles.primaryBtnText}>{t('inviteBtnJoin')}</Text>
             )}
           </TouchableOpacity>
         ) : (
@@ -235,7 +237,7 @@ export default function JoinWorkspaceScreen() {
               ) : (
                 <>
                   <Text style={{ fontSize: 20 }}>🌐</Text>
-                  <Text style={styles.googleBtnText}>Masuk dengan Google</Text>
+                  <Text style={styles.googleBtnText}>{t('inviteBtnSignInGoogle')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -257,7 +259,7 @@ export default function JoinWorkspaceScreen() {
         )}
 
         <TouchableOpacity style={styles.cancelBtn} onPress={() => router.replace('/(tabs)')}>
-          <Text style={styles.cancelBtnText}>Batal</Text>
+          <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
 
       </ScrollView>

@@ -213,7 +213,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                     <View>
                       <Text style={s.detailTitle}>{selectedNotif.title}</Text>
                       <Text style={s.detailTime}>
-                        {new Date(selectedNotif.created_at).toLocaleString('id-ID', {
+                        {new Date(selectedNotif.created_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
@@ -247,7 +247,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                 {selectedNotif.data?.reason ? (
                   <View style={s.reasonBox}>
                     <Text style={s.reasonLabel}>
-                      {language === 'id' ? 'Catatan dari Pengurus/Admin:' : 'Note from Admin:'}
+                      {t('adminNoteLabel')}
                     </Text>
                     <Text style={s.reasonText}>"{selectedNotif.data.reason}"</Text>
                     {selectedNotif.data?.admin_name ? (

@@ -63,7 +63,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (!error && data) {
         setNotifications(data as AppNotification[]);

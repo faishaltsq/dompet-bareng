@@ -66,7 +66,7 @@ function CreateWorkspaceModal({
 
       <TextInput
         style={s.sheetInput}
-        placeholder="Misal: Kas Keluarga, Tabungan Liburan"
+        placeholder={t('walletNamePlaceholder')}
         placeholderTextColor={Colors.textMuted}
         value={name}
         onChangeText={setName}
@@ -123,13 +123,13 @@ export default function HomeScreen() {
   const [period, setPeriod] = useState<PeriodFilter>('month');
 
   const googleAvatarUrl = avatarUrl;
-  const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Pengguna';
+  const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('userFallback');
   const userInitial = (displayName[0] || 'U').toUpperCase();
 
   const handleCreate = useCallback(async (name: string) => {
     const ws = await createWorkspace(name);
     if (ws) setShowCreate(false);
-    else Alert.alert('Gagal', 'Tidak dapat membuat dompet. Coba lagi.');
+    else Alert.alert(t('alertFailed'), t('alertCreateWalletFailed'));
   }, [createWorkspace]);
 
   const handleRefresh = async () => {
@@ -148,17 +148,17 @@ export default function HomeScreen() {
     };
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Apakah kamu yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.');
+      const confirmed = window.confirm(t('deleteTransactionConfirm'));
       if (confirmed) {
         doDelete();
       }
       return;
     }
 
-    Alert.alert('Hapus Transaksi', 'Tindakan ini tidak dapat dibatalkan.', [
-      { text: 'Batal', style: 'cancel' },
+    Alert.alert(t('deleteTransactionBtn'), t('deleteTransactionConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Hapus',
+        text: t('delete'),
         style: 'destructive',
         onPress: doDelete,
       },
@@ -332,7 +332,7 @@ export default function HomeScreen() {
                 <Text style={[s.budgetPercent, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>{budgetPercent}%</Text>
                 <View style={[s.budgetBadge, { backgroundColor: budgetPercent <= 50 ? 'rgba(16,185,129,0.25)' : budgetPercent <= 80 ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)' }]}>
                   <Text style={[s.budgetBadgeText, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>
-                    {budgetPercent <= 50 ? 'Sehat' : budgetPercent <= 80 ? 'Waspada' : 'Kritis'}
+                    {budgetPercent <= 50 ? t('budgetHealthy') : budgetPercent <= 80 ? t('budgetWarning') : t('budgetCritical')}
                   </Text>
                 </View>
               </View>
@@ -444,7 +444,7 @@ export default function HomeScreen() {
           const isIncome = item.type === 'income';
 
           return (
-            <Animated.View entering={FadeInUp.delay(index * 35).duration(300)}>
+            <Animated.View entering={FadeInUp.delay(Math.min(index, 10) * 35).duration(300)}>
               <TouchableOpacity
                 style={s.txItem}
                 onPress={() => router.push(`/transaction/${item.id}` as any)}
@@ -458,7 +458,7 @@ export default function HomeScreen() {
                 <View style={s.txDetails}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={s.txTitle}>{item.category}</Text>
-                    {Boolean(item.updated_at) && (
+                    {item.updated_at && item.updated_at !== item.created_at && (
                       <View style={s.editedTag}>
                         <Text style={s.editedTagText}>{t('editedTag')}</Text>
                       </View>
@@ -469,7 +469,7 @@ export default function HomeScreen() {
                   </Text>
                   {item.user_display_name || item.user_email ? (
                     <Text style={s.txAuthor} numberOfLines={1}>
-                      oleh {item.user_display_name || item.user_email?.split('@')[0]}
+                      {t('byAuthor')} {item.user_display_name || item.user_email?.split('@')[0]}
                     </Text>
                   ) : null}
                 </View>

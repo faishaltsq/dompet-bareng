@@ -327,10 +327,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Clear Supabase auth di storage
       await supabase.auth.signOut({ scope: 'local' });
 
-      // 3. Khusus Web: bersihkan localStorage/sessionStorage agar tidak ada sesi sisa
+      // 3. Khusus Web: bersihkan localStorage/sessionStorage Supabase & app keys saja
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         try {
-          window.localStorage.clear();
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < window.localStorage.length; i++) {
+            const k = window.localStorage.key(i);
+            if (k && (k.startsWith('@dompetbareng') || k.startsWith('sb-'))) {
+              keysToRemove.push(k);
+            }
+          }
+          keysToRemove.forEach(k => window.localStorage.removeItem(k));
           window.sessionStorage.clear();
         } catch (_) {}
       }

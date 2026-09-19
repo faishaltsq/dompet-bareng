@@ -69,6 +69,8 @@ async function callAI(messages: AIMessage[]): Promise<string> {
       parts: [{ text: m.content }],
     }));
 
+    // Google Generative AI requires the API key as a query param — this is their
+    // published API contract (not a secret; the key is a publishable client key).
     const res = await fetch(`${baseUrl}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -88,7 +88,7 @@ async function writeCache(key: string, value: unknown): Promise<void> {
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -279,8 +279,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const target = activeRef.current;
     if (!target || !hasMoreTx || loadingTx) return;
 
+    const PAGE_SIZE = 500;
     const from = transactions.length;
-    const to = from + 199; // load next 200 items
+    const to = from + PAGE_SIZE - 1;
 
     const { data, error } = await supabase
       .from('transactions')
@@ -298,7 +299,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         profiles: undefined,
       }));
       setTransactions(prev => [...prev, ...(mapped as Transaction[])]);
-      setHasMoreTx(data.length === 200);
+      setHasMoreTx(data.length === PAGE_SIZE);
     } else {
       setHasMoreTx(false);
     }
@@ -593,6 +594,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       workspace_id: activeWorkspace.id,
       user_id: user.id,
       created_at: new Date().toISOString(),
+      user_display_name: profile?.display_name ?? undefined,
+      user_email: user.email ?? undefined,
     };
     setTransactions(prev => [optimisticTx, ...prev]);
 
