@@ -10,6 +10,10 @@ import {
   Platform,
   ActivityIndicator,
   TextInput,
+  Modal,
+  Dimensions,
+  Pressable,
+  Vibration,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -47,6 +51,7 @@ export default function TransactionDetailScreen() {
   const [editDate, setEditDate] = useState(tx?.transaction_date || '');
   const [editDesc, setEditDesc] = useState(tx?.description || '');
   const [editAmount, setEditAmount] = useState(tx?.amount?.toString() || '');
+  const [receiptZoom, setReceiptZoom] = useState(false);
 
   if (!tx) {
     return (
@@ -126,12 +131,13 @@ export default function TransactionDetailScreen() {
 
   const doDelete = async () => {
     setIsDeleting(true);
+    Vibration.vibrate([0, 80, 60, 120]);
     const success = await deleteTransaction(tx.id);
     setIsDeleting(false);
     if (success) {
       router.back();
     } else {
-      Alert.alert('Gagal', t('deleteTransactionFailed'));
+      Alert.alert(t('alertFailed'), t('deleteTransactionFailed'));
     }
   };
 
@@ -276,17 +282,36 @@ export default function TransactionDetailScreen() {
 
         {/* Struk / Receipt Image */}
         {tx.image_url ? (
-          <Animated.View entering={FadeIn.delay(160).duration(400)} style={s.receiptCard}>
-            <View style={s.receiptCardHeader}>
-              <Ionicons name="image-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-              <Text style={s.receiptCardTitle}>Foto Struk / Nota</Text>
-            </View>
-            <Image
-              source={{ uri: tx.image_url }}
-              style={s.receiptImage}
-              resizeMode="contain"
-            />
-          </Animated.View>
+          <>
+            <Animated.View entering={FadeIn.delay(160).duration(400)} style={s.receiptCard}>
+              <View style={s.receiptCardHeader}>
+                <Ionicons name="image-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={s.receiptCardTitle}>Foto Struk / Nota</Text>
+              </View>
+              <TouchableOpacity onPress={() => setReceiptZoom(true)} activeOpacity={0.85}>
+                <Image
+                  source={{ uri: tx.image_url }}
+                  style={s.receiptImage}
+                  resizeMode="contain"
+                  accessible={true}
+                  accessibilityLabel="Foto struk transaksi, tap untuk memperbesar"
+                />
+                <Text style={{ textAlign: 'center', fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>Tap untuk memperbesar</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Receipt Zoom Modal */}
+            <Modal visible={receiptZoom} transparent animationType="fade" onRequestClose={() => setReceiptZoom(false)}>
+              <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setReceiptZoom(false)}>
+                <Image
+                  source={{ uri: tx.image_url }}
+                  style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 }}
+                  resizeMode="contain"
+                />
+                <Text style={{ color: '#fff', marginTop: 12, fontSize: 13, opacity: 0.7 }}>Tap untuk menutup</Text>
+              </Pressable>
+            </Modal>
+          </>
         ) : null}
 
         {/* Action Buttons: Ubah & Hapus */}
@@ -426,7 +451,7 @@ export default function TransactionDetailScreen() {
               <Ionicons name="chevron-forward" size={18} color={Colors.textDark} />
             </TouchableOpacity>
           </View>
-          <Text style={s.dateHint}>Format: YYYY-MM-DD (contoh: 2026-09-15)</Text>
+          <Text style={s.dateHint}>{t('dateFormatHint')}</Text>
 
           {/* Catatan (Opsional) */}
           <Text style={[s.inputLabel, { marginTop: 16 }]}>Catatan (Opsional)</Text>

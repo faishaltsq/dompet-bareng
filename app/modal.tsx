@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Vibration,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -117,6 +118,7 @@ export default function AddTransactionModal() {
     }
 
     // Navigate back immediately — optimistic insert handles the rest in background
+    Vibration.vibrate(80);
     router.back();
 
     // Fire-and-forget: addTransaction sudah optimistic (instant UI update),

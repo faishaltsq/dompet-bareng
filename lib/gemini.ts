@@ -229,8 +229,10 @@ export async function chatWithContext(
     byCategory: Record<string, number>;
     count: number;
   },
-  history: Array<{ role: 'user' | 'model' | 'assistant'; parts?: Array<{ text: string }>; text?: string; content?: string }>
+  history: Array<{ role: 'user' | 'model' | 'assistant'; parts?: Array<{ text: string }>; text?: string; content?: string }>,
+  language: string = 'id'
 ): Promise<string> {
+  const isEn = language === 'en';
   const systemContext = `Kamu adalah asisten keuangan pribadi & tim di aplikasi DompetBareng yang ramah, ringkas, dan solutif.
 Data keuangan dompet saat ini:
 - Total Pemasukan: Rp ${financialContext.totalIncome.toLocaleString('id-ID')}
@@ -240,7 +242,7 @@ Data keuangan dompet saat ini:
 - Pengeluaran per Kategori: ${JSON.stringify(financialContext.byCategory)}
 
 Instruksi:
-- Berikan saran yang singkat, padat, relevan, dan ramah dalam bahasa Indonesia.
+- ${isEn ? 'Respond in English. Be friendly, concise, and helpful like a personal finance companion.' : 'Berikan saran yang singkat, padat, relevan, dan ramah dalam bahasa Indonesia.'}
 - Jangan mengarang data di luar konteks transaksi di atas.`;
 
   const messages: AIMessage[] = [

@@ -99,7 +99,12 @@ export default function PieChart({
   return (
     <View style={styles.wrap}>
       {/* Donut SVG */}
-      <View style={{ width: size, height: size }}>
+      <View
+        style={{ width: size, height: size }}
+        accessible={true}
+        accessibilityRole="image"
+        accessibilityLabel={`Pie chart: ${nonZero.map(s => `${s.label} ${((s.value / total) * 100).toFixed(0)}%`).join(', ')}`}
+      >
         <Svg width={size} height={size}>
           <G>
             {slices.map((s) => {

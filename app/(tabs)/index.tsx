@@ -13,6 +13,7 @@ import {
   Platform,
   RefreshControl,
   Image,
+  Vibration,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -139,9 +140,10 @@ export default function HomeScreen() {
 
   const handleDelete = (id: string) => {
     const doDelete = async () => {
+      Vibration.vibrate([0, 80, 60, 120]);
       const ok = await deleteTransaction(id);
       if (!ok) {
-        Alert.alert('Gagal', t('deleteTransactionFailed') || 'Gagal menghapus transaksi dari server.');
+        Alert.alert(t('alertFailed'), t('deleteTransactionFailed'));
       }
     };
 
@@ -171,7 +173,8 @@ export default function HomeScreen() {
     if (period === 'all') return wsTransactions;
     const now = new Date();
     return wsTransactions.filter(t => {
-      const d = new Date(t.transaction_date);
+      // Parse as local midnight to avoid UTC boundary shifts
+      const d = new Date(t.transaction_date + 'T00:00:00');
       if (period === 'day') {
         return d.toDateString() === now.toDateString();
       }

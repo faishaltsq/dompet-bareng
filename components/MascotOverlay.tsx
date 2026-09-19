@@ -33,6 +33,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { parseTransaction, chatWithContext, isAIAvailable, ParsedTransaction } from '@/lib/gemini';
 import { formatRupiah, getCategoryMeta } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
@@ -55,6 +56,7 @@ export function MascotOverlay() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeWorkspace, transactions, summary } = useWorkspace();
+  const { language } = useLanguage();
 
   const snap: FinancialSnapshot = useMemo(() => {
     const byCategory = transactions.reduce<Record<string, number>>((acc, t) => {
@@ -321,7 +323,7 @@ export function MascotOverlay() {
           ]
         : [];
 
-      const reply = await chatWithContext(promptText, txSummary, history);
+      const reply = await chatWithContext(promptText, txSummary, history, language);
       setSpeech(reply);
     } catch (e: any) {
       // AI gagal → fallback ke template
@@ -415,6 +417,10 @@ export function MascotOverlay() {
 
         <TouchableOpacity
           activeOpacity={0.85}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Buka asisten keuangan Otter Finansial"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           onPress={() => {
             setTooltipText(null);
             setSpeech(companion.greeting);

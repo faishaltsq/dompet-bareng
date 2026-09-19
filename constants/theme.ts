@@ -16,7 +16,7 @@ export const Colors = {
   cardAlt: '#F5EDE2',
   textDark: '#2E180E',
   textSecondary: '#6B4E3D',
-  textMuted: '#9C8170',
+  textMuted: '#7D6353',
   textLight: '#FFFFFF',
   textOnPrimary: '#FFFFFF',
   income: '#2E8B57',

@@ -67,6 +67,27 @@ export const CATEGORY_META: Record<
   'Lainnya':       { icon: 'ellipsis-horizontal-circle-outline', emoji: '📌', bg: '#F1F5F9', color: Colors.textMuted },
 };
 
+export const CATEGORY_TRANSLATIONS: Record<string, { id: string; en: string }> = {
+  'Makan & Minum': { id: 'Makan & Minum', en: 'Food & Drinks' },
+  'Transportasi': { id: 'Transportasi', en: 'Transportation' },
+  'Belanja': { id: 'Belanja', en: 'Shopping' },
+  'Tagihan': { id: 'Tagihan', en: 'Bills & Utilities' },
+  'Hiburan': { id: 'Hiburan', en: 'Entertainment' },
+  'Kesehatan': { id: 'Kesehatan', en: 'Healthcare' },
+  'Pendidikan': { id: 'Pendidikan', en: 'Education' },
+  'Gaji': { id: 'Gaji', en: 'Salary' },
+  'Transfer': { id: 'Transfer', en: 'Transfer' },
+  'Bonus': { id: 'Bonus', en: 'Bonus' },
+  'Investasi': { id: 'Investasi', en: 'Investment' },
+  'Lainnya': { id: 'Lainnya', en: 'Others' },
+};
+
+export function getLocalizedCategory(cat: string, lang: string = 'id'): string {
+  const item = CATEGORY_TRANSLATIONS[cat];
+  if (!item) return cat;
+  return lang === 'en' ? item.en : item.id;
+}
+
 export function getCategoryMeta(cat: string) {
   return CATEGORY_META[cat] ?? CATEGORY_META['Lainnya'];
 }

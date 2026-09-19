@@ -192,6 +192,7 @@ const translations = {
     deleteTransactionBtn: 'Hapus Transaksi Ini',
     quickToday: 'Hari Ini',
     quickYesterday: 'Kemarin',
+    dateFormatHint: 'Format: YYYY-MM-DD (contoh: 2026-09-18)',
 
     // Alert Dialogs
     alertSuccess: 'Berhasil',
@@ -405,6 +406,7 @@ const translations = {
     deleteTransactionBtn: 'Delete This Transaction',
     quickToday: 'Today',
     quickYesterday: 'Yesterday',
+    dateFormatHint: 'Format: YYYY-MM-DD (e.g., 2026-09-18)',
 
     // Alert Dialogs
     alertSuccess: 'Success',
