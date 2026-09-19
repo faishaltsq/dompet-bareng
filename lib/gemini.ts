@@ -245,6 +245,8 @@ Data keuangan dompet saat ini:
 
 Instruksi:
 - ${isEn ? 'Respond in English. Be friendly, concise, and helpful like a personal finance companion.' : 'Berikan saran yang singkat, padat, relevan, dan ramah dalam bahasa Indonesia.'}
+- DILARANG menggunakan tanda bintang/asterisk (*) atau (**) untuk format teks bold/italic. Tulis teks biasa yang bersih tanpa tanda bintang.
+- Gunakan baris baru, poin nomor (1., 2., 3.), tanda hubung (-), atau emoji ramah agar rapi di layar HP.
 - Jangan mengarang data di luar konteks transaksi di atas.`;
 
   const messages: AIMessage[] = [
@@ -264,5 +266,12 @@ Instruksi:
 
   messages.push({ role: 'user', content: userMessage });
 
-  return callAI(messages);
+  const rawReply = await callAI(messages);
+  // Bersihkan sisa tanda bintang markdown agar bubble chat bersih tanpa asterisk
+  return rawReply
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^\s*\*\s+/gm, '• ')
+    .replace(/\*/g, '')
+    .trim();
 }
