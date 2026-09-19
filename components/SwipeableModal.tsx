@@ -153,7 +153,14 @@ export default function SwipeableModal({
           ]}
         >
           {/* Drag Handle & Gesture Area */}
-          <View {...panResponder.panHandlers} style={s.dragZone}>
+          <View
+            {...panResponder.panHandlers}
+            style={s.dragZone}
+            accessible={true}
+            accessibilityRole="adjustable"
+            accessibilityLabel="Geser untuk menutup"
+            accessibilityHint="Geser ke bawah untuk menutup panel"
+          >
             {showHandle && <View style={s.handle} />}
           </View>
 

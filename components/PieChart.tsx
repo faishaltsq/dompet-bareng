@@ -183,7 +183,7 @@ export default function PieChart({
 
       {/* Deselect tap zone */}
       {highlighted && (
-        <TouchableOpacity onPress={() => { setActiveSlice(null); onSlicePress?.(null); }} style={styles.clearBtn}>
+        <TouchableOpacity onPress={() => { setActiveSlice(null); onSlicePress?.(null); }} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Reset filter, tampilkan semua kategori">
           <Text style={styles.clearBtnText}>✕ Semua</Text>
         </TouchableOpacity>
       )}
@@ -236,7 +236,9 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 20,
     backgroundColor: '#F1F5F9',
   },

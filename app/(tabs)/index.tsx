@@ -60,7 +60,7 @@ function CreateWorkspaceModal({
   };
 
   return (
-    <SwipeableModal visible={visible} onClose={onClose}>
+    <SwipeableModal visible={visible} onClose={() => { setName(''); onClose(); }}>
       <Text style={s.sheetTitle}>{t('createNewWallet')}</Text>
       <Text style={[s.sheetSubtitle, { marginBottom: 16 }]}>{t('createWalletSubtitle')}</Text>
 
@@ -265,6 +265,9 @@ export default function HomeScreen() {
             onPress={() => setShowNotifModal(true)}
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`Notifikasi${unreadCount > 0 ? `, ${unreadCount} belum dibaca` : ''}`}
           >
             <Ionicons name="notifications-outline" size={20} color="#fff" />
             {unreadCount > 0 && (
@@ -394,6 +397,8 @@ export default function HomeScreen() {
                 key={p}
                 style={[s.periodPill, active && s.periodPillActive]}
                 onPress={() => setPeriod(p)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[s.periodPillText, active && s.periodPillTextActive]}>
                   {labels[p]}
@@ -449,7 +454,10 @@ export default function HomeScreen() {
                 style={s.txItem}
                 onPress={() => router.push(`/transaction/${item.id}` as any)}
                 onLongPress={() => handleDelete(item.id)}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityLabel={`${item.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}, ${item.category}, ${formatRupiah(item.amount)}`}
+                accessibilityHint="Tekan lama untuk menghapus"
               >
                 <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
                   <Ionicons name={meta.icon || 'receipt-outline'} size={20} color={meta.color} />

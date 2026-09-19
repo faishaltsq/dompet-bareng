@@ -486,6 +486,9 @@ export function MascotOverlay() {
                 onPress={() => setModalVisible(false)}
                 style={s.closeBtn}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Tutup"
               >
                 <Text style={s.closeBtnText}>✕</Text>
               </TouchableOpacity>

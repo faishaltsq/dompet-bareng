@@ -65,6 +65,10 @@ export default function LoginScreen() {
           style={[s.googleBtn, loading && { opacity: 0.6 }]}
           onPress={handleGoogleLogin}
           disabled={loading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Masuk dengan akun Google"
+          accessibilityState={{ disabled: loading }}
         >
           {loading ? (
             <ActivityIndicator color={Colors.primary} size="small" />

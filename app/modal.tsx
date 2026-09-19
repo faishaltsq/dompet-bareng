@@ -282,6 +282,10 @@ export default function AddTransactionModal() {
               ]}
               onPress={handleSubmit}
               disabled={submitting}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('saveBtn')} ${isExpense ? t('expense') : t('income')}`}
+              accessibilityState={{ disabled: submitting }}
             >
               {submitting ? (
                 <ActivityIndicator color="#fff" size="small" />
