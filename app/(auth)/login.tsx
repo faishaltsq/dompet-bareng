@@ -1,13 +1,15 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert, Image, Platform,
 } from 'react-native';
 import { useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Shadows, Radius } from '@/constants/theme';
+import { triggerDownloadApk } from '@/lib/downloadApp';
 
 export default function LoginScreen() {
   const { signInWithGoogle, signInDevGuest } = useAuth();
@@ -79,6 +81,18 @@ export default function LoginScreen() {
             </>
           )}
         </TouchableOpacity>
+
+        {/* Download Android APK (Web only) */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            style={s.downloadApkBtn}
+            onPress={() => triggerDownloadApk()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="logo-android" size={20} color={Colors.income} style={{ marginRight: 8 }} />
+            <Text style={s.downloadApkText}>{t('downloadAndroidApp')} (.apk)</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={s.disclaimer}>
           Dengan masuk, kamu menyetujui{' '}
@@ -165,6 +179,23 @@ const s = StyleSheet.create({
   },
   googleIcon: { fontSize: 22, fontWeight: '800', color: '#4285F4' },
   googleText: { fontSize: 16, fontWeight: '700', color: Colors.textDark },
+
+  downloadApkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.incomeSoft,
+    borderWidth: 1.5,
+    borderColor: Colors.income + '40',
+    borderRadius: Radius.md,
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  downloadApkText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.income,
+  },
 
   disclaimer: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
   disclaimerLink: { color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' },

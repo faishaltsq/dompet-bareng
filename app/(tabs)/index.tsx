@@ -35,6 +35,7 @@ import { formatRupiah, getCategoryMeta } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { HomeSkeleton } from '@/components/Skeleton';
 import { PressableScale, AnimatedProgressBar } from '@/components/Animated';
+import { triggerDownloadApk } from '@/lib/downloadApp';
 
 type PeriodFilter = 'all' | 'month' | 'week' | 'day';
 
@@ -258,6 +259,21 @@ export default function HomeScreen() {
               {displayName}
             </Text>
           </View>
+
+          {/* DOWNLOAD ANDROID APP BUTTON (Web only) */}
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              style={s.downloadPillBtn}
+              onPress={() => triggerDownloadApk()}
+              activeOpacity={0.8}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('downloadAndroidApp')}
+            >
+              <Ionicons name="logo-android" size={15} color="#FFFFFF" style={{ marginRight: 5 }} />
+              <Text style={s.downloadPillText}>{t('downloadApkBtn')}</Text>
+            </TouchableOpacity>
+          )}
 
           {/* NOTIFICATION BUTTON */}
           <TouchableOpacity
@@ -625,6 +641,22 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  downloadPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  downloadPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   notifBadge: {
     position: 'absolute',

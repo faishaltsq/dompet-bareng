@@ -33,6 +33,7 @@ import {
   isReminderEnabled,
 } from '@/lib/notifications';
 import { checkAndApplyUpdate, getCurrentUpdateInfo } from '@/lib/updates';
+import { triggerDownloadApk } from '@/lib/downloadApp';
 
 type Member = {
   user_id: string;
@@ -778,6 +779,24 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Unduh Aplikasi Android (Web only) */}
+            {Platform.OS === 'web' && (
+              <TouchableOpacity
+                style={s.menuRow}
+                onPress={() => triggerDownloadApk()}
+                activeOpacity={0.8}
+              >
+                <View style={[s.menuIcon, { backgroundColor: Colors.incomeSoft }]}>
+                  <Ionicons name="logo-android" size={18} color={Colors.income} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.menuTitle}>{t('downloadAndroidApp')}</Text>
+                  <Text style={s.menuDesc}>{t('downloadAndroidAppDesc')}</Text>
+                </View>
+                <Text style={s.menuArrow}>›</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Periksa Pembaruan (OTA Updates) */}
             <View style={[s.menuRow, { borderBottomWidth: 0 }]}>

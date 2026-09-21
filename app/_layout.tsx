@@ -159,10 +159,15 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
+    const isPublicRoute =
+      segments[0] === 'privacy' ||
+      segments[0] === 'terms' ||
+      segments[0] === 'invite' ||
+      segments[0] === 'download';
 
     // Debounce: saat signed-out event datang sebelum signed-in (switch akun),
     // tunggu 500ms sebelum redirect ke login agar tidak flash
-    if (!session && !inAuthGroup) {
+    if (!session && !inAuthGroup && !isPublicRoute) {
       const timer = setTimeout(() => {
         router.replace('/(auth)/login');
       }, 500);
@@ -183,6 +188,7 @@ function RootLayoutNav() {
         <Stack.Screen name="modal" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="privacy" options={{ title: 'Kebijakan Privasi' }} />
         <Stack.Screen name="terms" options={{ title: 'Ketentuan Layanan' }} />
+        <Stack.Screen name="download" options={{ title: t('downloadAndroidApp'), headerShown: false }} />
       </Stack>
       {session && <MascotOverlay />}
     </ThemeProvider>
