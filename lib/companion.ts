@@ -22,6 +22,8 @@ export interface FinancialSnapshot {
   balance: number;
   count: number;
   byCategory: Record<string, number>;
+  otherWithDesc?: string[]; // transaksi Lainnya yang punya deskripsi
+  otherNoDesc?: number;     // jumlah transaksi Lainnya tanpa deskripsi
 }
 
 /** Hitung berapa hari sisa aman berdasarkan rata-rata pengeluaran harian */

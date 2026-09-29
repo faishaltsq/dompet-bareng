@@ -63,12 +63,20 @@ export function MascotOverlay() {
       acc[t.category] = (acc[t.category] ?? 0) + t.amount;
       return acc;
     }, {});
+    // Ringkasan transaksi Lainnya yang punya deskripsi — dipakai Otter sebagai konteks
+    const otherWithDesc = transactions
+      .filter(t => t.category === 'Lainnya' && t.description?.trim())
+      .slice(0, 5)
+      .map(t => `${t.type === 'expense' ? '-' : '+'}Rp${t.amount.toLocaleString('id-ID')} (${t.description})`);
+    const otherNoDesc = transactions.filter(t => t.category === 'Lainnya' && !t.description?.trim()).length;
     return {
       income: summary.income,
       expense: summary.expense,
       balance: summary.balance,
       count: transactions.length,
       byCategory,
+      otherWithDesc,
+      otherNoDesc,
     };
   }, [transactions, summary]);
 
@@ -307,6 +315,8 @@ export function MascotOverlay() {
         balance: snap.balance,
         byCategory: snap.byCategory,
         count: snap.count,
+        otherWithDesc: snap.otherWithDesc,
+        otherNoDesc: snap.otherNoDesc,
       };
 
       const history = lastUserPrompt

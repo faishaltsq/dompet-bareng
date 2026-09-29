@@ -230,11 +230,28 @@ export async function chatWithContext(
     balance: number;
     byCategory: Record<string, number>;
     count: number;
+    otherWithDesc?: string[];
+    otherNoDesc?: number;
   },
   history: Array<{ role: 'user' | 'model' | 'assistant'; parts?: Array<{ text: string }>; text?: string; content?: string }>,
   language: string = 'id'
 ): Promise<string> {
   const isEn = language === 'en';
+
+  // Buat konteks transaksi "Lainnya" / "Other"
+  const otherLines = financialContext.otherWithDesc?.length
+    ? financialContext.otherWithDesc.join(', ')
+    : '';
+  const otherNoDesc = financialContext.otherNoDesc ?? 0;
+
+  const otherContextEN = otherLines || otherNoDesc
+    ? `\n\n"Other" Category Details:\n${otherLines ? `- Transactions with descriptions: ${otherLines}` : ''}${otherNoDesc > 0 ? `\n- ${otherNoDesc} transaction(s) in "Other" have NO description — politely ask the user what those were for so you can give better advice.` : ''}\n- IMPORTANT: When discussing "Other" category transactions, use the description to summarize what they actually are (e.g. "phone top-up Rp50,000") instead of just saying "Other". Only say "Other" if the description is empty.`
+    : '';
+
+  const otherContextID = otherLines || otherNoDesc
+    ? `\n\nDetail Kategori "Lainnya":\n${otherLines ? `- Transaksi yang punya deskripsi: ${otherLines}` : ''}${otherNoDesc > 0 ? `\n- Ada ${otherNoDesc} transaksi "Lainnya" TANPA deskripsi — tanyakan dengan ramah ke user itu untuk apa, supaya Otter bisa kasih saran lebih tepat.` : ''}\n- PENTING: Saat membahas transaksi kategori "Lainnya", gunakan deskripsinya untuk merangkum isinya (misal: "isi pulsa Rp50.000") daripada hanya bilang "Lainnya". Sebut "Lainnya" hanya jika memang tidak ada deskripsi.`
+    : '';
+
   const systemContext = isEn
     ? `You are Financial Otter 🦦, the clever, playful, and caring otter mascot of the Dompet Bareng shared finance app.
 You love helping users keep their wallets healthy and safe from unnecessary spending.
@@ -249,7 +266,7 @@ Wallet Financial Data:
 - Total Expense: Rp ${financialContext.totalExpense.toLocaleString('id-ID')}
 - Remaining Balance: Rp ${financialContext.balance.toLocaleString('id-ID')}
 - Total Transactions: ${financialContext.count}
-- Expenses by Category: ${JSON.stringify(financialContext.byCategory)}
+- Expenses by Category: ${JSON.stringify(financialContext.byCategory)}${otherContextEN}
 
 Instructions:
 - Keep advice concise, clear, and easy to read on mobile screens.
@@ -269,7 +286,7 @@ Data Keuangan Dompet Saat Ini:
 - Total Pengeluaran: Rp ${financialContext.totalExpense.toLocaleString('id-ID')}
 - Sisa Saldo: Rp ${financialContext.balance.toLocaleString('id-ID')}
 - Total Transaksi: ${financialContext.count}
-- Pengeluaran per Kategori: ${JSON.stringify(financialContext.byCategory)}
+- Pengeluaran per Kategori: ${JSON.stringify(financialContext.byCategory)}${otherContextID}
 
 Instruksi Format:
 - Berikan saran yang singkat, padat, relevan, dan ramah dalam bahasa Indonesia santai.
