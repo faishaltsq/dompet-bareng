@@ -172,6 +172,9 @@ export default function PieChart({
               key={s.key}
               style={[styles.legendRow, isActive && styles.legendRowActive]}
               onPress={() => handleSlicePress(s)}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.label}: ${fmt(s.value)}, ${s.percentage.toFixed(1)}%`}
+              accessibilityState={{ selected: isActive }}
             >
               <View style={[styles.dot, { backgroundColor: s.color }]} />
               <Text style={[styles.legendLabel, isActive && { fontWeight: '700' }]} numberOfLines={1}>

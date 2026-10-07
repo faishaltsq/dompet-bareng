@@ -54,12 +54,30 @@ export type AIMessage = {
 
 /**
  * Pemanggilan universal ke AI provider (9Router / OpenAI format atau Google format).
+ * Di Web (Platform.OS === 'web'), gunakan Vercel proxy /api/ai-chat agar API key
+ * tidak ada di client bundle. Di Native, call langsung ke endpoint AI.
  */
 async function callAI(messages: AIMessage[]): Promise<string> {
+  // Web: gunakan server-side proxy — API key tidak bocor ke bundle
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, temperature: 0.3 }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(`AI proxy error ${res.status}: ${err?.error ?? res.statusText}`);
+    }
+    const data = await res.json();
+    return (data?.content ?? '').trim();
+  }
+
+  // Native: call langsung ke AI endpoint (API key dari Supabase remote config)
   const { baseUrl, apiKey, model } = await getAIConfig();
 
   if (!apiKey) {
-    throw new Error('API Key AI belum diisi di .env (EXPO_PUBLIC_AI_API_KEY)');
+    throw new Error('API Key AI belum diisi di Supabase app_configs (ai_api_key)');
   }
 
   // Fallback jika menggunakan endpoint langsung Google AI Studio

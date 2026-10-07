@@ -328,15 +328,15 @@ export default function CalendarDropdownModal({
 
         {/* Calendar Navigation Bar (Google Calendar Month Header) */}
         <View style={s.navRow}>
-          <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={language === 'id' ? 'Bulan sebelumnya' : 'Previous month'}>
             <Ionicons name="chevron-back" size={20} color="#0F172A" />
           </TouchableOpacity>
 
-          <Text style={s.navMonthText}>
+          <Text style={s.navMonthText} accessibilityRole="header">
             {monthNames[viewMonth]} {viewYear}
           </Text>
 
-          <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={language === 'id' ? 'Bulan berikutnya' : 'Next month'}>
             <Ionicons name="chevron-forward" size={20} color="#0F172A" />
           </TouchableOpacity>
         </View>
@@ -372,6 +372,9 @@ export default function CalendarDropdownModal({
                 ]}
                 onPress={() => handleDateClick(cell.dateStr)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${cell.dayNum} ${monthNames[viewMonth]} ${viewYear}${hasTx ? (language === 'id' ? ', ada transaksi' : ', has transactions') : ''}`}
+                accessibilityState={{ selected: !!isSelected }}
               >
                 <View style={[
                   s.cellInner,
@@ -409,7 +412,7 @@ export default function CalendarDropdownModal({
             <View style={s.rangePreviewBox}>
               <Text style={s.rangePreviewLabel}>{t('customRange')}:</Text>
               <Text style={s.rangePreviewVal}>
-                {rangeStart} {rangeEnd ? `→ ${rangeEnd}` : ''}
+                {rangeStart}{rangeEnd ? ` → ${rangeEnd}` : (language === 'id' ? ' (pilih akhir)' : ' (pick end date)')}
               </Text>
             </View>
             <TouchableOpacity style={s.applyBtn} onPress={applyCustomSelection}>

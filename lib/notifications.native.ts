@@ -169,7 +169,10 @@ export async function scheduleDailyReminder(hour = 20, minute = 0): Promise<void
     // Jadwalkan 5 hari ke depan — masing-masing pesan BERBEDA
     // Pakai trigger DATE (waktu absolut) bukan DAILY repeating agar konten bisa bervariasi
     const now = new Date();
-    for (let i = 0; i < 5; i++) {
+    // Jika sudah lewat jam target hari ini, mulai dari besok agar tetap ada 5 slot terjadwal
+    const todayFire = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    const startOffset = todayFire <= now ? 1 : 0;
+    for (let i = startOffset; i < startOffset + 5; i++) {
       const msg = await pickRandomReminder();
       const fireDate = new Date(
         now.getFullYear(),

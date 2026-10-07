@@ -48,7 +48,7 @@ export default function DownloadScreen() {
           <Ionicons name="logo-android" size={26} color="#FFFFFF" style={{ marginRight: 10 }} />
           <View>
             <Text style={s.downloadBtnTitle}>{t('downloadApkBtn')}</Text>
-            <Text style={s.downloadBtnSub}>Format .APK • Gratis</Text>
+            <Text style={s.downloadBtnSub}>{t('downloadBtnSub')}</Text>
           </View>
         </TouchableOpacity>
 
@@ -56,41 +56,41 @@ export default function DownloadScreen() {
         <View style={s.featureGrid}>
           <View style={s.featureCard}>
             <Ionicons name="flash-outline" size={20} color={Colors.income} />
-            <Text style={s.featureTitle}>Lebih Cepat</Text>
-            <Text style={s.featureDesc}>Animasi mulus 60fps & loading instan</Text>
+            <Text style={s.featureTitle}>{t('downloadFeatFaster')}</Text>
+            <Text style={s.featureDesc}>{t('downloadFeatFasterDesc')}</Text>
           </View>
           <View style={s.featureCard}>
             <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
-            <Text style={s.featureTitle}>Login Native</Text>
-            <Text style={s.featureDesc}>One-tap Google Sign-In tanpa browser</Text>
+            <Text style={s.featureTitle}>{t('downloadFeatNative')}</Text>
+            <Text style={s.featureDesc}>{t('downloadFeatNativeDesc')}</Text>
           </View>
         </View>
 
         {/* Instructions Card */}
         <View style={s.instructionCard}>
-          <Text style={s.instructionHeader}>Cara Pasang APK di HP Android:</Text>
+          <Text style={s.instructionHeader}>{t('downloadStepsTitle')}</Text>
           <View style={s.stepRow}>
             <Text style={s.stepNum}>1</Text>
-            <Text style={s.stepText}>Klik tombol <Text style={{ fontWeight: '700' }}>Unduh APK</Text> di atas.</Text>
+            <Text style={s.stepText}>{t('downloadStep1')}</Text>
           </View>
           <View style={s.stepRow}>
             <Text style={s.stepNum}>2</Text>
-            <Text style={s.stepText}>Buka file unduhan dari notifikasi atau folder <Text style={{ fontWeight: '700' }}>Download</Text>.</Text>
+            <Text style={s.stepText}>{t('downloadStep2')}</Text>
           </View>
           <View style={s.stepRow}>
             <Text style={s.stepNum}>3</Text>
-            <Text style={s.stepText}>Jika muncul peringatan keamanan, pilih <Text style={{ fontWeight: '700' }}>Tetap Download / Izinkan</Text>.</Text>
+            <Text style={s.stepText}>{t('downloadStep3')}</Text>
           </View>
           <View style={s.stepRow}>
             <Text style={s.stepNum}>4</Text>
-            <Text style={s.stepText}>Buka aplikasi Dompet Bareng dan masuk dengan akun Google.</Text>
+            <Text style={s.stepText}>{t('downloadStep4')}</Text>
           </View>
         </View>
 
         {/* Back to Web Button */}
         <TouchableOpacity style={s.backBtn} onPress={() => router.replace('/(tabs)')}>
           <Ionicons name="arrow-back-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-          <Text style={s.backBtnText}>Kembali ke Versi Web</Text>
+          <Text style={s.backBtnText}>{t('backToWeb')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

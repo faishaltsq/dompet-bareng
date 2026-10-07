@@ -89,8 +89,8 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
               <Text style={s.headerTitle}>{t('notificationsTitle')}</Text>
               <Text style={s.headerSubtitle}>
                 {unreadCount > 0
-                  ? (language === 'id' ? `${unreadCount} belum dibaca` : `${unreadCount} unread`)
-                  : (language === 'id' ? 'Semua sudah dibaca' : 'All caught up')}
+                  ? `${unreadCount} ${language === 'id' ? 'belum dibaca' : 'unread'}`
+                  : t('allCaughtUp')}
               </Text>
             </View>
           </View>
@@ -120,7 +120,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
             <View style={s.emptyBox}>
               <ActivityIndicator color={Colors.primary} size="small" />
               <Text style={s.emptySubtext}>
-                {language === 'id' ? 'Memuat notifikasi...' : 'Loading notifications...'}
+                {t('loadingNotifications')}
               </Text>
             </View>
           ) : notifications.length === 0 ? (
