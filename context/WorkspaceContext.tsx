@@ -577,34 +577,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       const link = `https://dompet-bareng.vercel.app/invite/${data.token}`;
-
-      // Salin otomatis ke clipboard jika di web
-      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(link);
-        } catch (_) {}
-      }
-
-      // Coba panggil Share.share bawaan (native share sheet)
-      try {
-        const shareContent = Platform.select({
-          ios: {
-            message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:`,
-            url: link,
-            title: 'Undangan Dompet Bareng',
-          },
-          default: {
-            // Android & Web: tidak menyertakan `url` terpisah karena Android menggabungkan `message` + `url` sehingga link menjadi ganda
-            message: `Gabung ke dompet "${activeWorkspace.name}" di Dompet Bareng:\n${link}`,
-            title: 'Undangan Dompet Bareng',
-          },
-        });
-        await Share.share(shareContent);
-      } catch (shareErr) {
-        // Abaikan error cancel / unsupported di browser tertentu
-        console.log('Share.share not supported or dismissed:', shareErr);
-      }
-
       return link;
     } catch (e) {
       console.error('generateInviteLink exception:', e);

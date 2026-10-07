@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SwipeableModal from '@/components/SwipeableModal';
+import InviteShareModal from '@/components/InviteShareModal';
 
 import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
@@ -66,6 +67,8 @@ export default function SettingsScreen() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [generatedInviteLink, setGeneratedInviteLink] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -366,12 +369,10 @@ export default function SettingsScreen() {
     setSharing(true);
     try {
       const link = await generateInviteLink();
-      if (link && Platform.OS === 'web') {
-        Alert.alert(
-          'Link Undangan Berhasil Dibuat 📋',
-          `Link undangan sudah disalin ke clipboard:\n\n${link}\n\nBagikan link ini ke temanmu agar mereka bisa bergabung!`
-        );
-      } else if (!link) {
+      if (link) {
+        setGeneratedInviteLink(link);
+        setInviteModalVisible(true);
+      } else {
         Alert.alert(t('alertFailed'), 'Tidak dapat membuat link undangan. Pastikan kamu terhubung ke internet.');
       }
     } catch (e: any) {
@@ -951,6 +952,14 @@ export default function SettingsScreen() {
           <Text style={s.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </SwipeableModal>
+
+      {/* ── MODAL INVITE SHARE ── */}
+      <InviteShareModal
+        visible={inviteModalVisible}
+        onClose={() => setInviteModalVisible(false)}
+        inviteLink={generatedInviteLink}
+        workspaceName={activeWorkspace?.name || ''}
+      />
 
       {/* ── MODAL 4: GABUNG WORKSPACE ── */}
       <SwipeableModal
