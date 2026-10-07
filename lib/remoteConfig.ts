@@ -14,6 +14,7 @@ const CACHE_CONFIG_KEY = '@db:remote_app_configs';
 let inMemoryConfigs: Record<string, string> = {};
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
+let realtimeChannel: any = null;
 
 // Listeners for real-time changes
 type ConfigListener = (configs: Record<string, string>) => void;
@@ -41,30 +42,32 @@ export async function initRemoteConfig(): Promise<void> {
       await refreshRemoteConfig();
 
       // 3. Pasang Realtime Subscription untuk update instan
-      supabase
-        .channel('app_configs_changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'app_configs' },
-          (payload) => {
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const row = payload.new as { key: string; value: string };
-              if (row && row.key) {
-                inMemoryConfigs[row.key] = row.value;
-                AsyncStorage.setItem(CACHE_CONFIG_KEY, JSON.stringify(inMemoryConfigs)).catch(() => {});
-                listeners.forEach(cb => cb({ ...inMemoryConfigs }));
-              }
-            } else if (payload.eventType === 'DELETE') {
-              const row = payload.old as { key: string };
-              if (row && row.key) {
-                delete inMemoryConfigs[row.key];
-                AsyncStorage.setItem(CACHE_CONFIG_KEY, JSON.stringify(inMemoryConfigs)).catch(() => {});
-                listeners.forEach(cb => cb({ ...inMemoryConfigs }));
+      if (!realtimeChannel) {
+        realtimeChannel = supabase
+          .channel('app_configs_changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'app_configs' },
+            (payload) => {
+              if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                const row = payload.new as { key: string; value: string };
+                if (row && row.key) {
+                  inMemoryConfigs[row.key] = row.value;
+                  AsyncStorage.setItem(CACHE_CONFIG_KEY, JSON.stringify(inMemoryConfigs)).catch(() => {});
+                  listeners.forEach(cb => cb({ ...inMemoryConfigs }));
+                }
+              } else if (payload.eventType === 'DELETE') {
+                const row = payload.old as { key: string };
+                if (row && row.key) {
+                  delete inMemoryConfigs[row.key];
+                  AsyncStorage.setItem(CACHE_CONFIG_KEY, JSON.stringify(inMemoryConfigs)).catch(() => {});
+                  listeners.forEach(cb => cb({ ...inMemoryConfigs }));
+                }
               }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
+      }
 
       isInitialized = true;
     } catch (e) {
@@ -75,6 +78,19 @@ export async function initRemoteConfig(): Promise<void> {
   })();
 
   return initPromise;
+}
+
+/**
+ * Hentikan realtime subscription jika diperlukan saat cleanup.
+ */
+export function unsubscribeRemoteConfig(): void {
+  if (realtimeChannel) {
+    try {
+      supabase.removeChannel(realtimeChannel);
+    } catch (_) {}
+    realtimeChannel = null;
+  }
+  isInitialized = false;
 }
 
 /**

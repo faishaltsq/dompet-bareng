@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -70,6 +70,16 @@ export default function CalendarDropdownModal({
   // Range selection temp state: rangeStart & rangeEnd as 'YYYY-MM-DD'
   const [rangeStart, setRangeStart] = useState<string | null>(currentFilter.startDate ?? null);
   const [rangeEnd, setRangeEnd] = useState<string | null>(currentFilter.endDate ?? null);
+
+  // Sinkronkan view calendar setiap kali modal dibuka atau filter berubah dari luar
+  useEffect(() => {
+    if (visible) {
+      if (currentFilter.year !== undefined) setViewYear(currentFilter.year);
+      if (currentFilter.monthIndex !== undefined) setViewMonth(currentFilter.monthIndex);
+      setRangeStart(currentFilter.startDate ?? null);
+      setRangeEnd(currentFilter.endDate ?? null);
+    }
+  }, [visible, currentFilter.year, currentFilter.monthIndex, currentFilter.startDate, currentFilter.endDate]);
 
   // Month navigation
   function handlePrevMonth() {

@@ -24,6 +24,7 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  cancelAnimation,
   FadeIn,
   FadeInDown,
   FadeInUp,
@@ -85,6 +86,7 @@ export function MascotOverlay() {
   const [modalVisible, setModalVisible] = useState(false);
   const [speech, setSpeech] = useState<string>(companion.greeting);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
@@ -92,6 +94,16 @@ export function MascotOverlay() {
   const [checkingAi, setCheckingAi] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [panicStopped, setPanicStopped] = useState(false); // stop getar setelah diklik
+
+  const isMountedRef = useRef(true);
+  const inFlightRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -139,8 +151,15 @@ export function MascotOverlay() {
   useEffect(() => {
     if (prevMoodRef.current !== companion.mood) {
       prevMoodRef.current = companion.mood;
-      setTooltipText(companion.greeting.slice(0, 60) + '...');
-      const timer = setTimeout(() => setTooltipText(null), 15000);
+      // Potong rapi di batas kata agar tidak memotong emoji / kata gantung
+      const rawText = companion.greeting.replace(/\n.*/s, '');
+      const cleanSnippet = rawText.length > 55
+        ? rawText.slice(0, 55).replace(/\s+\S*$/, '') + '...'
+        : rawText;
+      setTooltipText(cleanSnippet);
+      const timer = setTimeout(() => {
+        if (isMountedRef.current) setTooltipText(null);
+      }, 15000);
       // Reset panicStopped jika mood berubah (kondisi baru = user belum dismiss)
       if (companion.mood === 'PANIC' || companion.mood === 'WARNING') {
         setPanicStopped(false);
@@ -296,6 +315,11 @@ export function MascotOverlay() {
         true
       );
     }
+
+    return () => {
+      cancelAnimation(moodScale);
+      cancelAnimation(moodRotate);
+    };
   }, [companion.mood, panicStopped]);
 
   const animatedMoodStyle = useAnimatedStyle(() => ({
@@ -304,9 +328,13 @@ export function MascotOverlay() {
 
   // AI Chat & Quick Chips Handler
   const triggerAi = async (promptText: string, chipId?: QuickChipId) => {
-    setLoading(true);
-    setLastUserPrompt(promptText);
-    setParsedTx(null);
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    if (isMountedRef.current) {
+      setLoading(true);
+      setLastUserPrompt(promptText);
+      setParsedTx(null);
+    }
 
     try {
       const txSummary = {
@@ -319,7 +347,9 @@ export function MascotOverlay() {
         otherNoDesc: snap.otherNoDesc,
       };
 
-      const history = lastUserPrompt
+      const history = chatHistory.length > 0
+        ? chatHistory
+        : lastUserPrompt
         ? [
             { role: 'user' as const, content: lastUserPrompt },
             { role: 'assistant' as const, content: speech },
@@ -327,22 +357,34 @@ export function MascotOverlay() {
         : [];
 
       const reply = await chatWithContext(promptText, txSummary, history, language);
-      setSpeech(reply);
+      if (isMountedRef.current) {
+        setSpeech(reply);
+        setChatHistory(prev => [
+          ...prev.slice(-6), // keep last 6 turns to avoid bloat
+          { role: 'user', content: promptText },
+          { role: 'assistant', content: reply },
+        ]);
+      }
     } catch (e: any) {
       // AI gagal → fallback ke template
-      setAiOnline(false);
-      const reply = chipId
-        ? getFallbackChipResponse(chipId, snap, companion.mood, language)
-        : getFallbackFreeResponse(promptText, snap, companion.mood, language);
-      setSpeech(reply);
+      if (isMountedRef.current) {
+        setAiOnline(false);
+        const reply = chipId
+          ? getFallbackChipResponse(chipId, snap, companion.mood, language)
+          : getFallbackFreeResponse(promptText, snap, companion.mood, language);
+        setSpeech(reply);
+      }
     } finally {
-      setLoading(false);
+      inFlightRef.current = false;
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || inFlightRef.current) return;
     setInput('');
 
     // Input mengandung nominal → coba parse transaksi dulu
@@ -351,13 +393,15 @@ export function MascotOverlay() {
       setLoading(true);
       try {
         const parsed = await parseTransaction(text);
-        setParsedTx(parsed);
-        const meta = getCategoryMeta(parsed.category);
-        setSpeech(
-          `${meta.emoji} ${t('mascotTxDetected')}\n${parsed.type === 'expense' ? t('expense') : t('income')} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\n${t('mascotPressToSave')}`
-        );
-        setLastUserPrompt(text);
-        setLoading(false);
+        if (isMountedRef.current) {
+          setParsedTx(parsed);
+          const meta = getCategoryMeta(parsed.category);
+          setSpeech(
+            `${meta.emoji} ${t('mascotTxDetected')}\n${parsed.type === 'expense' ? t('expense') : t('income')} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\n${t('mascotPressToSave')}`
+          );
+          setLastUserPrompt(text);
+          setLoading(false);
+        }
         return;
       } catch {
         // parse gagal → lanjut ke triggerAi

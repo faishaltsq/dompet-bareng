@@ -30,7 +30,9 @@ export interface FinancialSnapshot {
 function calcSafeDays(expense: number, balance: number): number {
   if (balance <= 0) return 0;
   const today = new Date().getDate();
-  const daysGone = Math.max(today, 1);
+  // Tanggal 1-3 awal bulan di-smooth minimal 3 hari agar pengeluaran tagihan awal bulan
+  // tidak menyebabkan pembagian ekstrim / false panic
+  const daysGone = Math.max(today, 3);
   const dailyAvg = expense / daysGone;
   if (dailyAvg <= 0) return 999;
   return Math.floor(balance / dailyAvg);
@@ -120,7 +122,7 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     en: {
       HAPPY: [
         `Awesome! Expenses are only ${Math.round(ratio * 100)}% of income this month. Wallet looking healthy! 💪`,
-        `Surplus of ${formatRupiah(surplus)} this month. Keep up the frugal habits!`,
+        `Surplus of ${formatRupiah(surplus, 'en')} this month. Keep up the frugal habits!`,
         topCat
           ? `Top expense is in ${topCat}, but still well within safe limits. Nice!`
           : `Solid finances this month! Keep it up.`,
@@ -139,7 +141,7 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
       ],
       PANIC: [
         snap.balance < 0
-          ? `Uh oh, balance is negative ${formatRupiah(Math.abs(snap.balance))}! Hit the brakes on spending. 🚨`
+          ? `Uh oh, balance is negative ${formatRupiah(Math.abs(snap.balance), 'en')}! Hit the brakes on spending. 🚨`
           : `Expenses have exceeded income this month! Critical — must take control now.`,
         `Try typing "roast my wallet" so I can provide a deeper analysis.`,
       ],
@@ -164,7 +166,12 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
   const cfg = configs[mood];
   const langKey = language === 'en' ? 'en' : 'id';
   const greetingList = greetings[langKey][mood];
-  const greeting = greetingList[Math.floor(Math.random() * greetingList.length)];
+  // Seed berbasis tanggal hari ini + mood agar sapaan stabil (tidak flicker tiap user tambah transaksi)
+  const now = new Date();
+  const daySeed = now.getDate() + (now.getMonth() + 1) * 31;
+  const moodHash = mood.charCodeAt(0) + (mood.charCodeAt(1) || 0);
+  const greetingIdx = Math.abs((daySeed + moodHash) % greetingList.length);
+  const greeting = greetingList[greetingIdx];
 
   return {
     mood,
@@ -176,9 +183,10 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
   };
 }
 
-function formatRupiah(amount: number): string {
+function formatRupiah(amount: number, language: 'id' | 'en' = 'id'): string {
   const abs = Math.abs(amount);
-  const formatted = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const sep = language === 'en' ? ',' : '.';
+  const formatted = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, sep);
   return `${amount < 0 ? '-' : ''}Rp ${formatted}`;
 }
 

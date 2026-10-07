@@ -17,9 +17,24 @@ module.exports = async (req, res) => {
       if (resp.ok) {
         const rows = await resp.json();
         const apkUrl = rows?.[0]?.value;
-        if (apkUrl && apkUrl.startsWith('http')) {
-          res.writeHead(307, { Location: apkUrl });
-          return res.end();
+        if (apkUrl && typeof apkUrl === 'string' && apkUrl.startsWith('http')) {
+          try {
+            const parsed = new URL(apkUrl);
+            const host = parsed.hostname.toLowerCase();
+            const isAllowed =
+              host === 'expo.dev' ||
+              host.endsWith('.expo.dev') ||
+              host === 'expo.io' ||
+              host.endsWith('.expo.io') ||
+              host.endsWith('.amazonaws.com');
+
+            if (isAllowed) {
+              res.writeHead(307, { Location: apkUrl });
+              return res.end();
+            } else {
+              console.warn('[Download API] Disallowed host in APK URL:', host);
+            }
+          } catch (_) {}
         }
       }
     }

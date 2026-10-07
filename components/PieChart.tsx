@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 import { Colors } from '@/constants/theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 export interface PieSlice {
   key: string;
@@ -52,6 +53,8 @@ export default function PieChart({
   onSlicePress,
   showNegative = false,
 }: PieChartProps) {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
   const [activeSlice, setActiveSlice] = useState<PieSlice | null>(null);
 
   const cx = size / 2;
@@ -62,8 +65,10 @@ export default function PieChart({
   const prefix = showNegative ? '-' : '';
 
   const fmt = formatValue ?? ((v: number) => {
-    if (v >= 1_000_000) return `${prefix}${(v / 1_000_000).toFixed(1)}jt`;
-    if (v >= 1_000) return `${prefix}${(v / 1_000).toFixed(0)}rb`;
+    const millionSuffix = isEn ? 'M' : 'jt';
+    const thousandSuffix = isEn ? 'K' : 'rb';
+    if (v >= 1_000_000) return `${prefix}${(v / 1_000_000).toFixed(1)}${millionSuffix}`;
+    if (v >= 1_000) return `${prefix}${(v / 1_000).toFixed(0)}${thousandSuffix}`;
     return `${prefix}${v}`;
   });
 
@@ -183,8 +188,13 @@ export default function PieChart({
 
       {/* Deselect tap zone */}
       {highlighted && (
-        <TouchableOpacity onPress={() => { setActiveSlice(null); onSlicePress?.(null); }} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Reset filter, tampilkan semua kategori">
-          <Text style={styles.clearBtnText}>✕ Semua</Text>
+        <TouchableOpacity
+          onPress={() => { setActiveSlice(null); onSlicePress?.(null); }}
+          style={styles.clearBtn}
+          accessibilityRole="button"
+          accessibilityLabel={isEn ? "Reset filter, show all categories" : "Reset filter, tampilkan semua kategori"}
+        >
+          <Text style={styles.clearBtnText}>{isEn ? '✕ All' : '✕ Semua'}</Text>
         </TouchableOpacity>
       )}
     </View>

@@ -262,9 +262,9 @@ Persona & Voice:
 - Provide actionable, realistic financial advice based on the wallet data.
 
 Wallet Financial Data:
-- Total Income: Rp ${financialContext.totalIncome.toLocaleString('id-ID')}
-- Total Expense: Rp ${financialContext.totalExpense.toLocaleString('id-ID')}
-- Remaining Balance: Rp ${financialContext.balance.toLocaleString('id-ID')}
+- Total Income: Rp ${financialContext.totalIncome.toLocaleString('en-US')}
+- Total Expense: Rp ${financialContext.totalExpense.toLocaleString('en-US')}
+- Remaining Balance: Rp ${financialContext.balance.toLocaleString('en-US')}
 - Total Transactions: ${financialContext.count}
 - Expenses by Category: ${JSON.stringify(financialContext.byCategory)}${otherContextEN}
 

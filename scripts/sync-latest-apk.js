@@ -62,6 +62,8 @@ async function sync() {
       process.exit(1);
     }
 
+    const secret = process.env.WEBHOOK_APK_SECRET || process.env.EAS_WEBHOOK_SECRET || 'db_apk_secret_98827361';
+
     const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/update_latest_apk`, {
       method: 'POST',
       headers: {
@@ -71,7 +73,7 @@ async function sync() {
       },
       body: JSON.stringify({
         p_url: buildUrl,
-        p_secret: 'db_apk_secret_98827361',
+        p_secret: secret,
       }),
     });
 

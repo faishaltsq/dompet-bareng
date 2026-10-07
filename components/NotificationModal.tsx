@@ -66,11 +66,16 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
     }
   };
 
+  const handleModalClose = () => {
+    setSelectedNotif(null);
+    onClose();
+  };
+
   return (
     <>
       <SwipeableModal
         visible={visible}
-        onClose={onClose}
+        onClose={handleModalClose}
         maxHeight={SCREEN_HEIGHT * 0.8}
         contentStyle={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16) }}
       >
@@ -100,7 +105,7 @@ export default function NotificationModal({ visible, onClose }: NotificationModa
                 <Text style={s.markAllBtnText}>{t('markAllAsRead')}</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
+            <TouchableOpacity onPress={handleModalClose} style={s.closeBtn} activeOpacity={0.7}>
               <Text style={s.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
