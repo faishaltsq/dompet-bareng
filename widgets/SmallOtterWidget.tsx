@@ -15,6 +15,10 @@ export function getShortWidgetAdvice(payload: WidgetPayload): string {
     case 'HAPPY': return payload.todayCount === 0
       ? id ? 'Belum keluar' : 'No spending'
       : id ? 'Masih aman' : 'Looking good'
+    case 'RICH': return id ? 'Dompet tebal' : 'Wallet loaded'
+    case 'REMINDER': return id ? 'Tahan dulu' : 'Ease off'
+    case 'WELCOME': return id ? 'Mulai catat' : 'Start logging'
+    case 'THINKING': return id ? 'Isi pemasukan' : 'Add income'
   }
 }
 

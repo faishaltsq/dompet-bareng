@@ -109,11 +109,11 @@ describe('getWidgetSuggestion', () => {
 })
 
 describe('buildWidgetPayload', () => {
-  it.each(['id', 'en'] as const)('keeps a known empty month healthy with explicit zero details (%s)', (language) => {
+  it.each(['id', 'en'] as const)('does not panic on a known empty month (%s)', (language) => {
     const p = buildWidgetPayload(payloadInput({ language }))
     expect(p).toMatchObject({
       todayExpense: 0, todayCount: 0, monthExpense: 0,
-      monthIncome: 0, monthBalance: 0, topCategory: null, mood: 'HAPPY',
+      monthIncome: 0, monthBalance: 0, topCategory: null, mood: 'WELCOME',
     })
     expect(p.suggestion).toContain('🎉')
   })
@@ -244,7 +244,7 @@ describe('buildWidgetPayload', () => {
     expect(p.todayExpense).toBe(200000)
     expect(p.todayCount).toBe(1)
     expect(p.monthExpense).toBe(200000)
-    expect(p.mood).toBe('HAPPY')
+    expect(p.mood).toBe('RICH')
   })
 
   it('does not aggregate any transactions when no workspace is active', () => {
@@ -255,7 +255,7 @@ describe('buildWidgetPayload', () => {
     expect(p.todayExpense).toBe(0)
     expect(p.todayCount).toBe(0)
     expect(p.monthExpense).toBe(0)
-    expect(p.mood).toBe('HAPPY')
+    expect(p.mood).toBe('WELCOME')
   })
 
   it.each([
@@ -270,7 +270,7 @@ describe('buildWidgetPayload', () => {
     expect(p.monthExpense).toBe(200000)
     expect(p.todayExpense).toBe(200000)
     expect(p.todayCount).toBe(1)
-    expect(p.mood).toBe('HAPPY')
+    expect(p.mood).toBe('RICH')
   })
 
   it.each(['2026-09-18', '2025-10-18', '2026-10-19', 'not-a-date']) (
@@ -292,7 +292,7 @@ describe('buildWidgetPayload', () => {
     }))
     expect(p.monthExpense).toBe(0)
     expect(p.todayCount).toBe(0)
-    expect(p.mood).toBe('HAPPY')
+    expect(p.mood).toBe('WELCOME')
   })
 
   it('includes earlier current-month expenses without counting them as today', () => {

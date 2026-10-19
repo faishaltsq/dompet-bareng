@@ -14,6 +14,22 @@ export interface WidgetTheme {
 }
 
 export const WIDGET_THEMES: Record<MascotMood, WidgetTheme> = {
+  WELCOME: {
+    background: '#FFE3CC', surface: '#FFF1E6', decoration: '#F7CC9E', border: '#E9B48A',
+    ink: '#5A3410', muted: '#80592E', accent: '#8F4407',
+  },
+  THINKING: {
+    background: '#E4E4FB', surface: '#EEEEFC', decoration: '#C4C4EF', border: '#ADADF0',
+    ink: '#26265A', muted: '#4C4C7E', accent: '#4337A0',
+  },
+  RICH: {
+    background: '#FFE9A8', surface: '#FFF6DC', decoration: '#F6D570', border: '#E8C256',
+    ink: '#5A4206', muted: '#7F6420', accent: '#7D5500',
+  },
+  REMINDER: {
+    background: '#CFEFEA', surface: '#E2F7F6', decoration: '#A7DED8', border: '#86CFC8',
+    ink: '#0B3F3C', muted: '#2F6763', accent: '#0C6E68',
+  },
   HAPPY: {
     background: '#DDF3C4', surface: '#EDF9E0', decoration: '#C8E8A7', border: '#B3D48F',
     ink: '#203B1C', muted: '#47613B', accent: '#28611C',

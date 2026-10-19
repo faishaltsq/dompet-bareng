@@ -92,18 +92,40 @@ export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
     1,
   )
   const daily = monthIncome > 0 ? Math.floor((monthIncome - monthExpense) / daysLeft) : 0
-  if (todayCount === 0 && mood === 'HAPPY') {
+  // Dompet kosong (WELCOME) dan dompet sehat (HAPPY) sama-sama tidak punya
+  // pengeluaran hari ini — keduanya layak dirayakan, bukan dipanikkan.
+  if (todayCount === 0 && (mood === 'HAPPY' || mood === 'WELCOME')) {
     return id ? 'Belum ada pengeluaran hari ini. Mantap! 🎉' : 'No spending recorded today. Great! 🎉'
   }
   switch (mood) {
-    case 'HAPPY':
-      return daily > 0
-        ? id
-          ? `Aman! Sisa harian ~${formatCompactRupiah(daily, language)}. Boleh santai 😊`
-          : `Safe! Daily allowance ~${formatCompactRupiah(daily, language)}. Enjoy 😊`
-        : id
-          ? 'Dompet sehat. Tetap hemat ya! 💪'
-          : 'Wallet healthy. Keep it up! 💪'
+    case 'WELCOME':
+      return id
+        ? 'Belum ada transaksi. Buka app buat mulai catat 🐾'
+        : 'No transactions yet. Open the app to get started 🐾'
+    case 'THINKING':
+      return id
+        ? 'Pemasukan belum dicatat. Tambah dulu ya 🤔'
+        : 'No income recorded yet. Add it first 🤔'
+    case 'PANIC':
+      return id ? '🚨 Pengeluaran lewat pemasukan! Rem sekarang.' : '🚨 Spending exceeds income! Stop now.'
+    case 'REMINDER': {
+      // Sama persis dengan calcSafeDays() di companion.ts — runway widget harus
+      // identik dengan yang ditampilkan di aplikasi.
+      const daysGone = Math.max(now.getDate(), 3)
+      const dailyAvg = monthExpense / daysGone
+      const runway = dailyAvg > 0 ? Math.max(Math.floor((monthIncome - monthExpense) / dailyAvg), 0) : 999
+      return id
+        ? `Sisa aman ${runway} hari. Tahan pengeluaran dulu 📣`
+        : `${runway} safe days left. Ease off spending 📣`
+    }
+    case 'WARNING':
+      return id
+        ? `Udah ${Math.round(ratio * 100)}% pemasukan kepakai. Tahan jajan dulu 😅`
+        : `${Math.round(ratio * 100)}% of income spent. Hold off 😅`
+    case 'RICH':
+      return id
+        ? `Surplus ${formatCompactRupiah(monthIncome - monthExpense, language)}. Dompet lagi tebal 💰`
+        : `Surplus ${formatCompactRupiah(monthIncome - monthExpense, language)}. Wallet is loaded 💰`
     case 'NEUTRAL':
       if (todayCount === 0) {
         return id
@@ -113,12 +135,14 @@ export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
       return id
         ? `Baru ${formatCompactRupiah(todayExpense, language)} keluar hari ini. Tetap pantau 👀`
         : `${formatCompactRupiah(todayExpense, language)} spent today. Keep an eye 👀`
-    case 'WARNING':
-      return id
-        ? `Udah ${Math.round(ratio * 100)}% pemasukan kepakai. Tahan jajan dulu 😅`
-        : `${Math.round(ratio * 100)}% of income spent. Hold off 😅`
-    case 'PANIC':
-      return id ? '🚨 Pengeluaran lewat pemasukan! Rem sekarang.' : '🚨 Spending exceeds income! Stop now.'
+    case 'HAPPY':
+      return daily > 0
+        ? id
+          ? `Aman! Sisa harian ~${formatCompactRupiah(daily, language)}. Boleh santai 😊`
+          : `Safe! Daily allowance ~${formatCompactRupiah(daily, language)}. Enjoy 😊`
+        : id
+          ? 'Dompet sehat. Tetap hemat ya! 💪'
+          : 'Wallet healthy. Keep it up! 💪'
   }
 }
 

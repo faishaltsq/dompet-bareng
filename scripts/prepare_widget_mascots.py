@@ -145,8 +145,9 @@ def process_directory(directory: Path) -> dict:
 
 
 def create_contact_sheet(directory: Path, destination: Path) -> None:
-    """Four moods over cream/mint/amber/rose plus dark checkerboard proof."""
-    moods = ('happy', 'idle', 'warning', 'panic')
+    """One column per mood over cream/mint/amber/rose plus dark checkerboard proof."""
+    moods = ('happy', 'idle', 'warning', 'panic',
+             'welcome', 'thinking', 'rich', 'reminder')
     backgrounds = (('cream', '#FFF7E6'), ('mint', '#DCFCE7'), ('amber', '#FEF3C7'), ('rose', '#FFE4E6'), ('checkerboard', None))
     tile, header = 260, 28
     sheet = Image.new('RGB', (tile * len(moods), (tile + header) * len(backgrounds)), '#F1F5F9')
