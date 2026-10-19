@@ -1,43 +1,37 @@
 /**
- * AI Service untuk DompetBareng
- * Mendukung:
- * 1. 9Router via Tunneling / Tailscale (OpenAI-compatible /v1/chat/completions)
- * 2. Google Generative Language API (Gemini fallback)
- * 
- * Konfigurasi URL dan Model mendukung Remote Config via tabel Supabase `app_configs`,
- * sehingga URL tunneling dapat diganti kapan saja tanpa rebuild APK / rilis OTA baru.
+ * AI Service untuk DompetBareng.
+ *
+ * Semua panggilan AI melewati proxy server-side POST /api/ai-chat.
+ * API key hanya hidup di Vercel env (AI_API_KEY) — tidak pernah masuk bundle
+ * dan tidak pernah dibaca dari tabel Supabase yang bisa diakses anon.
+ *
+ * Remote config ai_base_url / ai_model tetap dibaca server oleh proxy, sehingga
+ * URL dan model bisa diganti tanpa redeploy maupun rilis OTA baru.
  */
 
-import { getRemoteConfig, getRemoteConfigSync } from './remoteConfig';
+import { supabase } from './supabase';
 
-const DEFAULT_AI_BASE_URL =
-  process.env.EXPO_PUBLIC_AI_BASE_URL ||
-  'https://loqson.tailf969bb.ts.net/v1';
+const PROXY_ORIGIN = (
+  process.env.EXPO_PUBLIC_APP_BASE_URL || 'https://dompet-bareng.vercel.app'
+).replace(/\/+$/, '');
 
-const DEFAULT_AI_API_KEY =
-  process.env.EXPO_PUBLIC_AI_API_KEY ||
-  process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
-  '';
+const PROXY_TIMEOUT_MS = 60000;
 
-const DEFAULT_AI_MODEL =
-  process.env.EXPO_PUBLIC_AI_MODEL ||
-  'ag/gemini-3.8-flash-high';
+function proxyEndpoint(): string {
+  const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+  return isWeb ? '/api/ai-chat' : `${PROXY_ORIGIN}/api/ai-chat`;
+}
 
-/**
- * Resolusi konfigurasi AI aktif (Remote Config Supabase > ENV build).
- */
-export async function getAIConfig(): Promise<{ baseUrl: string; apiKey: string; model: string }> {
-  const [remoteBaseUrl, remoteModel, remoteApiKey] = await Promise.all([
-    getRemoteConfig('ai_base_url', DEFAULT_AI_BASE_URL),
-    getRemoteConfig('ai_model', DEFAULT_AI_MODEL),
-    getRemoteConfig('ai_api_key', DEFAULT_AI_API_KEY),
-  ]);
-
-  return {
-    baseUrl: (remoteBaseUrl || DEFAULT_AI_BASE_URL).trim(),
-    model: (remoteModel || DEFAULT_AI_MODEL).trim(),
-    apiKey: (remoteApiKey || DEFAULT_AI_API_KEY).trim(),
-  };
+async function proxyHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch {
+    // Tanpa token, proxy membalas 401 dan UI cukup menampilkan status offline.
+  }
+  return headers;
 }
 
 export type ParsedTransaction = {
@@ -53,17 +47,21 @@ export type AIMessage = {
 };
 
 /**
- * Pemanggilan universal ke AI provider (9Router / OpenAI format atau Google format).
- * Di Web (Platform.OS === 'web'), gunakan Vercel proxy /api/ai-chat agar API key
- * tidak ada di client bundle. Di Native, call langsung ke endpoint AI.
+ * Pemanggilan universal ke AI provider.
+ *
+ * Web maupun native sama-sama melewati proxy /api/ai-chat, jadi API key dan
+ * URL provider tidak pernah menyentuh client. URL model dibaca proxy dari
+ * remote config app_configs.
  */
 async function callAI(messages: AIMessage[]): Promise<string> {
-  // Web: gunakan server-side proxy — API key tidak bocor ke bundle
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const res = await fetch('/api/ai-chat', {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+  try {
+    const res = await fetch(proxyEndpoint(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await proxyHeaders(),
       body: JSON.stringify({ messages, temperature: 0.3 }),
+      signal: controller.signal,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -71,97 +69,25 @@ async function callAI(messages: AIMessage[]): Promise<string> {
     }
     const data = await res.json();
     return (data?.content ?? '').trim();
+  } finally {
+    clearTimeout(timer);
   }
-
-  // Native: call langsung ke AI endpoint (API key dari Supabase remote config)
-  const { baseUrl, apiKey, model } = await getAIConfig();
-
-  if (!apiKey) {
-    throw new Error('API Key AI belum diisi di Supabase app_configs (ai_api_key)');
-  }
-
-  // Fallback jika menggunakan endpoint langsung Google AI Studio
-  if (baseUrl.includes('generativelanguage.googleapis.com')) {
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
-
-    // Google Generative AI requires the API key as a query param — this is their
-    // published API contract (not a secret; the key is a publishable client key).
-    const res = await fetch(`${baseUrl}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Google AI error ${res.status}: ${err.slice(0, 200)}`);
-    }
-
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-  }
-
-  // Standar 9Router / OpenAI-compatible endpoint
-  const endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'User-Agent': 'DompetBareng/1.0 (Mobile; Expo)',
-    },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      messages,
-      temperature: 0.3,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`9Router error ${res.status}: ${err.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content ?? '';
-  return text.trim();
 }
 
 /**
- * Cek apakah AI API dapat dijangkau. Kirim ping singkat, return true/false.
- * Timeout 5 detik agar tidak menggantung UI.
+ * Cek apakah AI API dapat dijangkau. Kirim ping singkat lewat proxy, return
+ * true/false. Timeout 15 detik agar tidak menggantung UI.
  */
 export async function isAIAvailable(): Promise<boolean> {
   try {
-    // Gunakan cache sync dulu agar tidak menunggu Supabase fetch
-    const baseUrl = (getRemoteConfigSync('ai_base_url', process.env.EXPO_PUBLIC_AI_BASE_URL || 'https://loqson.tailf969bb.ts.net/v1')).trim();
-    const apiKey = (getRemoteConfigSync('ai_api_key', process.env.EXPO_PUBLIC_AI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY || '')).trim();
-    const model = (getRemoteConfigSync('ai_model', process.env.EXPO_PUBLIC_AI_MODEL || 'ag/gemini-3.8-flash-high')).trim();
-
-    if (!apiKey) return false;
-
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15 detik agar aman di koneksi mobile
-    const endpoint = baseUrl.includes('generativelanguage.googleapis.com')
-      ? `${baseUrl}?key=${apiKey}`
-      : `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
-
-    const res = await fetch(endpoint, {
+    const res = await fetch(proxyEndpoint(), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'User-Agent': 'DompetBareng/1.0',
-      },
+      headers: await proxyHeaders(),
       body: JSON.stringify({
-        model,
-        stream: false,
         messages: [{ role: 'user', content: 'ping' }],
+        temperature: 0,
         max_tokens: 1,
       }),
       signal: controller.signal,
