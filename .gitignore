@@ -37,6 +37,9 @@ yarn-error.*
 # hermes agent
 .hermes/
 
+# supabase cli scratch
+supabase/.temp
+
 # typescript
 *.tsbuildinfo
 
