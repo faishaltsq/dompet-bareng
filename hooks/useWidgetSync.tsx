@@ -17,7 +17,7 @@ function renderOtterWidget(payload: WidgetPayload) {
 
 export function useWidgetSync(): void {
   const { user, session, loading } = useAuth()
-  const { activeWorkspace, transactions } = useWorkspace()
+  const { activeWorkspace, transactions, budgets } = useWorkspace()
   const { language } = useLanguage()
   const lastFingerprintRef = useRef<string | null>(null)
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -38,6 +38,7 @@ export function useWidgetSync(): void {
             walletName: widgetWorkspace.name,
             language,
             now,
+            budgets,
           })
         : buildEmptyWidgetPayload(language)
       const fingerprint = JSON.stringify({
@@ -90,5 +91,5 @@ export function useWidgetSync(): void {
       subscription.remove()
       clearTimeout(midnightTimer)
     }
-  }, [activeWorkspace, transactions, language, loading, session, user])
+  }, [activeWorkspace, transactions, budgets, language, loading, session, user])
 }

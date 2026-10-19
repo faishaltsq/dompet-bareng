@@ -42,6 +42,7 @@ import {
   evaluateCompanion,
   getQuickChips,
   MASCOT_IMAGES,
+  calcBudgetUtilisation,
   CompanionState,
   FinancialSnapshot,
   MascotMood,
@@ -56,7 +57,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export function MascotOverlay() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeWorkspace, transactions, summary } = useWorkspace();
+  const { activeWorkspace, transactions, summary, budgets } = useWorkspace();
   const { t, language } = useLanguage();
 
   const snap: FinancialSnapshot = useMemo(() => {
@@ -78,8 +79,9 @@ export function MascotOverlay() {
       byCategory,
       otherWithDesc,
       otherNoDesc,
+      budgetUtilisation: calcBudgetUtilisation(budgets, transactions),
     };
-  }, [transactions, summary]);
+  }, [transactions, summary, budgets]);
 
   const companion: CompanionState = useMemo(() => evaluateCompanion(snap, language), [snap, language]);
 

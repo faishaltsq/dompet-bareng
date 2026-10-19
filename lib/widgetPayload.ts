@@ -1,4 +1,4 @@
-import { evaluateCompanion, FinancialSnapshot, MascotMood } from './companion'
+import { evaluateCompanion, calcBudgetUtilisation, FinancialSnapshot, MascotMood } from './companion'
 
 export type WidgetLanguage = 'id' | 'en'
 
@@ -158,6 +158,7 @@ export interface BuildWidgetPayloadInput {
   walletName: string
   language: WidgetLanguage
   now?: Date
+  budgets?: Array<{ category: string; amount: number }> // kosong/absen = tanpa budget, runway saja
 }
 
 export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayload {
@@ -185,6 +186,7 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
     byCategory,
     otherWithDesc: [],
     otherNoDesc: 0,
+    budgetUtilisation: calcBudgetUtilisation(input.budgets, wsTx),
   }
   const companion = evaluateCompanion(snap, input.language)
   const today = sumTodayExpense(wsTx, now)

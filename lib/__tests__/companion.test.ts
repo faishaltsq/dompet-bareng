@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { evaluateCompanion, type FinancialSnapshot } from '../companion'
+import { evaluateCompanion, calcBudgetUtilisation, type FinancialSnapshot } from '../companion'
 
 /**
  * `calcSafeDays` membaca tanggal nyata (Math.max(day, 3)), jadi seluruh suite
@@ -87,5 +87,92 @@ describe('evaluateCompanion — labels follow the mood', () => {
     expect(state.mood).toBe(mood)
     expect(state.moodLabel.length).toBeGreaterThan(0)
     expect(evaluateCompanion(snap({ ...overrides }), 'en').moodLabel.length).toBeGreaterThan(0)
+  })
+})
+
+const tx = (type: 'income' | 'expense', category: string, amount: number) => ({ type, category, amount })
+
+describe('calcBudgetUtilisation', () => {
+  it('returns undefined when the workspace has no budget at all', () => {
+    // Cabang budget di evaluateCompanion harus meleset dengan anggun, bukan
+    // jatuh ke 0 dan menekan mood.
+    expect(calcBudgetUtilisation([], [tx('expense', 'Makanan', 900_000)])).toBeUndefined()
+    expect(calcBudgetUtilisation(null, [tx('expense', 'Makanan', 900_000)])).toBeUndefined()
+    expect(calcBudgetUtilisation(undefined, [])).toBeUndefined()
+  })
+
+  it('divides spent by quota', () => {
+    const budgets = [{ category: 'Makanan', amount: 1_000_000 }]
+    expect(calcBudgetUtilisation(budgets, [tx('expense', 'Makanan', 800_000)])).toBeCloseTo(0.8)
+    expect(calcBudgetUtilisation(budgets, [tx('expense', 'Makanan', 1_500_000)])).toBeCloseTo(1.5)
+  })
+
+  it('ignores categories that have no quota', () => {
+    // Transport Rp 10jt tanpa kuota tidak boleh membanjiri rasio kategori yang
+    // memang dibudgetkan — kalau ikut, semua workspace jadi 100% terus.
+    const budgets = [{ category: 'Makanan', amount: 1_000_000 }]
+    const util = calcBudgetUtilisation(budgets, [
+      tx('expense', 'Makanan', 500_000),
+      tx('expense', 'Transport', 10_000_000),
+    ])
+    expect(util).toBeCloseTo(0.5)
+  })
+
+  it('never lets income push utilisation down', () => {
+    const budgets = [{ category: 'Makanan', amount: 1_000_000 }]
+    const util = calcBudgetUtilisation(budgets, [
+      tx('income', 'Makanan', 5_000_000),
+      tx('expense', 'Makanan', 100_000),
+    ])
+    expect(util).toBeCloseTo(0.1)
+  })
+
+  it('matches category names case- and whitespace-insensitively', () => {
+    const budgets = [{ category: '  makanan ', amount: 1_000_000 }]
+    expect(calcBudgetUtilisation(budgets, [tx('expense', 'Makanan', 800_000)])).toBeCloseTo(0.8)
+  })
+})
+
+describe('evaluateCompanion — budget as the REMINDER trigger', () => {
+  // Base HAPPY: rasio 0,4 dan runway 33 hari, jadi satu-satunya yang bisa
+  // membalik mood di sini adalah utilisasi budget.
+  const HEALTHY = { income: 4_000_000, expense: 1_600_000, balance: 3_000_000 }
+
+  it('raises HAPPY to REMINDER once the budget is 80% spent', () => {
+    expect(moodOf({ ...HEALTHY, budgetUtilisation: 0.79 })).toBe('HAPPY')
+    expect(moodOf({ ...HEALTHY, budgetUtilisation: 0.8 })).toBe('REMINDER')
+    expect(moodOf({ ...HEALTHY, budgetUtilisation: 1.4 })).toBe('REMINDER')
+  })
+
+  it('raises NEUTRAL to REMINDER the same way', () => {
+    const neutral = { income: 4_000_000, expense: 2_400_000, balance: 1_600_000 } // rasio 0,6
+    expect(moodOf(neutral)).toBe('NEUTRAL')
+    expect(moodOf({ ...neutral, budgetUtilisation: 0.85 })).toBe('REMINDER')
+  })
+
+  it('never downgrades WARNING to REMINDER', () => {
+    // Guard `ratio < 0.75`: dompet yang sudah mepet tetap memakai mood WARNING,
+    // budget tidak boleh menurunkan severity.
+    const warning = { income: 4_000_000, expense: 3_000_000, balance: 2_000_000 } // rasio 0,75
+    expect(moodOf(warning)).toBe('WARNING')
+    expect(moodOf({ ...warning, budgetUtilisation: 0.95 })).toBe('WARNING')
+  })
+
+  it('never downgrades PANIC', () => {
+    const panic = { income: 1_000_000, expense: 1_200_000, balance: -200_000 }
+    expect(moodOf({ ...panic, budgetUtilisation: 0.95 })).toBe('PANIC')
+  })
+
+  it('outranks the calm moods, because a blown budget is actionable', () => {
+    // Komentar di rantai: keadaan yang bisa ditindaklanjuti menang atas
+    // bandingan keparahan. Saku tebal tapi budget habis = pengingat yang benar.
+    const rich = { income: 4_000_000, expense: 1_000_000, balance: 3_000_000 }
+    expect(moodOf(rich)).toBe('RICH')
+    expect(moodOf({ ...rich, budgetUtilisation: 0.9 })).toBe('REMINDER')
+  })
+
+  it('leaves the mood alone when no budget data is supplied', () => {
+    expect(moodOf(HEALTHY)).toBe('HAPPY')
+    expect(moodOf({ ...HEALTHY, budgetUtilisation: undefined })).toBe('HAPPY')
   })
 })

@@ -38,6 +38,52 @@ export interface FinancialSnapshot {
   byCategory: Record<string, number>;
   otherWithDesc?: string[]; // transaksi Lainnya yang punya deskripsi
   otherNoDesc?: number;     // jumlah transaksi Lainnya tanpa deskripsi
+  budgetUtilisation?: number; // 0..1 — Σ terpakai / Σ kuota bulan berjalan; undefined = tanpa budget
+}
+
+/** Bentuk minimum baris budget; struktural supaya assignable dengan WorkspaceBudget */
+type BudgetRow = { category: string; amount: number };
+
+/** Di atas 80% terpakai, budget ikut menentukan mood REMINDER */
+const BUDGET_REMINDER_THRESHOLD = 0.8;
+
+/**
+ * Utilisasi budget bulan berjalan: Σ terpakai / Σ kuota.
+ *
+ * Hanya kategori yang punya kuota yang ikut dihitung — kategori tanpa budget
+ * dibiarkan keluar, jadi satu kategori kecil yang kebablasan tidak menaikkan
+ * rasio seluruh dompet. Mengembalikan `undefined` kalau workspace tidak punya
+ * budget sama sekali, supaya cabang REMINDER meleset dengan anggun dan
+ * runway-lah yang tetap menentukan.
+ */
+export function calcBudgetUtilisation(
+  budgets: BudgetRow[] | null | undefined,
+  transactions: Array<{ type: 'income' | 'expense'; category: string; amount: number }>,
+): number | undefined {
+  if (!budgets?.length) return undefined;
+
+  const quotaByCategory = new Map<string, number>();
+  for (const b of budgets) {
+    if (b.amount <= 0) continue;
+    const key = b.category.trim().toLowerCase();
+    quotaByCategory.set(key, (quotaByCategory.get(key) ?? 0) + b.amount);
+  }
+  if (quotaByCategory.size === 0) return undefined;
+
+  const spentByCategory = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.type !== 'expense') continue; // pemasukan tidak boleh menekan utilisasi
+    const key = t.category.trim().toLowerCase();
+    spentByCategory.set(key, (spentByCategory.get(key) ?? 0) + t.amount);
+  }
+
+  let quota = 0;
+  let spent = 0;
+  for (const [key, limit] of quotaByCategory) {
+    quota += limit;
+    spent += spentByCategory.get(key) ?? 0;
+  }
+  return quota > 0 ? spent / quota : undefined;
 }
 
 /** Hitung berapa hari sisa aman berdasarkan rata-rata pengeluaran harian */
@@ -92,9 +138,20 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     mood = 'THINKING';
   } else if (ratio > 1 || snap.balance < 0) {
     mood = 'PANIC';
-  } else if (safeDays <= 3) {
-    // Baris aman tinggal 3 hari. Kalau sudah kritis, PANIC di atas yang menang —
-    // pengingat ini hanya muncul di bandingan masih bisa diperbaiki.
+  } else if (
+    safeDays <= 3 ||
+    // OR budget: utilisasi ≥ 80% mengingatkan walau runway masih lega.
+    // Guard `ratio < 0.75` membuat budget TIDAK PERNAH menurunkan severity —
+    // PANIC di atas dan WARNING tetap menang. Yang bisa di-override hanya tiga
+    // mood tenang di bawah (RICH, NEUTRAL, HAPPY), konsisten dengan komentar
+    // di atas: keadaan yang bisa ditindaklanjuti menang atas bandingan keparahan.
+    (snap.budgetUtilisation !== undefined &&
+      snap.budgetUtilisation >= BUDGET_REMINDER_THRESHOLD &&
+      ratio < 0.75)
+  ) {
+    // Baris aman tinggal 3 hari, atau budget hampir habis. Kalau sudah kritis,
+    // PANIC di atas yang menang — pengingat ini hanya muncul di bandingan masih
+    // bisa diperbaiki.
     mood = 'REMINDER';
   } else if (ratio >= 0.75) {
     mood = 'WARNING';
