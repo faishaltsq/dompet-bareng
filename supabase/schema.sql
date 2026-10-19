@@ -1,5 +1,9 @@
--- DompetBareng: Skema Database (master)
--- Jalankan di Supabase SQL Editor
+-- DompetBareng: historical bootstrap reference, not a live migration.
+-- Do NOT reapply this file to an existing project. The QR/approval extension,
+-- RPCs, and final authorization state are versioned in migrations/
+-- 20261019000100_qr_join_schema.sql through 20261019000300_qr_join_cutover.sql.
+-- Fresh projects also require the existing profiles/app_configs/image addons
+-- before those migrations; this file alone is not a complete app bootstrap.
 
 -- 1. EXTENSION
 create extension if not exists "pgcrypto";
@@ -8,6 +12,7 @@ create extension if not exists "pgcrypto";
 create table public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  image_url text,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz default now() not null
 );
@@ -90,25 +95,30 @@ create policy "ws_delete"
 -- 9. POLICIES: WORKSPACE_MEMBERS
 -- KUNCI: JANGAN panggil is_workspace_member() di sini
 --        karena is_workspace_member query workspace_members → infinite recursion
--- SELECT: user bisa lihat SEMUA anggota di workspace yang dia ikuti
+create or replace function public.user_workspace_ids(uid uuid)
+returns setof uuid language sql stable security definer set search_path=pg_catalog,public
+as $$ select workspace_id from public.workspace_members where user_id=uid and uid=auth.uid(); $$;
+create or replace function public.user_admin_workspace_ids(uid uuid)
+returns setof uuid language sql stable security definer set search_path=pg_catalog,public
+as $$ select workspace_id from public.workspace_members where user_id=uid and uid=auth.uid() and role='admin'; $$;
+-- SELECT: use a definer-safe, actor-bound helper rather than a recursive query.
 create policy "wm_select"
   on public.workspace_members for select
   using (
-    workspace_id in (
-      select wm.workspace_id from public.workspace_members wm
-      where wm.user_id = auth.uid()
-    )
+    workspace_id in (select public.user_workspace_ids(auth.uid()))
   );
 
--- INSERT: siapapun yang login boleh join
-create policy "wm_insert"
+-- Direct admission is only the creator's own admin bootstrap.
+create policy "wm_insert_owner_bootstrap"
   on public.workspace_members for insert
-  with check (auth.uid() is not null);
+  with check (user_id=auth.uid() and role='admin' and exists (
+    select 1 from public.workspaces w where w.id=workspace_members.workspace_id and w.created_by=auth.uid()
+  ));
 
--- DELETE: diri sendiri bisa keluar workspace
+-- DELETE: preserve self-leave and current admin removal.
 create policy "wm_delete"
   on public.workspace_members for delete
-  using (user_id = auth.uid());
+  using (user_id = auth.uid() or workspace_id in(select public.user_admin_workspace_ids(auth.uid())));
 
 -- 10. POLICIES: TRANSACTIONS
 create policy "tx_all"
@@ -119,8 +129,7 @@ create policy "tx_all"
 -- 11. POLICIES: INVITES
 create policy "invite_select"
   on public.workspace_invites for select
-  using (expires_at > now());
-
-create policy "invite_insert"
-  on public.workspace_invites for insert
-  with check (is_workspace_member(workspace_id));
+  using ((created_by=auth.uid() and is_workspace_member(workspace_id))
+    or workspace_id in(select public.user_admin_workspace_ids(auth.uid())));
+-- No direct invitation-write policy. The approved migration creates the
+-- registered-member temporary invitation RPC and owner/admin static QR RPCs.

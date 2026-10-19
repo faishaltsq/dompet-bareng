@@ -1,0 +1,16 @@
+select public.test_assert(to_regclass('public.workspace_join_requests') is not null,'approval request table must exist');
+select public.test_assert(exists(select 1 from information_schema.columns where table_schema='public' and table_name='workspace_invites' and column_name='kind'),'invitation kind must exist');
+select public.test_assert((select count(*)=3 from public.workspace_invites where kind='temporary'),'legacy invitations preserved');
+select public.test_assert((select expires_at='2100-01-01'::timestamptz from public.workspace_invites where token='0123456789abcdef0123456789abcdef'),'legacy expiry unchanged');
+select public.test_assert((select count(*)=4 from public.workspace_members),'memberships unchanged');
+select public.test_assert(exists(select 1 from pg_indexes where indexname='workspace_join_requests_one_pending'),'pending uniqueness index');
+begin;
+select public.test_reject($s$insert into public.workspace_invites(workspace_id,expires_at) values('10000000-0000-4000-8000-000000000001',null)$s$,'23514');
+select public.test_reject($s$insert into public.workspace_invites(workspace_id,kind) values('10000000-0000-4000-8000-000000000001','static')$s$,'23514');
+insert into public.workspace_invites(workspace_id,kind,expires_at) values('10000000-0000-4000-8000-000000000001','static',null);
+select public.test_reject($s$insert into public.workspace_invites(workspace_id,kind,expires_at) values('10000000-0000-4000-8000-000000000001','static',null)$s$,'23505');
+select public.test_reject($s$insert into public.workspace_join_requests(workspace_id,requester_id,invite_token) values('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000004','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$s$,'23503');
+insert into public.workspace_join_requests(workspace_id,requester_id,invite_token) values('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000004','0123456789abcdef0123456789abcdef');
+select public.test_reject($s$insert into public.workspace_join_requests(workspace_id,requester_id,invite_token) values('10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000004','0123456789abcdef0123456789abcdef')$s$,'23505');
+select public.test_reject($s$update public.workspace_join_requests set status='approved'$s$,'23514');
+rollback;

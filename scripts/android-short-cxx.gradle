@@ -1,0 +1,9 @@
+allprojects { p ->
+    p.plugins.withId('com.android.library') {
+        if (p.name == 'react-native-reanimated' && System.getProperty('os.name').startsWith('Windows')) {
+            // Ninja 1.10 can treat long prefab paths as missing and regenerate build.ninja forever.
+            def cacheRoot = new File(System.getenv('LOCALAPPDATA'), 'hermes/cache/scratch/widget-ra-cxx')
+            p.extensions.getByName('android').externalNativeBuild.cmake.buildStagingDirectory = cacheRoot
+        }
+    }
+}

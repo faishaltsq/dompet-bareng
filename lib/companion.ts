@@ -193,30 +193,11 @@ function formatRupiah(amount: number, language: 'id' | 'en' = 'id'): string {
 /** Mascot image assets per mood */
 import type { ImageSourcePropType } from 'react-native';
 
-function loadMascotImage(key: 'happy' | 'idle' | 'warning' | 'panic'): ImageSourcePropType {
-  try {
-    switch (key) {
-      case 'happy':
-        return require('../mascot/otter-happy.png')
-      case 'idle':
-        return require('../mascot/otter-idle.png')
-      case 'warning':
-        return require('../mascot/otter-warning.png')
-      case 'panic':
-        return require('../mascot/otter-panic.png')
-    }
-    return 0 as unknown as ImageSourcePropType
-  } catch {
-    // Node/vitest cannot require PNG assets; fall back to a neutral placeholder.
-    return 0 as unknown as ImageSourcePropType
-  }
-}
-
 export const MASCOT_IMAGES: Record<MascotMood, ImageSourcePropType> = {
-  HAPPY: loadMascotImage('happy'),
-  NEUTRAL: loadMascotImage('idle'),
-  WARNING: loadMascotImage('warning'),
-  PANIC: loadMascotImage('panic'),
+  HAPPY:   require('../mascot/otter-happy.png'),
+  NEUTRAL: require('../mascot/otter-idle.png'),
+  WARNING: require('../mascot/otter-warning.png'),
+  PANIC:   require('../mascot/otter-panic.png'),
 };
 
 export interface QuickChipItem {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { inviteTranslations } from '../lib/inviteTranslations';
 
 export type AppLanguage = 'id' | 'en';
 
@@ -7,6 +8,7 @@ const LANGUAGE_STORAGE_KEY = '@dompetbareng_app_language';
 
 const translations = {
   id: {
+    ...inviteTranslations.id,
     // Navigation / Tabs
     tabHome: 'Beranda',
     tabStats: 'Statistik',
@@ -136,7 +138,7 @@ const translations = {
     shareViaTelegram: 'Telegram',
     shareViaEmail: 'Email',
     shareViaOther: 'Lainnya',
-    inviteNote: 'Siapa saja yang memiliki link ini dapat bergabung ke dompetmu.',
+    inviteNote: 'Link berlaku 7 hari. Bergabung memerlukan persetujuan pemilik atau admin.',
     leaveWallet: 'Keluar dari Dompet',
     leaveWalletDesc: 'Tinggalkan dompet bersama ini',
     deleteWallet: 'Hapus Dompet Ini',
@@ -147,6 +149,19 @@ const translations = {
     joinWalletDesc: 'Masukkan tautan atau kode token undangan',
     dailyReminder: 'Pengingat Harian',
     dailyReminderDesc: 'Notifikasi jam 20:00 untuk mencatat pengeluaran',
+    widgetTitle: 'Widget Layar Utama',
+    widgetDesc: 'Pasang widget otter di home screen untuk pantau pengeluaran hari ini.',
+    widgetSizeChooserTitle: 'Pilih Ukuran Widget',
+    widgetSizeChooserDetails: 'Pilih tampilan awal. Ukuran dapat diubah di layar utama; isi menyesuaikan ruang yang tersedia.',
+    widgetSizeChooserCancel: 'Batal',
+    widgetSizeSmall: 'Kecil',
+    widgetSizeSmallDesc: 'Ringkasan pengeluaran hari ini yang hemat tempat.',
+    widgetSizeMedium: 'Sedang',
+    widgetSizeMediumDesc: 'Pengeluaran hari ini dan saran otter dalam tampilan lebar.',
+    widgetSizeLarge: 'Besar',
+    widgetSizeLargeDesc: 'Ruang lebih luas untuk ringkasan pengeluaran dan detail dompet.',
+    widgetPinUnsupportedTitle: 'Widget tidak didukung',
+    widgetPinUnsupportedDesc: 'Launcher kamu tidak mendukung pin widget otomatis. Tambahkan manual dari menu widget launcher.',
     appLanguage: 'Bahasa Aplikasi',
     testNotification: 'Test Notifikasi',
     testNotificationDesc: 'Kirim notifikasi uji dalam 3 detik',
@@ -387,6 +402,7 @@ const translations = {
     loginSubtitle: 'Manajemen keuangan bersama\nuntuk keluarga & organisasi',
   },
   en: {
+    ...inviteTranslations.en,
     // Navigation / Tabs
     tabHome: 'Home',
     tabStats: 'Stats',
@@ -516,7 +532,7 @@ const translations = {
     shareViaTelegram: 'Telegram',
     shareViaEmail: 'Email',
     shareViaOther: 'More',
-    inviteNote: 'Anyone with this link can join your wallet.',
+    inviteNote: 'Links last 7 days. Joining requires owner or admin approval.',
     leaveWallet: 'Leave Wallet',
     leaveWalletDesc: 'Leave this shared wallet',
     deleteWallet: 'Delete Wallet',
@@ -527,6 +543,19 @@ const translations = {
     joinWalletDesc: 'Enter invite link or token code',
     dailyReminder: 'Daily Reminder',
     dailyReminderDesc: 'Notification at 20:00 to log daily expenses',
+    widgetTitle: 'Home Screen Widget',
+    widgetDesc: 'Pin the otter widget to your home screen to track today spending.',
+    widgetSizeChooserTitle: 'Choose Widget Size',
+    widgetSizeChooserDetails: 'Choose a starting layout. Resize it on your home screen; content adapts to the available space.',
+    widgetSizeChooserCancel: 'Cancel',
+    widgetSizeSmall: 'Small',
+    widgetSizeSmallDesc: 'A space-saving summary of today’s spending.',
+    widgetSizeMedium: 'Medium',
+    widgetSizeMediumDesc: 'Today’s spending and otter advice in a wide layout.',
+    widgetSizeLarge: 'Large',
+    widgetSizeLargeDesc: 'More room for spending summaries and wallet details.',
+    widgetPinUnsupportedTitle: 'Widget not supported',
+    widgetPinUnsupportedDesc: 'Your launcher does not support automatic widget pinning. Add it manually from the launcher widget menu.',
     appLanguage: 'App Language',
     testNotification: 'Test Notification',
     testNotificationDesc: 'Send a test notification in 3 seconds',

@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Share, Alert, AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { createTemporaryInvite } from '../lib/workspaceInvites';
+import { buildInviteUrl } from '../lib/inviteLinks';
 
 export type Workspace = {
   id: string;
@@ -58,7 +60,8 @@ type WorkspaceContextType = {
   hasMoreTx: boolean;
   loadMoreTransactions: () => Promise<void>;
   refreshWorkspaces: () => Promise<void>;
-  joinWorkspace: (workspaceId: string, role?: 'admin' | 'member') => Promise<boolean>;
+
+  openJoinedWorkspace: (workspaceId: string, canActivate?: () => boolean) => Promise<boolean>;
   leaveWorkspace: (workspaceId: string) => Promise<boolean>;
   removeMember: (workspaceId: string, userId: string, reason?: string) => Promise<boolean>;
   uploadWorkspaceImage: (id: string, uri: string, base64?: string | null) => Promise<string | null>;
@@ -89,6 +92,11 @@ async function writeCache(key: string, value: unknown): Promise<void> {
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const { user, profile } = useAuth();
+  const identityRef = useRef({ id: user?.id ?? null, epoch: 0 });
+  if (identityRef.current.id !== (user?.id ?? null)) {
+    identityRef.current = { id: user?.id ?? null, epoch: identityRef.current.epoch + 1 };
+  }
+  const previousIdentity = useRef<string | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -115,10 +123,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const fetchWorkspaces = useCallback(async () => {
     if (!user) return;
+    const identity = identityRef.current;
+    if (identity.id !== user.id) return;
 
     // 1. Show cache immediately for instant UI
     const cached = await readCache<Workspace[]>(CACHE_WS_KEY(user.id));
     const savedActiveId = await AsyncStorage.getItem(CACHE_ACTIVE_WS_KEY(user.id)).catch(() => null);
+    if (identityRef.current !== identity) return;
 
     if (cached?.length) {
       setWorkspaces(cached);
@@ -140,6 +151,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .select('role, workspaces(id, name, image_url)')
       .eq('user_id', user.id);
 
+    if (identityRef.current !== identity) return;
     if (!error && data) {
       const ws: Workspace[] = data
         .filter((m: any) => m.workspaces)
@@ -159,6 +171,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         .select('id, name, image_url')
         .eq('created_by', user.id);
 
+      if (identityRef.current !== identity) return;
       if (owned) {
         for (const ow of owned) {
           if (!ws.some(w => w.id === ow.id)) {
@@ -168,6 +181,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               user_id: user.id,
               role: 'admin',
             }).then(() => {});
+            if (identityRef.current !== identity) return;
             ws.push({
               id: ow.id,
               name: ow.name,
@@ -307,7 +321,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // ── Effects ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (previousIdentity.current !== (user?.id ?? null)) {
+      previousIdentity.current = user?.id ?? null;
+      activeRef.current = null;
+      setWorkspaces([]);
+      setActiveWorkspaceState(null);
+      setTransactions([]);
+      setBudgetsState([]);
+      setLoadingTx(false);
+      setLoadingWorkspaces(Boolean(user));
+    }
     if (user) fetchWorkspaces();
     else {
       setWorkspaces([]);
@@ -565,23 +589,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const generateInviteLink = async (): Promise<string | null> => {
     if (!activeWorkspace || !user) return null;
-    try {
-      const { data, error } = await supabase
-        .from('workspace_invites')
-        .insert({ workspace_id: activeWorkspace.id, created_by: user.id })
-        .select('token')
-        .single();
-
-      if (error || !data) {
-        console.error('generateInviteLink error:', error);
-        return null;
-      }
-      const link = `https://dompet-bareng.vercel.app/invite/${data.token}`;
-      return link;
-    } catch (e) {
-      console.error('generateInviteLink exception:', e);
-      return null;
-    }
+    const identity = identityRef.current;
+    const target = activeWorkspace.id;
+    const reply = await createTemporaryInvite(target);
+    if (identityRef.current !== identity || activeRef.current?.id !== target || !reply.ok) return null;
+    return buildInviteUrl(reply.value.token);
   };
 
   const addTransaction = async (
@@ -730,54 +742,42 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     await fetchWorkspaces();
   };
 
-  const joinWorkspace = async (
-    workspaceId: string,
-    role: 'admin' | 'member' = 'member'
-  ): Promise<boolean> => {
+  const openJoinedWorkspace = async (workspaceId: string, canActivate: () => boolean = () => true): Promise<boolean> => {
     if (!user) return false;
-
-    const { error } = await supabase.from('workspace_members').insert({
-      workspace_id: workspaceId,
-      user_id: user.id,
-      role,
-    });
-
-    if (error && error.code !== '23505') {
-      console.error('joinWorkspace error:', error);
-      return false;
-    }
-
-    // Refresh langsung dari DB
-    const { data, error: fetchErr } = await supabase
+    const identity = identityRef.current;
+    if (identity.id !== user.id) return false;
+    try {
+    const { data, error } = await supabase
       .from('workspace_members')
       .select('role, workspaces(id, name, image_url)')
       .eq('user_id', user.id);
-
-    if (!fetchErr && data) {
-      const wsList: Workspace[] = data
-        .filter((m: any) => m.workspaces)
-        .map((m: any) => {
+    if (error || !data || identityRef.current !== identity || !canActivate()) return false;
+      const wsList: Workspace[] = data.flatMap((m: any) => {
           const w = Array.isArray(m.workspaces) ? m.workspaces[0] : m.workspaces;
-          return {
+          if (!w || typeof w.id !== 'string' || !['admin', 'member'].includes(m.role)) return [];
+          return [{
             id: w.id,
             name: w.name,
             role: m.role,
             image_url: w.image_url ?? null,
-          };
+          }];
         });
-
+      const target = wsList.find(w => w.id === workspaceId);
+      if (!target) return false;
       setWorkspaces(wsList);
-      const target = wsList.find(w => w.id === workspaceId) ?? wsList[0] ?? null;
-      if (target) {
-        activeRef.current = target;
-        setActiveWorkspaceState(target);
-        // Persist active workspace ke AsyncStorage
-        AsyncStorage.setItem(CACHE_ACTIVE_WS_KEY(user.id), target.id).catch(() => {});
+      if (activeRef.current?.id !== target.id) {
+        setTransactions([]);
+        setBudgetsState([]);
+        setLoadingTx(true);
       }
+      activeRef.current = target;
+      setActiveWorkspaceState(target);
+      AsyncStorage.setItem(CACHE_ACTIVE_WS_KEY(user.id), target.id).catch(() => {});
       await writeCache(CACHE_WS_KEY(user.id), wsList);
-    }
-    return true;
+      return identityRef.current === identity;
+    } catch { return false; }
   };
+
 
   // ── Leave & Kick ────────────────────────────────────────────────────────────
 
@@ -973,7 +973,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setActiveWorkspace, createWorkspace, deleteWorkspace, updateWorkspace,
       generateInviteLink, addTransaction, updateTransaction, deleteTransaction,
       refetchTransactions, summary, hasMoreTx, loadMoreTransactions,
-      refreshWorkspaces, joinWorkspace,
+      refreshWorkspaces, openJoinedWorkspace,
       leaveWorkspace, removeMember,
       uploadWorkspaceImage,
       uploadReceiptImage,

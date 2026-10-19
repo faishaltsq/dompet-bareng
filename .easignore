@@ -5,3 +5,19 @@ web-build/
 .vercel/
 .hermes/
 *.log
+
+# Expo CNG regenerates native projects on the build server.
+/android
+/ios
+/android/
+/ios/
+
+# Use EAS environment variables and remote signing credentials.
+.env*
+*.jks
+*.p12
+*.p8
+*.key
+*.pem
+*.mobileprovision
+credentials.json

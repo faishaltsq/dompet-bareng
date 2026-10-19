@@ -1,0 +1,11 @@
+do $$ begin if current_database() not like 'qr_join_test_%' then raise exception 'Test database only'; end if; end $$;
+drop table public.workspace_join_requests;
+delete from public.workspace_invites where kind='static';
+drop index public.workspace_invites_active_static_unique;
+drop index public.workspace_invites_wallet_kind_created;
+alter table public.workspace_invites drop constraint workspace_invites_kind_check,drop constraint workspace_invites_lifecycle_check,drop constraint workspace_invites_token_workspace_unique;
+alter table public.workspace_invites drop column kind,drop column revoked_at;
+alter table public.workspace_invites alter column expires_at set not null;
+delete from public.app_configs where key='qr_join_enabled';
+select public.test_assert((select count(*)=3 from public.workspace_invites),'legacy invitations survive rollback');
+select public.test_assert((select count(*)=4 from public.workspace_members),'membership survives rollback');

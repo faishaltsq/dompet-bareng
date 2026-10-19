@@ -1,93 +1,40 @@
-// scripts/sync-latest-apk.js
-// Ambil URL build APK Android terbaru dari EAS CLI dan sinkronkan ke Supabase app_configs
+const { execSync } = require('node:child_process')
+const path = require('node:path')
+const { selectPromotableApk, promotionPolicy } = require('../lib/easApkPromotion.cjs')
+const { expo } = require('../app.json')
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-
-// Auto-load .env and .env.local if present
-['../.env', '../.env.local'].forEach(rel => {
-  try {
-    const envPath = path.resolve(__dirname, rel);
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, 'utf-8');
-      envContent.split(/\r?\n/).forEach(line => {
-        const match = line.match(/^([^=]+)=(.*)$/);
-        if (match) {
-          const key = match[1].trim();
-          const value = match[2].trim().replace(/^["']|["']$/g, '');
-          if (!process.env[key]) {
-            process.env[key] = value;
-          }
-        }
-      });
-    }
-  } catch (_) {}
-});
-
-async function sync() {
-  console.log('📦 Memeriksa build Android terbaru dari Expo EAS...');
-  try {
-    const raw = execSync('npx eas-cli build:list --platform android --limit 1 --json', {
-      encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    const builds = JSON.parse(raw);
-    const latest = builds?.[0];
-
-    if (!latest) {
-      console.error('❌ Tidak ada build Android yang ditemukan di EAS.');
-      process.exit(1);
-    }
-
-    const buildUrl = latest.artifacts?.buildUrl || latest.artifacts?.applicationArchiveUrl;
-    const status = latest.status;
-    const buildId = latest.id;
-
-    console.log(`📌 Build ID: ${buildId}`);
-    console.log(`📌 Status  : ${status}`);
-    console.log(`📌 APK URL : ${buildUrl}`);
-
-    if (status !== 'FINISHED' || !buildUrl) {
-      console.warn('⚠️ Build terakhir belum selesai atau tidak memiliki artifact APK.');
-      process.exit(0);
-    }
-
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://uqsgnkgszlnpdfikubpq.supabase.co';
-    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseAnonKey) {
-      console.error('❌ EXPO_PUBLIC_SUPABASE_ANON_KEY tidak ditemukan di environment.');
-      process.exit(1);
-    }
-
-    const secret = process.env.WEBHOOK_APK_SECRET || process.env.EAS_WEBHOOK_SECRET || 'db_apk_secret_98827361';
-
-    const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/update_latest_apk`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-      },
-      body: JSON.stringify({
-        p_url: buildUrl,
-        p_secret: secret,
-      }),
-    });
-
-    if (!rpcRes.ok) {
-      const err = await rpcRes.text();
-      console.error('❌ Gagal memperbarui Supabase:', err);
-      process.exit(1);
-    }
-
-    console.log('✅ Berhasil menyinkronkan URL APK terbaru ke Supabase app_configs!');
-  } catch (err) {
-    console.error('❌ Error:', err.message || err);
-    process.exit(1);
-  }
+function loadBuild(buildId) {
+  return JSON.parse(execSync(`npx --yes eas-cli@25.2.0 build:view ${buildId} --json`, {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000,
+  }))
 }
 
-sync();
+async function sync({ argv = process.argv.slice(2), env = process.env, getBuild = loadBuild, fetchImpl = fetch, log = console.log } = {}) {
+  const buildId = argv[argv.indexOf('--build-id') + 1]
+  if (!argv.includes('--build-id') || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(buildId ?? '')) throw new Error('A valid --build-id is required')
+  const policy = promotionPolicy(expo, env)
+  if (policy.hold) { log('APK promotion held; no write.'); return { updated: false } }
+  const approved = selectPromotableApk(await getBuild(buildId), policy)
+  if (!approved || approved.buildId !== buildId) { log('Build is not the approved APK; no write.'); return { updated: false } }
+  if (argv.includes('--dry-run')) { log(`Verified approved build ${approved.buildId}; dry run, no write.`); return { updated: false, approved: true } }
+  const url = env.EXPO_PUBLIC_SUPABASE_URL
+  const anonKey = env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+  const secret = env.WEBHOOK_APK_SECRET
+  if (!url || !anonKey || !secret) throw new Error('Promotion configuration unavailable')
+  const response = await fetchImpl(`${url}/rest/v1/rpc/update_latest_apk`, {
+    method: 'POST', signal: AbortSignal.timeout(10000),
+    headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    body: JSON.stringify({ p_url: approved.url, p_secret: secret }),
+  })
+  if (!response.ok) throw new Error('Remote configuration update failed')
+  log(`Synchronized approved build ${approved.buildId}.`)
+  return { updated: true, buildId: approved.buildId, url: approved.url }
+}
+
+module.exports = { sync }
+if (require.main === module) {
+  for (const name of ['.env', '.env.local']) {
+    try { process.loadEnvFile(path.resolve(__dirname, '..', name)) } catch (error) { if (error.code !== 'ENOENT') throw error }
+  }
+  sync().catch(() => { console.error('APK synchronization failed; check build ID and trusted promotion configuration.'); process.exitCode = 1 })
+}

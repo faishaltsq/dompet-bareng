@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,19 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useIsFocused } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requestPinWidget } from 'react-native-android-widget';
+import { WIDGET_VARIANTS, type WidgetName } from '@/lib/widgetVariants';
 import SwipeableModal from '@/components/SwipeableModal';
 import InviteShareModal from '@/components/InviteShareModal';
+import { WorkspaceQrPanel } from '@/components/WorkspaceQrPanel';
+import { WorkspaceJoinRequestsPanel } from '@/components/WorkspaceJoinRequestsPanel';
+import { useJoinRequests } from '@/hooks/useJoinRequests';
+import { parseInviteInput } from '@/lib/inviteLinks';
+import type { InviteKind } from '@/lib/inviteTypes';
 
 import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
@@ -47,6 +54,7 @@ type Member = {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const { user, profile, signOut, updateDisplayName, signInWithGoogle, avatarUrl } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -69,6 +77,16 @@ export default function SettingsScreen() {
   const [sharing, setSharing] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState('');
+  const [inviteKind, setInviteKind] = useState<InviteKind>('temporary');
+  const [qrVisible, setQrVisible] = useState(false);
+  const [requestsVisible, setRequestsVisible] = useState(false);
+  const [modalScope, setModalScope] = useState('');
+  const inviteScope = `${user?.id ?? ''}:${activeWorkspace?.id ?? ''}`;
+  const inviteScopeRef = useRef({ key: inviteScope });
+  if (inviteScopeRef.current.key !== inviteScope) inviteScopeRef.current = { key: inviteScope };
+  const requestBadge = useJoinRequests({ type: 'admin', workspaceId: activeWorkspace?.id ?? '' }, focused && activeWorkspace?.role === 'admin' && !requestsVisible);
+  useEffect(() => { setInviteModalVisible(false); setQrVisible(false); setRequestsVisible(false); setGeneratedInviteLink(''); }, [inviteScope]);
+  useFocusEffect(useCallback(() => () => { setInviteModalVisible(false); setQrVisible(false); setRequestsVisible(false); }, []));
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -101,6 +119,7 @@ export default function SettingsScreen() {
 
   // Daily reminder state
   const [dailyReminder, setDailyReminder] = useState(false);
+  const [widgetSizeModalVisible, setWidgetSizeModalVisible] = useState(false);
 
   useEffect(() => {
     isReminderEnabled().then(setDailyReminder);
@@ -117,6 +136,19 @@ export default function SettingsScreen() {
       Alert.alert(t('alertReminderActive'), t('alertReminderBody'));
     } else {
       await cancelAllReminders();
+    }
+  };
+
+  const handlePinWidget = async (widgetName: WidgetName) => {
+    setWidgetSizeModalVisible(false);
+    if (Platform.OS !== 'android') return;
+    try {
+      const requested = await requestPinWidget({ widgetName });
+      if (!requested) {
+        Alert.alert(t('widgetPinUnsupportedTitle'), t('widgetPinUnsupportedDesc'));
+      }
+    } catch {
+      Alert.alert(t('widgetPinUnsupportedTitle'), t('widgetPinUnsupportedDesc'));
     }
   };
 
@@ -367,10 +399,14 @@ export default function SettingsScreen() {
       return;
     }
     setSharing(true);
+    const scope = inviteScopeRef.current;
     try {
       const link = await generateInviteLink();
+      if (inviteScopeRef.current !== scope) return;
       if (link) {
         setGeneratedInviteLink(link);
+        setInviteKind('temporary');
+        setModalScope(inviteScope);
         setInviteModalVisible(true);
       } else {
         Alert.alert(t('alertFailed'), 'Tidak dapat membuat link undangan. Pastikan kamu terhubung ke internet.');
@@ -388,14 +424,14 @@ export default function SettingsScreen() {
       Alert.alert(t('alertAttention'), t('alertJoinInputEmpty'));
       return;
     }
-    const token = raw.replace(/^.*invite\//i, '').replace(/[^a-zA-Z0-9]/g, '');
-    if (!token) {
+    const parsed = parseInviteInput(raw, 'manual');
+    if (!parsed) {
       Alert.alert(t('alertFailed'), t('alertJoinFormatInvalid'));
       return;
     }
     setJoinModalVisible(false);
     setJoinInput('');
-    router.push(`/invite/${token}` as any);
+    router.push({ pathname: '/invite/[token]', params: parsed });
   };
 
   const handleSignOut = () => {
@@ -561,7 +597,20 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           <Text style={s.sectionHeader}>{t('walletSettings')}</Text>
 
+          <TouchableOpacity testID="my-join-requests" accessibilityRole="button" style={s.menuRow} onPress={() => router.push('/join-requests')}>
+            <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}><Ionicons name="time-outline" size={18} color={Colors.primary} /></View>
+            <View style={{ flex: 1 }}><Text style={s.menuTitle}>{t('myJoinRequests')}</Text></View><Text style={s.menuArrow}>›</Text>
+          </TouchableOpacity>
+
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.menuGroup}>
+            {isAdmin && isRegisteredUser && <TouchableOpacity testID="show-wallet-qr" accessibilityRole="button" style={s.menuRow} onPress={() => { setModalScope(inviteScope); setQrVisible(true); }}>
+              <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}><Ionicons name="qr-code-outline" size={18} color={Colors.primary} /></View>
+              <View style={{ flex: 1 }}><Text style={s.menuTitle}>{t('walletQrTitle')}</Text></View><Text style={s.menuArrow}>›</Text>
+            </TouchableOpacity>}
+            {isAdmin && <TouchableOpacity testID="wallet-join-requests" accessibilityRole="button" style={s.menuRow} onPress={() => { setModalScope(inviteScope); setRequestsVisible(true); }}>
+              <View style={[s.menuIcon, { backgroundColor: Colors.savingsSoft }]}><Ionicons name="people-outline" size={18} color={Colors.primary} /></View>
+              <View style={{ flex: 1 }}><Text style={s.menuTitle}>{t('joinRequestsTitle')} ({requestBadge.pendingCount})</Text></View><Text style={s.menuArrow}>›</Text>
+            </TouchableOpacity>}
             {/* Ubah Nama Dompet (Admin only) */}
             {isAdmin && (
               <TouchableOpacity
@@ -754,6 +803,26 @@ export default function SettingsScreen() {
               />
             </View>
 
+            {/* Widget Layar Utama */}
+            {Platform.OS === 'android' && (
+              <TouchableOpacity
+                style={s.menuRow}
+                onPress={() => setWidgetSizeModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('widgetTitle')}
+                accessibilityHint={t('widgetDesc')}
+              >
+                <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
+                  <Ionicons name="apps-outline" size={18} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.menuTitle}>{t('widgetTitle')}</Text>
+                  <Text style={s.menuDesc}>{t('widgetDesc')}</Text>
+                </View>
+                <Text style={s.menuArrow} accessible={false}>›</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Pilihan Bahasa (Language Selector) */}
             <View style={s.menuRow}>
               <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
@@ -832,6 +901,47 @@ export default function SettingsScreen() {
           </Animated.View>
         </View>
       </ScrollView>
+
+      {Platform.OS === 'android' && (
+        <SwipeableModal
+          visible={widgetSizeModalVisible}
+          onClose={() => setWidgetSizeModalVisible(false)}
+        >
+          <Text style={s.sheetTitle}>{t('widgetSizeChooserTitle')}</Text>
+          <Text style={s.sheetSubtitle}>{t('widgetSizeChooserDetails')}</Text>
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+            {WIDGET_VARIANTS.map((variant) => (
+              <TouchableOpacity
+                key={variant.name}
+                testID={`widget-size-${variant.kind}`}
+                style={s.wsPickerRow}
+                onPress={() => handlePinWidget(variant.name)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t(variant.labelKey)}, ${variant.columns}×${variant.rows}`}
+                accessibilityHint={t(variant.descriptionKey)}
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Text style={s.menuTitle}>{t(variant.labelKey)}</Text>
+                  <Text style={s.menuDesc}>{t(variant.descriptionKey)}</Text>
+                </View>
+                <View style={[s.badgeSmall, s.badgeSmallAdmin]}>
+                  <Text style={[s.badgeSmallText, s.badgeSmallTextAdmin]}>
+                    {variant.columns}×{variant.rows}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={s.cancelBtn}
+            onPress={() => setWidgetSizeModalVisible(false)}
+            accessibilityRole="button"
+            accessibilityLabel={t('widgetSizeChooserCancel')}
+          >
+            <Text style={s.cancelBtnText}>{t('widgetSizeChooserCancel')}</Text>
+          </TouchableOpacity>
+        </SwipeableModal>
+      )}
 
       {/* ── MODAL 1: EDIT PROFILE DISPLAY NAME ── */}
       <SwipeableModal
@@ -954,12 +1064,16 @@ export default function SettingsScreen() {
       </SwipeableModal>
 
       {/* ── MODAL INVITE SHARE ── */}
-      <InviteShareModal
+      {inviteModalVisible && modalScope === inviteScope && <InviteShareModal
         visible={inviteModalVisible}
         onClose={() => setInviteModalVisible(false)}
         inviteLink={generatedInviteLink}
         workspaceName={activeWorkspace?.name || ''}
-      />
+        inviteKind={inviteKind}
+        onShowQr={isAdmin && isRegisteredUser ? () => { setInviteModalVisible(false); setQrVisible(true); } : undefined}
+      />}
+      {qrVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceQrPanel key={inviteScope} visible workspaceId={activeWorkspace.id} walletName={activeWorkspace.name} onClose={() => setQrVisible(false)} onShareLink={link => { setGeneratedInviteLink(link); setInviteKind('static'); setQrVisible(false); setInviteModalVisible(true); }} />}
+      {requestsVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceJoinRequestsPanel key={inviteScope} visible workspaceId={activeWorkspace.id} onClose={() => setRequestsVisible(false)} />}
 
       {/* ── MODAL 4: GABUNG WORKSPACE ── */}
       <SwipeableModal
@@ -968,6 +1082,10 @@ export default function SettingsScreen() {
       >
         <Text style={s.sheetTitle}>{t('joinWalletTitle')}</Text>
         <Text style={s.sheetSubtitle}>{t('joinWalletSubtitle')}</Text>
+
+        <TouchableOpacity testID="scan-wallet-invite" accessibilityRole="button" style={[s.sheetBtn, { marginBottom: 12 }]} onPress={() => { setJoinModalVisible(false); router.push('/scan-invite'); }}>
+          <Text style={s.sheetBtnText}>{t('scanInviteTitle')}</Text>
+        </TouchableOpacity>
 
         <TextInput
           style={s.sheetInput}

@@ -1,6 +1,6 @@
 import { useFonts } from 'expo-font';
 import { Platform } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments, router as expoRouter } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from '@/lib/splash';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -12,10 +12,11 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
 import { MascotOverlay } from '@/components/MascotOverlay';
 import OfflineBanner from '@/components/OfflineBanner';
-import * as Linking from 'expo-linking';
-import { supabase } from '@/lib/supabase';
+import { readPendingInvite, clearPendingInvite } from '@/lib/pendingInvite';
+import { useInviteNavigation } from '@/hooks/useInviteNavigation';
 import { onDailyReminderReceived, refreshDailyReminderSchedule } from '@/lib/notifications';
 import { initRemoteConfig } from '@/lib/remoteConfig';
+import { useWidgetSync } from '@/hooks/useWidgetSync';
 
 export {
   ErrorBoundary,
@@ -49,65 +50,6 @@ export default function RootLayout() {
     initRemoteConfig().catch(() => {});
   }, []);
 
-  // Handle deep link: OAuth callback + invite link
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      try {
-        const pendingToken = window.sessionStorage?.getItem('pending_invite_token')
-          || window.localStorage?.getItem('pending_invite_token');
-        if (pendingToken) {
-          window.sessionStorage?.removeItem('pending_invite_token');
-          window.localStorage?.removeItem('pending_invite_token');
-          if (!window.location.pathname.includes(`/invite/${pendingToken}`)) {
-            setTimeout(() => {
-              expoRouter.push({ pathname: '/invite/[token]', params: { token: pendingToken } });
-            }, 300);
-          }
-        }
-      } catch (_) {}
-      return;
-    }
-
-    const handleUrl = async (url: string) => {
-      try {
-        const parsed = new URL(url);
-        const path = parsed.pathname;
-
-        // 1. Invite link: https://dompet-bareng.vercel.app/invite/TOKEN
-        //    atau dompetbareng://invite/TOKEN
-        const inviteMatch = path.match(/\/invite\/([a-zA-Z0-9\-_]+)/);
-        if (inviteMatch) {
-          const token = inviteMatch[1];
-          // Gunakan expo-router imperative navigation — tidak memanggil Linking.openURL
-          // sehingga tidak terjadi loop infinite intent di Android
-          expoRouter.push({ pathname: '/invite/[token]', params: { token } });
-          return;
-        }
-
-        // 2. OAuth callback: ada access_token / code di URL
-        const hash = parsed.hash ? parsed.hash.substring(1) : '';
-        const hashParams = new URLSearchParams(hash);
-        const searchParams = parsed.searchParams;
-
-        const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
-        const code = searchParams.get('code');
-
-        if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
-        } else if (accessToken && refreshToken) {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        }
-      } catch (e) { console.warn('[deep-link] handleUrl error:', e); }
-    };
-
-    // Cold start: app opened via deep link
-    Linking.getInitialURL().then(url => { if (url) handleUrl(url); });
-
-    // Warm: app already open, deep link arrives
-    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
-    return () => sub.remove();
-  }, []);
 
   // Listen untuk notifikasi harian yang diterima (foreground) → rotasi pesan untuk hari berikutnya
   // + top-up jadwal setiap kali app dibuka
@@ -151,13 +93,18 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { session, loading } = useAuth();
+  const { session, user, loading } = useAuth();
+  const navigation = useRootNavigationState();
+  const ready = Boolean(navigation?.key);
+  const registered = Boolean(user && !user.is_anonymous && (user.email || user.app_metadata?.provider === 'google'));
   const segments = useSegments();
   const router = useRouter();
   const { t } = useLanguage();
+  useWidgetSync();
+  useInviteNavigation(ready);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !ready) return;
     const inAuthGroup = segments[0] === '(auth)';
     const isPublicRoute =
       segments[0] === 'privacy' ||
@@ -172,10 +119,20 @@ function RootLayoutNav() {
         router.replace('/(auth)/login');
       }, 500);
       return () => clearTimeout(timer);
-    } else if (session && inAuthGroup) {
-      router.replace('/(tabs)');
+    } else if (session) {
+      let alive = true;
+      void (async () => {
+        const pending = registered && segments[0] !== 'invite' ? await readPendingInvite() : null;
+        if (!alive) return;
+        if (pending) {
+          router.replace({ pathname: '/invite/[token]', params: { token: pending.token } });
+          // The navigation intent is fulfilled, not a request to auto-submit.
+          await clearPendingInvite();
+        } else if (inAuthGroup) router.replace('/(tabs)');
+      })();
+      return () => { alive = false; };
     }
-  }, [session, loading, segments]);
+  }, [session, loading, ready, registered, segments]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -184,6 +141,8 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="invite/[token]" options={{ title: t('screenTitleJoinWorkspace'), presentation: 'modal' }} />
+        <Stack.Screen name="join-requests" options={{ title: t('myJoinRequests') }} />
+        <Stack.Screen name="scan-invite" options={{ title: t('scanInviteTitle') }} />
         <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="privacy" options={{ title: 'Kebijakan Privasi' }} />

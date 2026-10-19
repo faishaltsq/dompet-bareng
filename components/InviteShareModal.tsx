@@ -13,12 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import SwipeableModal from './SwipeableModal';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
+import type { InviteKind } from '@/lib/inviteTypes';
 
 interface InviteShareModalProps {
   visible: boolean;
   onClose: () => void;
   inviteLink: string;
   workspaceName: string;
+  inviteKind?: InviteKind;
+  onShowQr?: () => void;
 }
 
 export default function InviteShareModal({
@@ -26,11 +29,13 @@ export default function InviteShareModal({
   onClose,
   inviteLink,
   workspaceName,
+  inviteKind = 'temporary',
+  onShowQr,
 }: InviteShareModalProps) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
-  const shareTitle = `Gabung ke dompet "${workspaceName}" di Dompet Bareng`;
+  const shareTitle = `${t('inviteTitle')} "${workspaceName}" · Dompet Bareng`;
   const shareText = `${shareTitle}:\n${inviteLink}`;
 
   const handleCopy = useCallback(async () => {
@@ -118,6 +123,9 @@ export default function InviteShareModal({
       </View>
 
       {/* Quick Share Grid */}
+      {onShowQr && <TouchableOpacity testID="show-wallet-qr" accessibilityRole="button" accessibilityLabel={t('walletQrTitle')} style={s.linkBox} onPress={onShowQr}>
+        <Text style={s.linkText}>{t('walletQrTitle')}</Text>
+      </TouchableOpacity>}
       <View style={s.shareGrid}>
         <TouchableOpacity style={s.shareItem} onPress={openWhatsApp} activeOpacity={0.7}>
           <View style={[s.shareIcon, { backgroundColor: '#E7F5EC' }]}>
@@ -151,7 +159,7 @@ export default function InviteShareModal({
       {/* Note */}
       <View style={s.noteRow}>
         <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
-        <Text style={s.noteText}>{t('inviteNote')}</Text>
+        <Text style={s.noteText}>{t(inviteKind === 'static' ? 'walletQrShareNote' : 'inviteNote')}</Text>
       </View>
     </SwipeableModal>
   );

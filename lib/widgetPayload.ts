@@ -7,6 +7,9 @@ export interface WidgetPayload {
   todayExpense: number
   todayCount: number
   monthExpense: number
+  monthIncome?: number
+  monthBalance?: number
+  topCategory?: { name: string; amount: number } | null
   mood: MascotMood
   color: string
   suggestion: string
@@ -16,9 +19,20 @@ export interface WidgetPayload {
 
 export const WIDGET_STORAGE_KEY = '@dompetbareng_widget_payload'
 
+function parseTransactionDate(dateStr: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
+  const date = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return null
+  // Date accepts impossible dates by rolling them into the following month.
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date
+    : null
+}
+
 export function isToday(dateStr: string, now: Date = new Date()): boolean {
-  const d = new Date(dateStr + 'T00:00:00')
-  return !Number.isNaN(d.getTime()) && d.toDateString() === now.toDateString()
+  const date = parseTransactionDate(dateStr)
+  return date !== null && date.toDateString() === now.toDateString()
 }
 
 export function sumTodayExpense(
@@ -65,18 +79,20 @@ export interface WidgetSuggestionInput {
   monthExpense: number
   monthIncome: number
   todayCount: number
+  now?: Date
 }
 
 export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
   const { mood, language, todayExpense, monthExpense, monthIncome, todayCount } = input
+  const now = input.now ?? new Date()
   const id = language === 'id'
   const ratio = monthIncome > 0 ? monthExpense / monthIncome : monthExpense > 0 ? 2 : 0
   const daysLeft = Math.max(
-    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate(),
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate(),
     1,
   )
   const daily = monthIncome > 0 ? Math.floor((monthIncome - monthExpense) / daysLeft) : 0
-  if (todayCount === 0) {
+  if (todayCount === 0 && mood === 'HAPPY') {
     return id ? 'Belum ada pengeluaran hari ini. Mantap! 🎉' : 'No spending recorded today. Great! 🎉'
   }
   switch (mood) {
@@ -89,6 +105,11 @@ export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
           ? 'Dompet sehat. Tetap hemat ya! 💪'
           : 'Wallet healthy. Keep it up! 💪'
     case 'NEUTRAL':
+      if (todayCount === 0) {
+        return id
+          ? `Bulan ini ${Math.round(ratio * 100)}% pemasukan kepakai. Tetap pantau 👀`
+          : `${Math.round(ratio * 100)}% of income spent this month. Keep an eye 👀`
+      }
       return id
         ? `Baru ${formatCompactRupiah(todayExpense, language)} keluar hari ini. Tetap pantau 👀`
         : `${formatCompactRupiah(todayExpense, language)} spent today. Keep an eye 👀`
@@ -117,16 +138,21 @@ export interface BuildWidgetPayloadInput {
 
 export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayload {
   const now = input.now ?? new Date()
-  const wsTx = input.transactions.filter(
-    (t) => !t.workspace_id || t.workspace_id === input.workspaceId,
-  )
+  const wsTx = input.transactions.filter((t) => {
+    if (!input.workspaceId || t.workspace_id !== input.workspaceId) return false
+    const date = parseTransactionDate(t.transaction_date)
+    return date !== null
+      && date.getFullYear() === now.getFullYear()
+      && date.getMonth() === now.getMonth()
+      && date.getDate() <= now.getDate()
+  })
   const income = wsTx.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0)
   const expense = wsTx.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0)
   const balance = income - expense
   const byCategory = wsTx.reduce<Record<string, number>>((acc, t) => {
     if (t.type === 'expense') acc[t.category] = (acc[t.category] ?? 0) + t.amount
     return acc
-  }, {})
+  }, Object.create(null) as Record<string, number>)
   const snap: FinancialSnapshot = {
     income,
     expense,
@@ -138,11 +164,16 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
   }
   const companion = evaluateCompanion(snap, input.language)
   const today = sumTodayExpense(wsTx, now)
+  const topCategory = Object.entries(byCategory)
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))[0]
   return {
     walletName: input.walletName || 'Dompet Bareng',
     todayExpense: today.total,
     todayCount: today.count,
     monthExpense: expense,
+    monthIncome: income,
+    monthBalance: balance,
+    topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1] } : null,
     mood: companion.mood,
     color: companion.color,
     suggestion: getWidgetSuggestion({
@@ -152,10 +183,20 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
       monthExpense: expense,
       monthIncome: income,
       todayCount: today.count,
+      now,
     }),
     language: input.language,
     updatedAt: now.toISOString(),
   }
+}
+
+export function refreshWidgetPayload(payload: WidgetPayload, now: Date = new Date()): WidgetPayload {
+  const updatedAt = new Date(payload.updatedAt)
+  if (!Number.isNaN(updatedAt.getTime()) && updatedAt.toDateString() === now.toDateString()) {
+    return payload
+  }
+  // Cached daily totals are not evidence of today's spending after midnight.
+  return buildEmptyWidgetPayload(payload.language, payload.walletName)
 }
 
 export function buildEmptyWidgetPayload(language: WidgetLanguage = 'id', walletName = 'Dompet Bareng'): WidgetPayload {

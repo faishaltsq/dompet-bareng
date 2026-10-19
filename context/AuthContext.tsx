@@ -7,6 +7,7 @@ import * as Linking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
 import { signInWithGoogleNative, signOutGoogleNative } from '../lib/nativeGoogleAuth';
+import { clearPendingInvite } from '../lib/pendingInvite';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -353,6 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      await clearPendingInvite();
       // 1. Reset in-memory state segera
       setUser(null);
       setProfile(null);
