@@ -12,12 +12,18 @@ CREATE TABLE IF NOT EXISTS public.app_configs (
 
 ALTER TABLE public.app_configs ENABLE ROW LEVEL SECURITY;
 
--- Siapapun (anon & authenticated) bisa membaca config
+-- Siapapun (anon & authenticated) bisa membaca config, KECUALI kunci yang
+-- rahasia. lib/remoteConfig.ts, app/download.tsx dan lib/downloadApp.ts
+-- membaca latest_apk_url langsung dari klien, jadi SELECT harus tetap buka.
 DROP POLICY IF EXISTS "Allow read for all users" ON public.app_configs;
 CREATE POLICY "Allow read for all users"
     ON public.app_configs
     FOR SELECT
-    USING (true);
+    USING (key <> 'ai_api_key');
+
+-- Menulis config hanya lewat service_role / SECURITY DEFINER. Webhook APK
+-- memakai RPC update_latest_apk, bukan INSERT/UPDATE langsung.
+REVOKE INSERT, UPDATE, DELETE ON public.app_configs FROM anon, authenticated;
 
 -- Insert initial values
 INSERT INTO public.app_configs (key, value, description)
