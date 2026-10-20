@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { isMascotMood } from './mascotMoods'
 import { WIDGET_STORAGE_KEY, type WidgetPayload } from './widgetPayload'
 
 export async function writeWidgetPayload(payload: WidgetPayload): Promise<void> {
@@ -23,8 +24,7 @@ function isWidgetPayload(value: unknown): value is WidgetPayload {
     && typeof payload.suggestion === 'string'
     && typeof payload.updatedAt === 'string'
     && (payload.updatedAt === '' || Number.isFinite(Date.parse(payload.updatedAt)))
-    && (payload.mood === 'HAPPY' || payload.mood === 'NEUTRAL'
-      || payload.mood === 'WARNING' || payload.mood === 'PANIC')
+    && isMascotMood(payload.mood)
     && (payload.language === 'id' || payload.language === 'en')
     && typeof payload.color === 'string' && /^#[0-9a-f]{6}$/i.test(payload.color)
     && typeof payload.todayExpense === 'number'

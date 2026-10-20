@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MASCOT_MOODS } from '../mascotMoods'
 import { buildEmptyWidgetPayload, WIDGET_STORAGE_KEY, type WidgetPayload } from '../widgetPayload'
 import { readWidgetPayload, writeWidgetPayload } from '../widgetStore'
 
@@ -106,7 +107,7 @@ describe('widget payload storage', () => {
     await expect(readWidgetPayload()).resolves.toEqual(expected)
   })
 
-  it.each(['HAPPY', 'NEUTRAL', 'WARNING', 'PANIC'] as const)('accepts the valid mood %s', async (mood) => {
+  it.each(MASCOT_MOODS)('accepts the valid mood %s', async (mood) => {
     const expected = payload({ mood, language: 'id', color: '#abcdef' })
     vi.mocked(AsyncStorage.getItem).mockResolvedValue(JSON.stringify(expected))
 

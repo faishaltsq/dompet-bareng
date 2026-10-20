@@ -81,6 +81,7 @@
         }
       ],
       "expo-updates",
+      "./plugins/withWidgetBootReceiver",
       [
         "react-native-android-widget",
         {

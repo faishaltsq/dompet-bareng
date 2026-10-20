@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { inviteTranslations } from '../lib/inviteTranslations';
+import { LANGUAGE_STORAGE_KEY } from '../lib/storageKeys';
 
 export type AppLanguage = 'id' | 'en';
-
-const LANGUAGE_STORAGE_KEY = '@dompetbareng_app_language';
 
 const translations = {
   id: {
