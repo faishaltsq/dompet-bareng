@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { evaluateCompanion, calcBudgetUtilisation, type FinancialSnapshot } from '../companion'
+import { evaluateCompanion, calcBudgetUtilisation, calcMonthFigures, type FinancialSnapshot } from '../companion'
 
 /**
  * `calcSafeDays` membaca tanggal nyata (Math.max(day, 3)), jadi seluruh suite
@@ -174,5 +174,101 @@ describe('evaluateCompanion — budget as the REMINDER trigger', () => {
   it('leaves the mood alone when no budget data is supplied', () => {
     expect(moodOf(HEALTHY)).toBe('HAPPY')
     expect(moodOf({ ...HEALTHY, budgetUtilisation: undefined })).toBe('HAPPY')
+  })
+})
+
+describe('calcMonthFigures', () => {
+  const NOW = new Date('2026-10-18T12:00:00')
+  const t = (type: 'income' | 'expense', amount: number, date: string) => ({
+    type, amount, category: 'Makanan', transaction_date: date,
+  })
+
+  it('keeps only the current month', () => {
+    const figures = calcMonthFigures([
+      t('income', 4_000_000, '2026-10-01'),
+      t('expense', 900_000, '2026-10-10'),
+      t('expense', 5_000_000, '2026-09-28'), // bulan lalu — jangan ikut
+      t('income', 9_000_000, '2026-11-02'),  // bulan depan — jangan ikut
+    ], NOW)
+    expect(figures.monthIncome).toBe(4_000_000)
+    expect(figures.maxExpense).toBe(900_000)
+  })
+
+  it('excludes transactions dated in the future', () => {
+    // Pengeluaran yang dijadwalkan belum terjadi — hari ini belum bisa
+    // "kehabisan" oleh uang yang belum keluar.
+    const figures = calcMonthFigures([
+      t('income', 4_000_000, '2026-10-01'),
+      t('expense', 3_000_000, '2026-10-25'),
+    ], NOW)
+    expect(figures.maxExpense).toBe(0)
+  })
+
+  it('ignores malformed dates', () => {
+    const figures = calcMonthFigures([
+      t('income', 4_000_000, '2026-10-01'),
+      t('expense', 2_000_000, 'bukan tanggal'),
+      t('expense', 2_000_000, '2026-13-45'),
+    ], NOW)
+    expect(figures.maxExpense).toBe(0)
+  })
+})
+
+describe('evaluateCompanion — a single huge transaction', () => {
+  // Agregat boleh saja tampak sehat: ratio 0,5 dan runway masih panjang.
+  // Yang hilang tanpa maxExpense adalah fakta bahwa setengah bulan habis
+  // dalam satu kali.
+  const HEALTHY = { income: 4_000_000, expense: 2_000_000, balance: 2_000_000 }
+
+  it('raises NEUTRAL to WARNING at 45% of income in one transaction', () => {
+    expect(moodOf({ ...HEALTHY })).toBe('NEUTRAL')
+    expect(moodOf({ ...HEALTHY, maxExpense: 1_799_999, monthIncome: 4_000_000 })).toBe('NEUTRAL')
+    expect(moodOf({ ...HEALTHY, maxExpense: 1_800_000, monthIncome: 4_000_000 })).toBe('WARNING')
+  })
+
+  it('raises straight to PANIC at 70% of income in one transaction', () => {
+    expect(moodOf({ ...HEALTHY, maxExpense: 2_799_999, monthIncome: 4_000_000 })).toBe('WARNING')
+    expect(moodOf({ ...HEALTHY, maxExpense: 2_800_000, monthIncome: 4_000_000 })).toBe('PANIC')
+  })
+
+  it('ignores a big transaction when the month has no income to compare against', () => {
+    // monthIncome 0 = belum ada gaji tercatat bulan ini. Tidak ada
+    // pembanding, jadi cabangnya mati — THINKING yang menangani.
+    const state = evaluateCompanion(snap({
+      count: 3, income: 0, expense: 2_000_000, balance: -2_000_000,
+      maxExpense: 2_000_000, monthIncome: 0,
+    }))
+    expect(state.mood).toBe('THINKING')
+  })
+
+  it('uses the month income, not the lifetime income, as the yardstick', () => {
+    // Gaji bulan ini kecil, tapi Combine memuat ekspor tahun lalu yang besar.
+    // Kalau dibandingkan dengan income seumur hidup, shock-nya tidak nyala.
+    const state = evaluateCompanion(snap({
+      count: 3, income: 40_000_000, expense: 2_000_000, balance: 38_000_000,
+      maxExpense: 900_000, monthIncome: 1_000_000,
+    }))
+    expect(state.mood).toBe('PANIC') // 900rb dari 1jt = 90% dari gaji bulan ini
+  })
+
+  it('keeps the critical PANIC wording when the wallet itself is critical', () => {
+    // Rasio > 1 =aggregate benar-benar habis. Kata-katanya harus soal saldo,
+    // bukan soal satu transaksi.
+    const state = evaluateCompanion(snap({
+      count: 3, income: 1_000_000, expense: 1_200_000, balance: -200_000,
+      maxExpense: 1_000_000, monthIncome: 1_000_000,
+    }))
+    expect(state.mood).toBe('PANIC')
+    expect(state.statusLabel).not.toContain('1 transaksi')
+  })
+
+  it('talks about the transaction in the shock wording', () => {
+    const state = evaluateCompanion(snap({
+      count: 3, income: 4_000_000, expense: 2_000_000, balance: 2_000_000,
+      maxExpense: 2_800_000, monthIncome: 4_000_000,
+    }))
+    expect(state.mood).toBe('PANIC')
+    expect(state.statusLabel).toContain('70%')
+    expect(state.greeting).toMatch(/70%|transaksi/i)
   })
 })

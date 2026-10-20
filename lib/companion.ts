@@ -39,10 +39,63 @@ export interface FinancialSnapshot {
   otherWithDesc?: string[]; // transaksi Lainnya yang punya deskripsi
   otherNoDesc?: number;     // jumlah transaksi Lainnya tanpa deskripsi
   budgetUtilisation?: number; // 0..1 — Σ terpakai / Σ kuota bulan berjalan; undefined = tanpa budget
+  maxExpense?: number;     // pengeluaran satu transaksi terbesar bulan ini
+  monthIncome?: number;    // pemasukan bulan berjalan — pembanding maxExpense
 }
 
 /** Bentuk minimum baris budget; struktural supaya assignable dengan WorkspaceBudget */
 type BudgetRow = { category: string; amount: number };
+
+/** Bentuk minimum transaksi untuk 계산 bulanan */
+type MonthTx = { type: 'income' | 'expense'; amount: number; category: string };
+
+/**
+ * Angka bulanan yang dipakai untuk pemicu shock.
+ *
+ * Dipisah dari `FinancialSnapshot` karena snapshot aplikasi memakai seluruh
+ * transaksi yang termuat (bisa lintas bulan), sedangkan shock harus dinilai
+ * dalam satu bulan: satu transaksi besar bulan lalu tidak boleh membuat otter
+ * menjerit selamanya.
+ */
+export type MonthFigures = {
+  monthIncome: number;
+  maxExpense: number;
+};
+
+/**
+ * Hitung pemasukan bulan berjalan dan pengeluaran satu transaksi terbesar di
+ * bulan itu saja.
+ *
+ * Hanya transaksi bertanggal valid yang dihitung, dan transaksi dengan
+ * tanggal di masa depan (jadwalkan) ikut dikecualikan supaya hari ini belum
+ * bisa "kehabisan" oleh pengeluaran yang belum terjadi.
+ */
+export function calcMonthFigures(
+  transactions: Array<MonthTx & { transaction_date: string }>,
+  now: Date = new Date(),
+): MonthFigures {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+  let monthIncome = 0;
+  let maxExpense = 0;
+
+  for (const t of transactions) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.transaction_date);
+    if (!m) continue;
+    const ty = Number(m[1]);
+    const tm = Number(m[2]);
+    const td = Number(m[3]);
+    if (ty !== year || tm - 1 !== month) continue;
+    if (td > day) continue; // tanggal di masa depan — belum terjadi
+    if (t.type === 'income') {
+      monthIncome += t.amount;
+    } else if (t.amount > maxExpense) {
+      maxExpense = t.amount;
+    }
+  }
+  return { monthIncome, maxExpense };
+}
 
 /** Di atas 80% terpakai, budget ikut menentukan mood REMINDER */
 const BUDGET_REMINDER_THRESHOLD = 0.8;
@@ -118,11 +171,39 @@ function expenseRatio(income: number, expense: number): number {
  */
 const RICH_MIN_SURPLUS = 500_000;
 
+/**
+ * Pemicu "shock": satu transaksi yang menghabiskan sebagian besar pemasukan
+ * bulan. Rantai hanya membaca angka agregat, jadi satu kaligesek 50% tetap
+ * terbaca stabil — padahal pengguna baru saja membakar setengah bulan dalam
+ * satu kali.
+ *
+ * Ambangnya sengaja di atas pola sewa/tagihan yang normal, supaya otter tidak
+ * menjerit tiap bulan untuk hal yang memang biasa. Semua kategori diperlakukan
+ * sama rata; tidak ada pengecualian rumah/utilitas.
+ */
+const SHOCK_PANIC_THRESHOLD = 0.7;    // satu transaksi ≥ 70% pemasukan bulan
+const SHOCK_WARNING_THRESHOLD = 0.45; // ...atau ≥ 45% pemasukan bulan
+
 export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en' = 'id'): CompanionState {
   const ratio = expenseRatio(snap.income, snap.expense);
   const safeDays = calcSafeDays(snap.expense, snap.balance);
   const topCat = topCategory(snap.byCategory);
   const surplus = snap.income - snap.expense;
+
+  // Pemicu shock: dihitung terhadap pemasukan BULAN BERJALAN — bukan
+  // `snap.income` yang bisa lintas bulan, supaya satu transaksi besar bulan
+  // lalu tidak dibandingkan dengan gaji bulan ini. Tanpa pemasukan bulan ini
+  // tidak ada pembandingnya, jadi cabangnya mati dan THINKING yang menang.
+  const shockIncome = snap.monthIncome ?? 0;
+  const shockRatio = shockIncome > 0 && snap.maxExpense
+    ? snap.maxExpense / shockIncome
+    : 0;
+  // Keparahan asli menang. Kalau ratio/balance sudah kritis, salam PANIC yang
+  // kritis yang dipakai — bukan yang shock, karena memang itu yang lebih benar.
+  const criticalPanic = ratio > 1 || snap.balance < 0;
+  const panicByShock = !criticalPanic && shockRatio >= SHOCK_PANIC_THRESHOLD;
+  const warningByRatio = ratio >= 0.75;
+  const warningByShock = !warningByRatio && shockRatio >= SHOCK_WARNING_THRESHOLD;
 
   let mood: MascotMood;
   // Urutan cabang INI adalah prioritas — bukan sekadar ranking. Keadaan yang
@@ -136,7 +217,9 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     // mengembalikan 2 untuk kasus ini, jadi tanpa guard ini dompet baru langsung
     // menjerit PANIC karena alasan yang salah.
     mood = 'THINKING';
-  } else if (ratio > 1 || snap.balance < 0) {
+  } else if (criticalPanic || panicByShock) {
+    // Dua penyebab: dompet sudah kritis (rasio/saldo), ATAU satu transaksi
+    // menghabiskan ≥70% pemasukan bulan walau agregatnya masih aman.
     mood = 'PANIC';
   } else if (
     safeDays <= 3 ||
@@ -153,7 +236,8 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     // PANIC di atas yang menang — pengingat ini hanya muncul di bandingan masih
     // bisa diperbaiki.
     mood = 'REMINDER';
-  } else if (ratio >= 0.75) {
+  } else if (warningByRatio || warningByShock) {
+    // Rasio sudah mepet, atau satu transaksi menghabiskan ≥45% pemasukan.
     mood = 'WARNING';
   } else if (ratio <= 0.25 && surplus >= Math.max(RICH_MIN_SURPLUS, 0.2 * snap.income)) {
     // Butuh surplus RUPIAH beneran, bukan cuma rasio kecil: pengeluaran Rp 50rb
@@ -288,13 +372,45 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     },
   };
 
+  /**
+   * Salam khusus untuk mood yang dipicu satu transaksi besar. Tanpa ini PANIC
+   * akan bicara soal saldo habis padahal pengguna baru saja belanja besar —
+   * gambarnya sama, katanya harus nyambung dengan situasinya.
+   */
+  const shockGreetings: Record<'id' | 'en', Partial<Record<MascotMood, string[]>>> = {
+    id: {
+      PANIC: [
+        `Waduh — satu transaksi tadi habis ${Math.round(shockRatio * 100)}% pemasukan bulan kamu 😱 Angka bulanannya mungkin masih kelihatan aman, tapi dompetnya barusan kena pukulan berat.`,
+        `Keluar ${formatRupiah(snap.maxExpense ?? 0)} sekaligus. Itu ${Math.round(shockRatio * 100)}% pemasukan bulan ini, dan belum tentu tersisa apa-apa untuk sisanya.`,
+      ],
+      WARNING: [
+        `Satu transaksi ${formatRupiah(snap.maxExpense ?? 0)} — ${Math.round(shockRatio * 100)}% pemasukan bulan kamu. Bukan ngecap, cuma biar kamu sadar sebelum kebablasan lagi 😅`,
+        `Baru keluar ${Math.round(shockRatio * 100)}% pemasukan dalam sekali jalan. Masih aman, tapi dicatat dulu biar akhir bulan tidak kaget.`,
+      ],
+    },
+    en: {
+      PANIC: [
+        `Whoa — one transaction just ate ${Math.round(shockRatio * 100)}% of this month's income 😱 The monthly totals might still look fine, but the wallet just took a heavy hit.`,
+        `${formatRupiah(snap.maxExpense ?? 0, 'en')} gone in one go. That is ${Math.round(shockRatio * 100)}% of this month's income.`,
+      ],
+      WARNING: [
+        `That single transaction was ${formatRupiah(snap.maxExpense ?? 0, 'en')} — ${Math.round(shockRatio * 100)}% of this month's income. Not a scold, just so you notice before it stacks up 😅`,
+        `${Math.round(shockRatio * 100)}% of the month's income in one transaction. Still fine, but worth writing down.`,
+      ],
+    },
+  };
+
   const statusLabels: Record<'id' | 'en', Record<MascotMood, string>> = {
     id: {
       WELCOME: 'Mulai catat transaksi pertama kamu',
       THINKING: 'Masukkan pemasukan biar bisa dinilai',
-      PANIC: safeDays <= 0 ? 'Saldo habis / minus ⚠️' : `Hanya tersisa ${safeDays} hari!`,
+      PANIC: panicByShock
+        ? `${Math.round(shockRatio * 100)}% pemasukan habis 1 transaksi ⚠️`
+        : safeDays <= 0 ? 'Saldo habis / minus ⚠️' : `Hanya tersisa ${safeDays} hari!`,
       REMINDER: `Sisa aman tinggal ${safeDays} hari`,
-      WARNING: `Sisa aman ~${safeDays} hari — hati-hati!`,
+      WARNING: warningByShock
+        ? `Satu transaksi ${Math.round(shockRatio * 100)}% pemasukan`
+        : `Sisa aman ~${safeDays} hari — hati-hati!`,
       RICH: safeDays >= 999 ? 'Surplus besar, super aman 🎉' : `Surplus ${formatRupiah(surplus)}`,
       NEUTRAL: `Aman untuk ~${safeDays} hari ke depan`,
       HAPPY: safeDays >= 999 ? 'Dompet super aman 🎉' : `Aman untuk ${safeDays} hari ke depan`,
@@ -302,9 +418,13 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
     en: {
       WELCOME: 'Log your first transaction to get started',
       THINKING: 'Add your income so I can evaluate',
-      PANIC: safeDays <= 0 ? 'Out of funds / negative ⚠️' : `Only ${safeDays} days remaining!`,
+      PANIC: panicByShock
+        ? `${Math.round(shockRatio * 100)}% of income in 1 transaction ⚠️`
+        : safeDays <= 0 ? 'Out of funds / negative ⚠️' : `Only ${safeDays} days remaining!`,
       REMINDER: `Only ${safeDays} safe days left`,
-      WARNING: `~${safeDays} safe days left — be cautious!`,
+      WARNING: warningByShock
+        ? `One transaction = ${Math.round(shockRatio * 100)}% of income`
+        : `~${safeDays} safe days left — be cautious!`,
       RICH: safeDays >= 999 ? 'Huge surplus, super safe 🎉' : `Surplus of ${formatRupiah(surplus, 'en')}`,
       NEUTRAL: `Safe for ~${safeDays} days ahead`,
       HAPPY: safeDays >= 999 ? 'Wallet super safe 🎉' : `Safe for the next ${safeDays} days`,
@@ -313,7 +433,11 @@ export function evaluateCompanion(snap: FinancialSnapshot, language: 'id' | 'en'
 
   const cfg = configs[mood];
   const langKey = language === 'en' ? 'en' : 'id';
-  const greetingList = greetings[langKey][mood];
+  // Mood yang dipicu satu transaksi besar memakai salam khusus — gambarnya sama,
+  // tapi katanya harus bicara soal transaksinya, bukan soal saldo habis.
+  const greetingList = (panicByShock || warningByShock)
+    ? shockGreetings[langKey][mood] ?? greetings[langKey][mood]
+    : greetings[langKey][mood];
   // Seed berbasis tanggal hari ini + mood agar sapaan stabil (tidak flicker tiap user tambah transaksi)
   const now = new Date();
   const daySeed = now.getDate() + (now.getMonth() + 1) * 31;

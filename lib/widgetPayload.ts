@@ -80,6 +80,8 @@ export interface WidgetSuggestionInput {
   monthIncome: number
   todayCount: number
   now?: Date
+  /** Rasio satu transaksi terbesar terhadap pemasukan bulan — 0..1+ */
+  shockRatio?: number
 }
 
 export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
@@ -107,6 +109,13 @@ export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
         ? 'Pemasukan belum dicatat. Tambah dulu ya 🤔'
         : 'No income recorded yet. Add it first 🤔'
     case 'PANIC':
+      // Satu transaksi besar boleh jadi penyebab PANIC-nya, dan "pengeluaran
+      // lewat pemasukan" akan berbohong kalau rasio bulannya belum > 100%.
+      if (input.shockRatio !== undefined && input.shockRatio >= 0.7 && ratio <= 1) {
+        return id
+          ? `🚨 Satu transaksi ${Math.round(input.shockRatio * 100)}% pemasukan!`
+          : `🚨 One transaction = ${Math.round(input.shockRatio * 100)}% of income!`
+      }
       return id ? '🚨 Pengeluaran lewat pemasukan! Rem sekarang.' : '🚨 Spending exceeds income! Stop now.'
     case 'REMINDER': {
       // Sama persis dengan calcSafeDays() di companion.ts — runway widget harus
@@ -119,6 +128,11 @@ export function getWidgetSuggestion(input: WidgetSuggestionInput): string {
         : `${runway} safe days left. Ease off spending 📣`
     }
     case 'WARNING':
+      if (input.shockRatio !== undefined && input.shockRatio >= 0.45 && ratio < 0.75) {
+        return id
+          ? `Satu transaksi ${Math.round(input.shockRatio * 100)}% pemasukan. Hati-hati 😅`
+          : `One transaction = ${Math.round(input.shockRatio * 100)}% of income. Careful 😅`
+      }
       return id
         ? `Udah ${Math.round(ratio * 100)}% pemasukan kepakai. Tahan jajan dulu 😅`
         : `${Math.round(ratio * 100)}% of income spent. Hold off 😅`
@@ -178,6 +192,10 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
     if (t.type === 'expense') acc[t.category] = (acc[t.category] ?? 0) + t.amount
     return acc
   }, Object.create(null) as Record<string, number>)
+  const maxExpense = wsTx.reduce(
+    (max, t) => (t.type === 'expense' && t.amount > max ? t.amount : max),
+    0,
+  )
   const snap: FinancialSnapshot = {
     income,
     expense,
@@ -187,6 +205,10 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
     otherWithDesc: [],
     otherNoDesc: 0,
     budgetUtilisation: calcBudgetUtilisation(input.budgets, wsTx),
+    // wsTx sudah difilter ke bulan berjalan, jadi angka shock-nya langsung
+    // konsisten dengan income/expense di payload ini.
+    maxExpense,
+    monthIncome: income,
   }
   const companion = evaluateCompanion(snap, input.language)
   const today = sumTodayExpense(wsTx, now)
@@ -210,6 +232,7 @@ export function buildWidgetPayload(input: BuildWidgetPayloadInput): WidgetPayloa
       monthIncome: income,
       todayCount: today.count,
       now,
+      shockRatio: income > 0 ? maxExpense / income : undefined,
     }),
     language: input.language,
     updatedAt: now.toISOString(),

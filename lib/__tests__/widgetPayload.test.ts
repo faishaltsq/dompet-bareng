@@ -139,9 +139,12 @@ describe('buildWidgetPayload', () => {
   })
 
   it.each(['id', 'en'] as const)('uses monthly context for NEUTRAL advice on a zero-spending day (%s)', (language) => {
+    // Pengeluaran dipecah dua supaya tidak ikut memicu aturan "satu transaksi
+    // besar" — tes ini soal filter periode, bukan soal pemicu shock.
     const p = buildWidgetPayload(payloadInput({ language, transactions: [
       transaction({ type: 'income', amount: 1000000, transaction_date: '2026-10-01' }),
-      transaction({ amount: 600000, transaction_date: '2026-10-17' }),
+      transaction({ amount: 300000, transaction_date: '2026-10-17' }),
+      transaction({ amount: 300000, transaction_date: '2026-10-17' }),
     ] }))
     expect(p.todayCount).toBe(0)
     expect(p.mood).toBe('NEUTRAL')
@@ -152,9 +155,12 @@ describe('buildWidgetPayload', () => {
   })
 
   it.each(['id', 'en'] as const)('keeps WARNING advice when all spending was earlier this month (%s)', (language) => {
+    // Dipecah dua supaya WARNING-nya datang dari rasio bulanan, bukan dari
+    // pemicu satu transaksi besar.
     const p = buildWidgetPayload(payloadInput({ language, transactions: [
       transaction({ type: 'income', amount: 1000000, transaction_date: '2026-10-01' }),
-      transaction({ amount: 800000, transaction_date: '2026-10-17' }),
+      transaction({ amount: 400000, transaction_date: '2026-10-17' }),
+      transaction({ amount: 400000, transaction_date: '2026-10-17' }),
     ] }))
     expect(p.todayCount).toBe(0)
     expect(p.mood).toBe('WARNING')
@@ -275,9 +281,13 @@ describe('buildWidgetPayload', () => {
 
   it.each(['2026-09-18', '2025-10-18', '2026-10-19', 'not-a-date']) (
     'ignores income outside the valid current month through today: %s', (date) => {
+      // Pengeluaran dipecah dua supaya WARNING-nya berasal dari rasio bulanan
+      // dan bukan dari pemicu satu transaksi besar — tes ini soal penyaringan
+      // tanggal, bukan soal mood.
       const p = buildWidgetPayload(payloadInput({ transactions: [
         transaction({ type: 'income', amount: 1000000, transaction_date: '2026-10-01' }),
-        transaction({ amount: 800000 }),
+        transaction({ amount: 400000 }),
+        transaction({ amount: 400000 }),
         transaction({ type: 'income', amount: 10000000, transaction_date: date }),
       ] }))
       expect(p.mood).toBe('WARNING')
@@ -329,6 +339,39 @@ describe('buildWidgetPayload', () => {
     ]
     const p = buildWidgetPayload({ transactions: tx, workspaceId: 'w1', walletName: 'W', language: 'id', now })
     expect(p.mood).toBe('PANIC')
+  })
+})
+
+describe('buildWidgetPayload — a single huge transaction', () => {
+  it('raises the mood and names the transaction in the suggestion', () => {
+    // Gaji 1jt, satu pengeluaran 800rb. Rasio bulanan 80% — dan satu kali
+    // itu juga 80% dari gaji, jadi shock ikut menyala.
+    const p = buildWidgetPayload(payloadInput({ language: 'id', transactions: [
+      transaction({ type: 'income', amount: 1000000, transaction_date: '2026-10-01' }),
+      transaction({ amount: 800000, transaction_date: '2026-10-17' }),
+    ] }))
+    expect(p.mood).toBe('PANIC')
+    expect(p.suggestion).toContain('80%')
+    expect(p.suggestion).toContain('transaksi')
+  })
+
+  it('does not claim spending exceeded income when it did not', () => {
+    // Rasio bulanan 75% — "pengeluaran lewat pemasukan" akan berbohong.
+    const p = buildWidgetPayload(payloadInput({ language: 'id', transactions: [
+      transaction({ type: 'income', amount: 2000000, transaction_date: '2026-10-01' }),
+      transaction({ amount: 1500000, transaction_date: '2026-10-17' }),
+    ] }))
+    expect(p.mood).toBe('PANIC') // satu kali = 75% dari gaji, lewat ambang 70%
+    expect(p.suggestion).not.toContain('lewat pemasukan')
+  })
+
+  it('keeps the plain overspend wording when spending really does exceed income', () => {
+    const p = buildWidgetPayload(payloadInput({ language: 'id', transactions: [
+      transaction({ type: 'income', amount: 1000000, transaction_date: '2026-10-01' }),
+      transaction({ amount: 2000000, transaction_date: '2026-10-17' }),
+    ] }))
+    expect(p.mood).toBe('PANIC')
+    expect(p.suggestion).toContain('lewat pemasukan')
   })
 })
 

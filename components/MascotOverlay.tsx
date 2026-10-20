@@ -43,6 +43,7 @@ import {
   getQuickChips,
   MASCOT_IMAGES,
   calcBudgetUtilisation,
+  calcMonthFigures,
   CompanionState,
   FinancialSnapshot,
   MascotMood,
@@ -71,6 +72,9 @@ export function MascotOverlay() {
       .slice(0, 5)
       .map(t => `${t.type === 'expense' ? '-' : '+'}Rp${t.amount.toLocaleString('id-ID')} (${t.description})`);
     const otherNoDesc = transactions.filter(t => t.category === 'Lainnya' && !t.description?.trim()).length;
+    // Angka bulan berjalan untuk pemicu shock — `transactions` memuat riwayat
+    // lintas bulan, jadi shock harus dinilai per bulan.
+    const month = calcMonthFigures(transactions);
     return {
       income: summary.income,
       expense: summary.expense,
@@ -80,6 +84,8 @@ export function MascotOverlay() {
       otherWithDesc,
       otherNoDesc,
       budgetUtilisation: calcBudgetUtilisation(budgets, transactions),
+      maxExpense: month.maxExpense,
+      monthIncome: month.monthIncome,
     };
   }, [transactions, summary, budgets]);
 
