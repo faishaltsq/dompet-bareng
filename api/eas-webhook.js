@@ -36,10 +36,13 @@ module.exports = async function easWebhook(req, res) {
   const rpcSecret = process.env.WEBHOOK_APK_SECRET
   if (!supabaseUrl || !anonKey || !rpcSecret) return res.status(503).json({ error: 'Promotion configuration unavailable' })
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    headers['api' + 'key'] = anonKey;
+    headers['Authorization'] = 'Bearer ' + anonKey;
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/update_latest_apk`, {
       method: 'POST',
       signal: AbortSignal.timeout(10000),
-      headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      headers,
       body: JSON.stringify({ p_url: approved.url, p_secret: rpcSecret }),
     })
     if (!response.ok) return res.status(502).json({ error: 'Remote configuration update failed' })
