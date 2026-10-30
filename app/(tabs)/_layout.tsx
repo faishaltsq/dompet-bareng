@@ -32,7 +32,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 768;
+  const isLargeScreen = width >= 768;
   const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
   const tabsContent = (
@@ -41,7 +41,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.forestGreen,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: -4 },
-        tabBarStyle: isDesktop
+        tabBarStyle: isLargeScreen
           ? { display: 'none' }
           : {
               backgroundColor: '#FFFFFF',
@@ -86,7 +86,7 @@ export default function TabLayout() {
     </Tabs>
   );
 
-  if (isDesktop) {
+  if (isLargeScreen) {
     return (
       <View style={styles.desktopRoot}>
         <DesktopSidebar />

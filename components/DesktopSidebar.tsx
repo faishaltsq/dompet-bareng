@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
@@ -10,6 +10,8 @@ export default function DesktopSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768 && width < 1024;
 
   const isHomeActive = pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
   const isStatsActive = pathname.includes('statistics');
@@ -40,37 +42,50 @@ export default function DesktopSidebar() {
   ];
 
   return (
-    <View style={s.sidebar}>
-      {/* 1. macOS Window Dots */}
-      <View style={s.windowDots}>
-        <View style={[s.dot, { backgroundColor: '#FF5F56' }]} />
-        <View style={[s.dot, { backgroundColor: '#FFBD2E' }]} />
-        <View style={[s.dot, { backgroundColor: '#27C93F' }]} />
-      </View>
+    <View style={[s.sidebar, isTablet && s.sidebarTablet]}>
+      {/* 1. macOS Window Dots (Desktop only) */}
+      {!isTablet && (
+        <View style={s.windowDots}>
+          <View style={[s.dot, { backgroundColor: '#FF5F56' }]} />
+          <View style={[s.dot, { backgroundColor: '#FFBD2E' }]} />
+          <View style={[s.dot, { backgroundColor: '#27C93F' }]} />
+        </View>
+      )}
 
       {/* 2. Brand Header */}
-      <View style={s.brandRow}>
+      <View style={[s.brandRow, isTablet && s.brandRowTablet]}>
         <View style={s.logoCircle}>
           <Ionicons name="wallet" size={20} color="#00A86B" />
         </View>
-        <Text style={s.brandText}>DompetBareng</Text>
+        {!isTablet && <Text style={s.brandText}>DompetBareng</Text>}
       </View>
 
       {/* 3. Navigation Links */}
-      <View style={s.navGroup}>
+      <View style={[s.navGroup, isTablet && s.navGroupTablet]}>
         {navItems.map((item) => (
           <TouchableOpacity
             key={item.key}
-            style={[s.navItem, item.active && s.navItemActive]}
+            style={[
+              s.navItem,
+              isTablet && s.navItemTablet,
+              item.active && (isTablet ? s.navItemActiveTablet : s.navItemActive),
+            ]}
             onPress={item.onPress}
             activeOpacity={0.8}
           >
             <Ionicons
               name={item.icon as any}
-              size={20}
+              size={isTablet ? 22 : 20}
               color={item.active ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
             />
-            <Text style={[s.navLabel, item.active && s.navLabelActive]}>
+            <Text
+              style={[
+                s.navLabel,
+                isTablet && s.navLabelTablet,
+                item.active && s.navLabelActive,
+              ]}
+              numberOfLines={1}
+            >
               {item.label}
             </Text>
           </TouchableOpacity>
@@ -78,14 +93,20 @@ export default function DesktopSidebar() {
       </View>
 
       {/* 4. Bottom Mascot Motivator Card */}
-      <View style={s.mascotCard}>
-        <View style={s.mascotWrap}>
-          <OtterMascot variant="welcome" size="sm" />
+      {isTablet ? (
+        <View style={s.mascotWrapTablet}>
+          <OtterMascot variant="welcome" size={32} />
         </View>
-        <Text style={s.mascotQuote}>
-          Keuangan lebih mudah kalau dilakukan Bareng-bareng ❤️
-        </Text>
-      </View>
+      ) : (
+        <View style={s.mascotCard}>
+          <View style={s.mascotWrap}>
+            <OtterMascot variant="welcome" size="sm" />
+          </View>
+          <Text style={s.mascotQuote}>
+            Keuangan lebih mudah kalau dilakukan Bareng-bareng ❤️
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -101,6 +122,13 @@ const s = StyleSheet.create({
     paddingBottom: 22,
     flexDirection: 'column',
     justifyContent: 'space-between',
+  },
+  sidebarTablet: {
+    width: 80,
+    paddingHorizontal: 8,
+    paddingTop: 16,
+    paddingBottom: 20,
+    alignItems: 'center',
   },
   windowDots: {
     flexDirection: 'row',
@@ -120,9 +148,14 @@ const s = StyleSheet.create({
     marginBottom: 32,
     paddingLeft: 4,
   },
+  brandRowTablet: {
+    marginBottom: 24,
+    paddingLeft: 0,
+    justifyContent: 'center',
+  },
   logoCircle: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     backgroundColor: 'rgba(0,168,107,0.18)',
     alignItems: 'center',
@@ -137,6 +170,11 @@ const s = StyleSheet.create({
   navGroup: {
     gap: 6,
   },
+  navGroupTablet: {
+    gap: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,13 +183,32 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: Radius.md,
   },
+  navItemTablet: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 4,
+    borderRadius: Radius.md,
+    width: 66,
+  },
   navItemActive: {
+    backgroundColor: '#00A86B',
+  },
+  navItemActiveTablet: {
     backgroundColor: '#00A86B',
   },
   navLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.7)',
+  },
+  navLabelTablet: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
   },
   navLabelActive: {
     color: '#FFFFFF',
@@ -172,6 +229,17 @@ const s = StyleSheet.create({
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mascotWrapTablet: {
+    marginTop: 'auto',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   mascotQuote: {
     fontSize: 12,

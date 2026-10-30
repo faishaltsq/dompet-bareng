@@ -35,7 +35,9 @@ type TabType = 'expense' | 'income';
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 768;
+  const isLargeScreen = width >= 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isDesktop = width >= 1024;
   const { t, language } = useLanguage();
   const MONTHS = language === 'id' ? MONTHS_ID : MONTHS_EN;
   const { activeWorkspace, transactions, loadingTx, budgets, setBudget, updateBudget, deleteBudget } = useWorkspace();
@@ -336,93 +338,112 @@ export default function StatisticsScreen() {
     </>
   );
 
-  if (isDesktop) {
+  if (isLargeScreen) {
     return (
       <View style={s.desktopContainer}>
         <StatusBar style="dark" />
 
-        {/* 1. DESKTOP HEADER */}
-        <View style={s.desktopHeader}>
+        {/* 1. DESKTOP / TABLET HEADER */}
+        <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
           <View>
-            <Text style={s.desktopTitle}>{t('statsTitle')} 📊</Text>
-            <Text style={s.desktopSubtitle}>Lihat pola dan tren pengeluaran keluarga</Text>
+            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('statsTitle')} 📊</Text>
+            {!isTablet && <Text style={s.desktopSubtitle}>Lihat pola dan tren pengeluaran keluarga</Text>}
           </View>
 
           <View style={s.desktopActions}>
             {activeWorkspace && (
-              <View style={s.desktopWsPill}>
-                <Ionicons name="home" size={14} color={Colors.forestGreen} />
-                <Text style={s.desktopWsPillText}>{activeWorkspace.name}</Text>
+              <View style={[s.desktopWsPill, isTablet && s.desktopWsPillTablet]}>
+                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.forestGreen} />
+                <Text style={[s.desktopWsPillText, isTablet && s.desktopWsPillTextTablet]}>{activeWorkspace.name}</Text>
               </View>
             )}
 
             <TouchableOpacity
-              style={s.desktopCalendarBtn}
+              style={[s.desktopCalendarBtn, isTablet && s.desktopCalendarBtnTablet]}
               onPress={() => setCalendarVisible(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="calendar-outline" size={15} color="#0F3832" />
-              <Text style={s.desktopCalendarText}>{dateFilter.label}</Text>
-              <Ionicons name="chevron-down" size={13} color="#64748B" />
+              <Ionicons name="calendar-outline" size={isTablet ? 13 : 15} color="#0F3832" />
+              <Text style={[s.desktopCalendarText, isTablet && s.desktopCalendarTextTablet]}>{dateFilter.label}</Text>
+              <Ionicons name="chevron-down" size={isTablet ? 11 : 13} color="#64748B" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 2. DESKTOP BODY SCROLL */}
+        {/* 2. DESKTOP / TABLET BODY SCROLL */}
         <ScrollView
           style={s.desktopScroll}
-          contentContainerStyle={s.desktopScrollContent}
+          contentContainerStyle={[s.desktopScrollContent, isTablet && s.desktopScrollContentTablet]}
           showsVerticalScrollIndicator={false}
         >
           {/* ROW 1: 3 KPI CARDS */}
-          <View style={s.desktopKpiRow}>
+          <View style={[s.desktopKpiRow, isTablet && s.desktopKpiRowTablet]}>
             {/* CARD 1: PEMASUKAN */}
-            <View style={s.desktopKpiCard}>
+            <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeader}>
-                <View style={[s.desktopKpiIconWrap, { backgroundColor: '#E8F8F5' }]}>
-                  <Ionicons name="arrow-up" size={18} color="#00A86B" />
+                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: '#E8F8F5' }]}>
+                  <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color="#00A86B" />
                 </View>
-                <Text style={s.desktopKpiLabel}>{t('income')}</Text>
+                <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('income')}</Text>
               </View>
-              <Text style={[s.desktopKpiAmt, { color: Colors.income }]}>
+              <Text
+                style={[s.desktopKpiAmt, isTablet && s.desktopKpiAmtTablet, { color: Colors.income }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatRupiah(monthSummary.income)}
               </Text>
-              <Text style={s.desktopKpiSub}>Pemasukan periode {dateFilter.label}</Text>
+              <Text style={[s.desktopKpiSub, isTablet && s.desktopKpiSubTablet]} numberOfLines={1}>
+                Pemasukan {dateFilter.label}
+              </Text>
             </View>
 
             {/* CARD 2: PENGELUARAN */}
-            <View style={s.desktopKpiCard}>
+            <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeader}>
-                <View style={[s.desktopKpiIconWrap, { backgroundColor: '#FEE2E2' }]}>
-                  <Ionicons name="arrow-down" size={18} color="#FA5A5A" />
+                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color="#FA5A5A" />
                 </View>
-                <Text style={s.desktopKpiLabel}>{t('expense')}</Text>
+                <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('expense')}</Text>
               </View>
-              <Text style={[s.desktopKpiAmt, { color: Colors.expense }]}>
+              <Text
+                style={[s.desktopKpiAmt, isTablet && s.desktopKpiAmtTablet, { color: Colors.expense }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatRupiah(monthSummary.expense)}
               </Text>
-              <Text style={s.desktopKpiSub}>Pengeluaran periode {dateFilter.label}</Text>
+              <Text style={[s.desktopKpiSub, isTablet && s.desktopKpiSubTablet]} numberOfLines={1}>
+                Pengeluaran {dateFilter.label}
+              </Text>
             </View>
 
             {/* CARD 3: SALDO BERSIH DENGAN OTTER */}
-            <View style={s.desktopKpiCardPrimary}>
+            <View style={[s.desktopKpiCardPrimary, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeader}>
                 <View>
-                  <Text style={s.desktopKpiLabelLight}>{t('netBalance')}</Text>
-                  <Text style={s.desktopKpiSubLight}>Periode: {dateFilter.label}</Text>
+                  <Text style={[s.desktopKpiLabelLight, isTablet && { fontSize: 11 }]}>{t('netBalance')}</Text>
+                  <Text style={[s.desktopKpiSubLight, isTablet && { fontSize: 10 }]}>{dateFilter.label}</Text>
                 </View>
-                <View style={s.desktopOtterWrap}>
+                <View style={[s.desktopOtterWrap, isTablet && { width: 36, height: 36 }]}>
                   <OtterMascot
                     variant={balance > 0 ? 'happy' : balance < 0 ? 'crying' : 'thinking'}
-                    size="sm"
+                    size={isTablet ? 32 : 'sm'}
                   />
                 </View>
               </View>
-              <Text style={s.desktopKpiAmtLight}>
+              <Text
+                style={[s.desktopKpiAmtLight, isTablet && s.desktopKpiAmtLightTablet]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
               </Text>
-              <View style={s.desktopBadgeGreen}>
-                <Text style={s.desktopBadgeGreenText}>
+              <View style={[s.desktopBadgeGreen, isTablet && { paddingVertical: 2, paddingHorizontal: 6 }]}>
+                <Text style={[s.desktopBadgeGreenText, isTablet && { fontSize: 10 }]}>
                   {balance >= 0 ? 'Surplus Finansial' : 'Defisit Anggaran'}
                 </Text>
               </View>
@@ -430,9 +451,9 @@ export default function StatisticsScreen() {
           </View>
 
           {/* ROW 2: TWO-COLUMN GRID */}
-          <View style={s.desktopContentGrid}>
+          <View style={[s.desktopContentGrid, isTablet && s.desktopContentGridTablet]}>
             {/* LEFT COLUMN: TREN & BREAKDOWN KATEGORI */}
-            <View style={s.desktopLeftCol}>
+            <View style={[s.desktopLeftCol, isTablet && s.desktopLeftColTablet]}>
               {/* Comparative bars */}
               <View style={s.desktopCardBox}>
                 <Text style={s.desktopCardBoxTitle}>Rasio Pemasukan vs Pengeluaran</Text>
@@ -569,7 +590,7 @@ export default function StatisticsScreen() {
             </View>
 
             {/* RIGHT COLUMN: BATAS ANGGARAN & OTTER MASCOT */}
-            <View style={s.desktopRightCol}>
+            <View style={[s.desktopRightCol, isTablet && s.desktopRightColTablet]}>
               {/* Budgets Limit */}
               {tab === 'expense' && (
                 <View style={s.desktopCardBox}>
@@ -1755,5 +1776,60 @@ const s = StyleSheet.create({
     color: '#2C5E55',
     lineHeight: 18,
     textAlign: 'center',
+  },
+
+  // Tablet Styles
+  desktopHeaderTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  desktopTitleTablet: {
+    fontSize: 18,
+  },
+  desktopWsPillTablet: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  desktopWsPillTextTablet: {
+    fontSize: 12,
+  },
+  desktopCalendarBtnTablet: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  desktopCalendarTextTablet: {
+    fontSize: 12,
+  },
+  desktopScrollContentTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  desktopKpiRowTablet: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  desktopKpiCardTablet: {
+    padding: 14,
+    borderRadius: Radius.lg,
+  },
+  desktopKpiAmtTablet: {
+    fontSize: 18,
+    marginVertical: 4,
+  },
+  desktopKpiAmtLightTablet: {
+    fontSize: 20,
+    marginVertical: 4,
+  },
+  desktopKpiSubTablet: {
+    fontSize: 10,
+  },
+  desktopContentGridTablet: {
+    gap: 16,
+  },
+  desktopLeftColTablet: {
+    gap: 16,
+  },
+  desktopRightColTablet: {
+    gap: 16,
   },
 });

@@ -120,7 +120,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 768;
+  const isLargeScreen = width >= 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isDesktop = width >= 1024;
 
   const [showCreate, setShowCreate] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -538,36 +540,40 @@ export default function HomeScreen() {
     </>
   );
 
-  if (isDesktop) {
+  if (isLargeScreen) {
     return (
       <View style={s.desktopContainer}>
         <StatusBar style="dark" />
 
-        {/* 1. DESKTOP TOP HEADER */}
-        <View style={s.desktopHeader}>
-          <View>
-            <Text style={s.desktopGreetingTitle}>Halo, {displayName} 👋</Text>
-            <Text style={s.desktopGreetingSub}>
-              Kelola keuangan rumah tanggamu bersama-sama dengan mudah
+        {/* 1. DESKTOP/TABLET TOP HEADER */}
+        <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[s.desktopGreetingTitle, isTablet && s.desktopGreetingTitleTablet]} numberOfLines={1}>
+              Halo, {displayName} 👋
             </Text>
+            {!isTablet && (
+              <Text style={s.desktopGreetingSub}>
+                Kelola keuangan rumah tanggamu bersama-sama dengan mudah
+              </Text>
+            )}
           </View>
 
           <View style={s.desktopHeaderActions}>
             {/* Workspace Selector Pill */}
             <TouchableOpacity
-              style={s.desktopPill}
+              style={[s.desktopPill, isTablet && s.desktopPillTablet]}
               onPress={() => setShowSwitchModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="home" size={16} color={Colors.forestGreen} />
-              <Text style={s.desktopPillText} numberOfLines={1}>
+              <Ionicons name="home" size={isTablet ? 13 : 16} color={Colors.forestGreen} />
+              <Text style={[s.desktopPillText, isTablet && s.desktopPillTextTablet]} numberOfLines={1}>
                 {activeWorkspace?.name || 'Pilih Dompet'}
               </Text>
-              <Ionicons name="chevron-down" size={14} color="#64748B" />
+              <Ionicons name="chevron-down" size={isTablet ? 12 : 14} color="#64748B" />
             </TouchableOpacity>
 
             {/* Period Selector Pills */}
-            <View style={s.desktopPeriodPills}>
+            <View style={[s.desktopPeriodPills, isTablet && s.desktopPeriodPillsTablet]}>
               {(['month', 'week', 'day', 'all'] as PeriodFilter[]).map((p) => {
                 const labels: Record<PeriodFilter, string> = {
                   month: t('thisMonth'),
@@ -579,10 +585,20 @@ export default function HomeScreen() {
                 return (
                   <TouchableOpacity
                     key={p}
-                    style={[s.desktopPeriodPill, active && s.desktopPeriodPillActive]}
+                    style={[
+                      s.desktopPeriodPill,
+                      isTablet && s.desktopPeriodPillTablet,
+                      active && s.desktopPeriodPillActive,
+                    ]}
                     onPress={() => setPeriod(p)}
                   >
-                    <Text style={[s.desktopPeriodPillText, active && s.desktopPeriodPillTextActive]}>
+                    <Text
+                      style={[
+                        s.desktopPeriodPillText,
+                        isTablet && s.desktopPeriodPillTextTablet,
+                        active && s.desktopPeriodPillTextActive,
+                      ]}
+                    >
                       {labels[p]}
                     </Text>
                   </TouchableOpacity>
@@ -592,11 +608,11 @@ export default function HomeScreen() {
 
             {/* Notification */}
             <TouchableOpacity
-              style={s.desktopNotifBtn}
+              style={[s.desktopNotifBtn, isTablet && { width: 36, height: 36 }]}
               onPress={() => setShowNotifModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="notifications-outline" size={20} color="#0F3832" />
+              <Ionicons name="notifications-outline" size={isTablet ? 18 : 20} color="#0F3832" />
               {unreadCount > 0 && (
                 <View style={s.notifBadge}>
                   <Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -606,110 +622,129 @@ export default function HomeScreen() {
 
             {/* Avatar */}
             <TouchableOpacity
-              style={s.desktopAvatar}
+              style={[s.desktopAvatar, isTablet && { width: 36, height: 36 }]}
               onPress={() => router.push('/(tabs)/two')}
               activeOpacity={0.8}
             >
               {googleAvatarUrl ? (
                 <Image source={{ uri: googleAvatarUrl }} style={s.avatarImg} />
               ) : (
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>{userInitial}</Text>
+                <Text style={{ fontSize: isTablet ? 14 : 16, fontWeight: '800', color: '#FFFFFF' }}>{userInitial}</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 2. DESKTOP MAIN SCROLL AREA */}
+        {/* 2. DESKTOP/TABLET MAIN SCROLL AREA */}
         <ScrollView
           style={s.desktopScroll}
-          contentContainerStyle={s.desktopScrollContent}
+          contentContainerStyle={[s.desktopScrollContent, isTablet && s.desktopScrollContentTablet]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
           }
         >
           {/* ROW 1: 3 KPI CARDS */}
-          <View style={s.desktopKpiRow}>
+          <View style={[s.desktopKpiRow, isTablet && s.desktopKpiRowTablet]}>
             {/* CARD 1: TOTAL SALDO */}
-            <View style={s.desktopKpiCardPrimary}>
+            <View style={[s.desktopKpiCardPrimary, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiTop}>
                 <View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="wallet" size={16} color="rgba(255,255,255,0.85)" />
-                    <Text style={s.desktopKpiLabelLight}>{t('totalBalance')}</Text>
+                    <Ionicons name="wallet" size={isTablet ? 14 : 16} color="rgba(255,255,255,0.85)" />
+                    <Text style={[s.desktopKpiLabelLight, isTablet && { fontSize: 11 }]}>{t('totalBalance')}</Text>
                   </View>
-                  <Text style={s.desktopKpiSubLight}>• {activeWorkspace?.name || 'Utama'}</Text>
+                  <Text style={[s.desktopKpiSubLight, isTablet && { fontSize: 10 }]}>• {activeWorkspace?.name || 'Utama'}</Text>
                 </View>
-                <View style={s.desktopOtterWrap}>
-                  <OtterMascot variant={summary.balance >= 0 ? 'rich' : 'panic'} size="sm" />
+                <View style={[s.desktopOtterWrap, isTablet && { width: 36, height: 36 }]}>
+                  <OtterMascot variant={summary.balance >= 0 ? 'rich' : 'panic'} size={isTablet ? 32 : 'sm'} />
                 </View>
               </View>
 
-              <Text style={s.desktopKpiAmountLight}>{formatRupiah(summary.balance)}</Text>
+              <Text
+                style={[s.desktopKpiAmountLight, isTablet && s.desktopKpiAmountLightTablet]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {formatRupiah(summary.balance)}
+              </Text>
 
               <View style={s.desktopKpiBottom}>
-                <View style={s.desktopBadgeGreen}>
-                  <Ionicons name="trending-up" size={12} color="#00A86B" />
-                  <Text style={s.desktopBadgeGreenText}>
+                <View style={[s.desktopBadgeGreen, isTablet && { paddingVertical: 2, paddingHorizontal: 6 }]}>
+                  <Ionicons name="trending-up" size={isTablet ? 10 : 12} color="#00A86B" />
+                  <Text style={[s.desktopBadgeGreenText, isTablet && { fontSize: 10 }]}>
                     {summary.income >= summary.expense ? '+Surplus Sehat' : 'Defisit Pengeluaran'}
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={s.desktopRecordBtn}
+                  style={[s.desktopRecordBtn, isTablet && s.desktopRecordBtnTablet]}
                   onPress={() => router.push('/modal')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="add" size={16} color="#0F3832" />
-                  <Text style={s.desktopRecordBtnText}>{t('recordBtn')}</Text>
+                  <Ionicons name="add" size={isTablet ? 14 : 16} color="#0F3832" />
+                  <Text style={[s.desktopRecordBtnText, isTablet && s.desktopRecordBtnTextTablet]}>{t('recordBtn')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* CARD 2: PEMASUKAN */}
-            <View style={s.desktopKpiCard}>
+            <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeaderRow}>
-                <View style={[s.desktopKpiIconCircle, { backgroundColor: '#E8F8F5' }]}>
-                  <Ionicons name="arrow-up" size={18} color="#00A86B" />
+                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: '#E8F8F5' }]}>
+                  <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color="#00A86B" />
                 </View>
-                <Text style={s.desktopKpiLabel}>{t('income')}</Text>
+                <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('income')}</Text>
               </View>
-              <Text style={[s.desktopKpiAmount, { color: Colors.income }]}>
+              <Text
+                style={[s.desktopKpiAmount, isTablet && s.desktopKpiAmountTablet, { color: Colors.income }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatRupiah(summary.income)}
               </Text>
-              <Text style={s.desktopKpiFootnote}>Total pemasukan tercatat periode ini</Text>
+              <Text style={[s.desktopKpiFootnote, isTablet && s.desktopKpiFootnoteTablet]} numberOfLines={1}>
+                Total pemasukan tercatat periode ini
+              </Text>
             </View>
 
             {/* CARD 3: PENGELUARAN */}
-            <View style={s.desktopKpiCard}>
+            <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeaderRow}>
-                <View style={[s.desktopKpiIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                  <Ionicons name="arrow-down" size={18} color="#FA5A5A" />
+                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color="#FA5A5A" />
                 </View>
-                <Text style={s.desktopKpiLabel}>{t('expense')}</Text>
+                <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('expense')}</Text>
               </View>
-              <Text style={[s.desktopKpiAmount, { color: Colors.expense }]}>
+              <Text
+                style={[s.desktopKpiAmount, isTablet && s.desktopKpiAmountTablet, { color: Colors.expense }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatRupiah(summary.expense)}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>Pemakaian Budget</Text>
-                  <Text style={{ fontSize: 11, color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B', fontWeight: '800' }}>
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: '#64748B', fontWeight: '600' }}>Pemakaian Budget</Text>
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B', fontWeight: '800' }}>
                     {budgetPercent}%
                   </Text>
                 </View>
                 <AnimatedProgressBar
                   progress={budgetPercent / 100}
                   color={budgetPercent > 90 ? Colors.coralExpense : budgetPercent > 75 ? Colors.accentOrange : Colors.mintGreen}
-                  height={6}
+                  height={isTablet ? 5 : 6}
                 />
               </View>
             </View>
           </View>
 
           {/* ROW 2: TWO-COLUMN CONTENT GRID */}
-          <View style={s.desktopContentGrid}>
+          <View style={[s.desktopContentGrid, isTablet && s.desktopContentGridTablet]}>
             {/* LEFT COLUMN: TRANSAKSI TERBARU */}
-            <View style={s.desktopLeftCol}>
+            <View style={[s.desktopLeftCol, isTablet && s.desktopLeftColTablet]}>
               <View style={s.desktopSectionHeader}>
                 <View>
                   <Text style={s.desktopSectionTitle}>{t('recentTx')}</Text>
@@ -783,7 +818,7 @@ export default function HomeScreen() {
             </View>
 
             {/* RIGHT COLUMN: RINGKASAN DOMPET & ANGGARAN & OTTER */}
-            <View style={s.desktopRightCol}>
+            <View style={[s.desktopRightCol, isTablet && s.desktopRightColTablet]}>
               {/* CARD 1: RINGKASAN DOMPET */}
               <View style={s.desktopSideCard}>
                 <View style={s.desktopSideCardHeader}>
@@ -1856,5 +1891,72 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  // Tablet Styles
+  desktopHeaderTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  desktopGreetingTitleTablet: {
+    fontSize: 18,
+  },
+  desktopPillTablet: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    maxWidth: 130,
+  },
+  desktopPillTextTablet: {
+    fontSize: 12,
+  },
+  desktopPeriodPillsTablet: {
+    gap: 2,
+    padding: 3,
+  },
+  desktopPeriodPillTablet: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  desktopPeriodPillTextTablet: {
+    fontSize: 11,
+  },
+  desktopScrollContentTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  desktopKpiRowTablet: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  desktopKpiCardTablet: {
+    padding: 14,
+    borderRadius: Radius.lg,
+  },
+  desktopKpiAmountLightTablet: {
+    fontSize: 20,
+    marginVertical: 4,
+  },
+  desktopKpiAmountTablet: {
+    fontSize: 18,
+    marginVertical: 4,
+  },
+  desktopKpiFootnoteTablet: {
+    fontSize: 10,
+  },
+  desktopRecordBtnTablet: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  desktopRecordBtnTextTablet: {
+    fontSize: 11,
+  },
+  desktopContentGridTablet: {
+    gap: 16,
+  },
+  desktopLeftColTablet: {
+    gap: 16,
+  },
+  desktopRightColTablet: {
+    gap: 16,
   },
 });

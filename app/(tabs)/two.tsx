@@ -59,7 +59,9 @@ export default function SettingsScreen() {
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 768;
+  const isLargeScreen = width >= 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isDesktop = width >= 1024;
   const { user, profile, signOut, updateDisplayName, signInWithGoogle, avatarUrl } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -778,37 +780,37 @@ export default function SettingsScreen() {
     </>
   );
 
-  if (isDesktop) {
+  if (isLargeScreen) {
     return (
       <View style={s.desktopContainer}>
         <StatusBar style="dark" />
 
-        {/* DESKTOP HEADER */}
-        <View style={s.desktopHeader}>
+        {/* DESKTOP / TABLET HEADER */}
+        <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
           <View>
-            <Text style={s.desktopTitle}>{t('settingsTitle')} ⚙️</Text>
-            <Text style={s.desktopSubtitle}>Kelola profil, dompet keluarga, dan preferensi aplikasi</Text>
+            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('settingsTitle')} ⚙️</Text>
+            {!isTablet && <Text style={s.desktopSubtitle}>Kelola profil, dompet keluarga, dan preferensi aplikasi</Text>}
           </View>
 
           <View style={s.desktopActions}>
             {activeWorkspace && (
-              <View style={s.desktopWsPill}>
-                <Ionicons name="home" size={14} color={Colors.forestGreen} />
-                <Text style={s.desktopWsPillText}>{activeWorkspace.name}</Text>
+              <View style={[s.desktopWsPill, isTablet && s.desktopWsPillTablet]}>
+                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.forestGreen} />
+                <Text style={[s.desktopWsPillText, isTablet && s.desktopWsPillTextTablet]}>{activeWorkspace.name}</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* DESKTOP BODY SCROLL */}
+        {/* DESKTOP / TABLET BODY SCROLL */}
         <ScrollView
           style={s.desktopScroll}
-          contentContainerStyle={s.desktopScrollContent}
+          contentContainerStyle={[s.desktopScrollContent, isTablet && s.desktopScrollContentTablet]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.desktopContentGrid}>
+          <View style={[s.desktopContentGrid, isTablet && s.desktopContentGridTablet]}>
             {/* LEFT COLUMN: PROFIL & PREFERENSI */}
-            <View style={s.desktopLeftCol}>
+            <View style={[s.desktopLeftCol, isTablet && s.desktopLeftColTablet]}>
               {/* User Profile Card */}
               <View style={s.desktopCardBox}>
                 <Text style={s.desktopCardBoxTitle}>{t('myAccount')}</Text>
@@ -986,7 +988,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* RIGHT COLUMN: WORKSPACE AKTIF & ANGGOTA */}
-            <View style={s.desktopRightCol}>
+            <View style={[s.desktopRightCol, isTablet && s.desktopRightColTablet]}>
               {/* Workspace Details */}
               <View style={s.desktopCardBox}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -2309,5 +2311,34 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#0F3832',
+  },
+
+  // Tablet Styles
+  desktopHeaderTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  desktopTitleTablet: {
+    fontSize: 18,
+  },
+  desktopWsPillTablet: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  desktopWsPillTextTablet: {
+    fontSize: 12,
+  },
+  desktopScrollContentTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  desktopContentGridTablet: {
+    gap: 16,
+  },
+  desktopLeftColTablet: {
+    gap: 16,
+  },
+  desktopRightColTablet: {
+    gap: 16,
   },
 });
