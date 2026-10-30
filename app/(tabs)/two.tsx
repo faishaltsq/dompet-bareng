@@ -788,14 +788,14 @@ export default function SettingsScreen() {
         {/* DESKTOP / TABLET HEADER */}
         <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
           <View>
-            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('settingsTitle')} ⚙️</Text>
+            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('settingsTitle')}</Text>
             {!isTablet && <Text style={s.desktopSubtitle}>Kelola profil, dompet keluarga, dan preferensi aplikasi</Text>}
           </View>
 
           <View style={s.desktopActions}>
             {activeWorkspace && (
               <View style={[s.desktopWsPill, isTablet && s.desktopWsPillTablet]}>
-                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.forestGreen} />
+                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.primary} />
                 <Text style={[s.desktopWsPillText, isTablet && s.desktopWsPillTextTablet]}>{activeWorkspace.name}</Text>
               </View>
             )}

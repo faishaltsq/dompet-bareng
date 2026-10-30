@@ -68,9 +68,10 @@ type WorkspaceContextType = {
   uploadWorkspaceImage: (id: string, uri: string, base64?: string | null) => Promise<string | null>;
   uploadReceiptImage: (uri: string, base64?: string | null) => Promise<string | null>;
   budgets: WorkspaceBudget[];
-  setBudget: (category: string, amount: number) => Promise<boolean>;
+  fetchBudgets: (ws?: Workspace | null, month?: number, year?: number) => Promise<WorkspaceBudget[]>;
+  setBudget: (category: string, amount: number, month?: number, year?: number) => Promise<boolean>;
   updateBudget: (id: string, category: string, amount: number, oldCategory?: string) => Promise<boolean>;
-  deleteBudget: (categoryOrId: string) => Promise<boolean>;
+  deleteBudget: (categoryOrId: string, month?: number, year?: number) => Promise<boolean>;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType>({} as WorkspaceContextType);
@@ -858,19 +859,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // ── Budgets ────────────────────────────────────────────────────────────────
 
-  const fetchBudgets = useCallback(async (ws?: Workspace | null) => {
+  const fetchBudgets = useCallback(async (ws?: Workspace | null, month?: number, year?: number) => {
     const target = ws ?? activeRef.current;
     if (!target) {
       setBudgetsState([]);
-      return;
+      return [];
     }
     const now = new Date();
+    const targetMonth = typeof month === 'number' ? month : now.getMonth();
+    const targetYear = typeof year === 'number' ? year : now.getFullYear();
+
     const { data, error } = await supabase
       .from('workspace_budgets')
       .select('*')
       .eq('workspace_id', target.id)
-      .eq('month', now.getMonth())
-      .eq('year', now.getFullYear());
+      .eq('month', targetMonth)
+      .eq('year', targetYear);
 
     if (activeRef.current?.id === target.id) {
       if (!error && data) {
@@ -879,22 +883,31 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setBudgetsState([]);
       }
     }
+    return (data as WorkspaceBudget[]) || [];
   }, []);
 
-  const setBudget = async (category: string, amount: number): Promise<boolean> => {
+  const setBudget = async (
+    category: string,
+    amount: number,
+    month?: number,
+    year?: number
+  ): Promise<boolean> => {
     if (!activeWorkspace) return false;
     const now = new Date();
+    const targetMonth = typeof month === 'number' ? month : now.getMonth();
+    const targetYear = typeof year === 'number' ? year : now.getFullYear();
+
     const { error } = await supabase
       .from('workspace_budgets')
       .upsert({
         workspace_id: activeWorkspace.id,
         category,
         amount,
-        month: now.getMonth(),
-        year: now.getFullYear(),
+        month: targetMonth,
+        year: targetYear,
       }, { onConflict: 'workspace_id,category,month,year' });
     if (!error) {
-      await fetchBudgets();
+      await fetchBudgets(activeWorkspace, targetMonth, targetYear);
       return true;
     }
     return false;
@@ -935,19 +948,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const deleteBudget = async (categoryOrId: string): Promise<boolean> => {
+  const deleteBudget = async (categoryOrId: string, month?: number, year?: number): Promise<boolean> => {
     if (!activeWorkspace) return false;
     const now = new Date();
+    const targetMonth = typeof month === 'number' ? month : now.getMonth();
+    const targetYear = typeof year === 'number' ? year : now.getFullYear();
+
     const isUuid = /^[0-9a-fA-F-]{36}$/.test(categoryOrId);
     let query = supabase.from('workspace_budgets').delete().eq('workspace_id', activeWorkspace.id);
     if (isUuid) {
       query = query.eq('id', categoryOrId);
     } else {
-      query = query.eq('category', categoryOrId).eq('month', now.getMonth()).eq('year', now.getFullYear());
+      query = query.eq('category', categoryOrId).eq('month', targetMonth).eq('year', targetYear);
     }
     const { error } = await query;
     if (!error) {
-      await fetchBudgets();
+      await fetchBudgets(activeWorkspace, targetMonth, targetYear);
       return true;
     }
     return false;
@@ -979,7 +995,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       leaveWorkspace, removeMember,
       uploadWorkspaceImage,
       uploadReceiptImage,
-      budgets, setBudget, updateBudget, deleteBudget,
+      budgets, fetchBudgets, setBudget, updateBudget, deleteBudget,
     }}>
       {children}
     </WorkspaceContext.Provider>

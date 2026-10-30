@@ -10,7 +10,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
@@ -19,11 +19,12 @@ import { useWorkspace, WorkspaceBudget } from '@/context/WorkspaceContext';
 import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES, formatCurrencyInput } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AnimatedProgressBar } from '@/components/Animated';
+import { AnimatedProgressBar, AnimatedFinanceAmount, AnimatedPressable } from '@/components/Animated';
 import SwipeableModal from '@/components/SwipeableModal';
 import { useLanguage } from '@/context/LanguageContext';
 import CalendarDropdownModal, { DateFilterState } from '@/components/CalendarDropdownModal';
 import PieChart, { PieSlice } from '@/components/PieChart';
+import FinancialTrendChart, { MonthlyTrendData } from '@/components/FinancialTrendChart';
 import OtterMascot from '@/components/OtterMascot';
 import EmptyState from '@/components/EmptyState';
 
@@ -40,7 +41,7 @@ export default function StatisticsScreen() {
   const isDesktop = width >= 1024;
   const { t, language } = useLanguage();
   const MONTHS = language === 'id' ? MONTHS_ID : MONTHS_EN;
-  const { activeWorkspace, transactions, loadingTx, budgets, setBudget, updateBudget, deleteBudget } = useWorkspace();
+  const { activeWorkspace, transactions, loadingTx, budgets, fetchBudgets, setBudget, updateBudget, deleteBudget } = useWorkspace();
   const isAdmin = activeWorkspace?.role === 'admin';
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [editingBudget, setEditingBudget] = useState<WorkspaceBudget | null>(null);
@@ -68,6 +69,13 @@ export default function StatisticsScreen() {
   }, [MONTHS]);
 
   const [dateFilter, setDateFilter] = useState<DateFilterState>(() => getDefaultFilter());
+
+  // Fetch budgets corresponding to selected reporting month
+  useEffect(() => {
+    if (activeWorkspace && dateFilter.type === 'month' && typeof dateFilter.monthIndex === 'number' && dateFilter.year) {
+      fetchBudgets(activeWorkspace, dateFilter.monthIndex, dateFilter.year);
+    }
+  }, [activeWorkspace, dateFilter, fetchBudgets]);
 
   // Refresh default month filter when screen comes back into focus
   // so stale month/year doesn't linger across midnight or month boundaries
@@ -113,28 +121,121 @@ export default function StatisticsScreen() {
     [filtered]
   );
 
+  // 6-Month historical financial trend data
+  const monthlyTrends = useMemo<MonthlyTrendData[]>(() => {
+    if (!activeWorkspace) return [];
+    const wsTx = transactions.filter(t => t.workspace_id === activeWorkspace.id);
+
+    const refYear = dateFilter.year ?? new Date().getFullYear();
+    const refMonth = typeof dateFilter.monthIndex === 'number' ? dateFilter.monthIndex : new Date().getMonth();
+
+    const list: MonthlyTrendData[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(refYear, refMonth - i, 1);
+      const mIdx = d.getMonth();
+      const yr = d.getFullYear();
+      const monthKey = `${yr}-${String(mIdx + 1).padStart(2, '0')}`;
+      const label = MONTHS[mIdx];
+
+      let inc = 0;
+      let exp = 0;
+      for (const t of wsTx) {
+        if (t.transaction_date.startsWith(monthKey)) {
+          if (t.type === 'income') inc += t.amount;
+          else exp += t.amount;
+        }
+      }
+
+      list.push({
+        monthKey,
+        label,
+        year: yr,
+        income: inc,
+        expense: exp,
+      });
+    }
+    return list;
+  }, [activeWorkspace, transactions, dateFilter, MONTHS]);
+
+  // Deterministic financial insights
+  const financialInsights = useMemo(() => {
+    if (!activeWorkspace || filtered.length === 0) return null;
+
+    const expenseMap: Record<string, number> = {};
+    filtered.filter(t => t.type === 'expense').forEach(t => {
+      expenseMap[t.category] = (expenseMap[t.category] ?? 0) + t.amount;
+    });
+    const sortedExpenses = Object.entries(expenseMap).sort((a, b) => b[1] - a[1]);
+    const topExpense = sortedExpenses.length > 0 ? sortedExpenses[0] : null;
+
+    let momExpenseChange: number | null = null;
+    if (monthlyTrends.length >= 2) {
+      const curMonth = monthlyTrends[monthlyTrends.length - 1];
+      const prevMonth = monthlyTrends[monthlyTrends.length - 2];
+      if (prevMonth.expense > 0) {
+        momExpenseChange = Math.round(((curMonth.expense - prevMonth.expense) / prevMonth.expense) * 100);
+      }
+    }
+
+    const savingsRate = monthSummary.income > 0
+      ? Math.max(0, Math.round(((monthSummary.income - monthSummary.expense) / monthSummary.income) * 100))
+      : 0;
+
+    return {
+      topCategory: topExpense ? { name: topExpense[0], amount: topExpense[1] } : null,
+      momExpenseChange,
+      savingsRate,
+    };
+  }, [activeWorkspace, filtered, monthlyTrends, monthSummary]);
+
+  // Full category entries sorted by amount
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     filtered.filter(t => t.type === tab).forEach(t => {
       map[t.category] = (map[t.category] ?? 0) + t.amount;
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [filtered, tab]);
 
   const totalForTab = tab === 'expense' ? monthSummary.expense : monthSummary.income;
   const balance = monthSummary.income - monthSummary.expense;
 
-  // Pie chart slices — warna mengikuti kategori transaksi
+  // Pie chart slices — reconciled full total with top categories + Lainnya
   const pieSlices = useMemo<PieSlice[]>(() => {
-    if (totalForTab === 0) return [];
-    return byCategory.map(([cat, amount]) => ({
+    if (totalForTab === 0 || byCategory.length === 0) return [];
+    if (byCategory.length <= 6) {
+      return byCategory.map(([cat, amount]) => ({
+        key: cat,
+        label: cat,
+        value: amount,
+        color: getCategoryMeta(cat).color,
+        percentage: (amount / totalForTab) * 100,
+      }));
+    }
+    const top5 = byCategory.slice(0, 5);
+    const others = byCategory.slice(5);
+    const othersTotal = others.reduce((acc, [, amt]) => acc + amt, 0);
+
+    const slices: PieSlice[] = top5.map(([cat, amount]) => ({
       key: cat,
       label: cat,
       value: amount,
       color: getCategoryMeta(cat).color,
       percentage: (amount / totalForTab) * 100,
     }));
-  }, [byCategory, totalForTab]);
+
+    if (othersTotal > 0) {
+      slices.push({
+        key: 'Lainnya',
+        label: language === 'id' ? 'Lainnya' : 'Others',
+        value: othersTotal,
+        color: Colors.textMuted,
+        percentage: (othersTotal / totalForTab) * 100,
+      });
+    }
+
+    return slices;
+  }, [byCategory, totalForTab, language]);
 
   const handleOpenAddBudget = () => {
     setEditingBudget(null);
@@ -163,10 +264,13 @@ export default function StatisticsScreen() {
 
     setSavingBudget(true);
     let ok = false;
+    const targetMonth = dateFilter.type === 'month' && typeof dateFilter.monthIndex === 'number' ? dateFilter.monthIndex : undefined;
+    const targetYear = dateFilter.type === 'month' && dateFilter.year ? dateFilter.year : undefined;
+
     if (editingBudget) {
       ok = await updateBudget(editingBudget.id, budgetCategory, num, editingBudget.category);
     } else {
-      ok = await setBudget(budgetCategory, num);
+      ok = await setBudget(budgetCategory, num, targetMonth, targetYear);
     }
     setSavingBudget(false);
 
@@ -178,9 +282,12 @@ export default function StatisticsScreen() {
   };
 
   const handleDeleteBudget = (budget: WorkspaceBudget) => {
+    const targetMonth = dateFilter.type === 'month' && typeof dateFilter.monthIndex === 'number' ? dateFilter.monthIndex : undefined;
+    const targetYear = dateFilter.type === 'month' && dateFilter.year ? dateFilter.year : undefined;
+
     const doDelete = async () => {
       setSavingBudget(true);
-      const ok = await deleteBudget(budget.id);
+      const ok = await deleteBudget(budget.id, targetMonth, targetYear);
       setSavingBudget(false);
       if (ok) {
         setBudgetModalVisible(false);
@@ -346,7 +453,7 @@ export default function StatisticsScreen() {
         {/* 1. DESKTOP / TABLET HEADER */}
         <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
           <View>
-            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('statsTitle')} 📊</Text>
+            <Text style={[s.desktopTitle, isTablet && s.desktopTitleTablet]}>{t('statsTitle')}</Text>
             {!isTablet && <Text style={s.desktopSubtitle}>Lihat pola dan tren pengeluaran keluarga</Text>}
           </View>
 
@@ -454,6 +561,11 @@ export default function StatisticsScreen() {
           <View style={[s.desktopContentGrid, isTablet && s.desktopContentGridTablet]}>
             {/* LEFT COLUMN: TREN & BREAKDOWN KATEGORI */}
             <View style={[s.desktopLeftCol, isTablet && s.desktopLeftColTablet]}>
+              {/* Financial Trend Chart (6 Months) */}
+              <View style={{ marginBottom: 16 }}>
+                <FinancialTrendChart data={monthlyTrends} />
+              </View>
+
               {/* Comparative bars */}
               <View style={s.desktopCardBox}>
                 <Text style={s.desktopCardBoxTitle}>Rasio Pemasukan vs Pengeluaran</Text>
@@ -816,6 +928,11 @@ export default function StatisticsScreen() {
                 borderRadius={4}
               />
             </View>
+          </Animated.View>
+
+          {/* Financial Trend Chart (6 Months) */}
+          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginBottom: 16 }}>
+            <FinancialTrendChart data={monthlyTrends} />
           </Animated.View>
 
           {/* Tab switch: pengeluaran / pemasukan kategori */}

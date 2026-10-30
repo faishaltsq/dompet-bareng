@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   legendRowActive: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: Colors.primarySoft,
   },
   dot: {
     width: 10,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   legendLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#0F172A',
+    color: Colors.textDark,
     fontWeight: '400',
   },
   legendPct: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   legendVal: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textMuted,
     minWidth: 44,
     textAlign: 'right',
   },
@@ -253,10 +253,10 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.borderLight,
   },
   clearBtnText: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
   },
 });

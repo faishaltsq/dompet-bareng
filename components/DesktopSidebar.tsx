@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
 import OtterMascot from '@/components/OtterMascot';
-import { Radius } from '@/constants/theme';
+import { Radius, Colors } from '@/constants/theme';
 
 export default function DesktopSidebar() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function DesktopSidebar() {
       {/* 2. Brand Header */}
       <View style={[s.brandRow, isTablet && s.brandRowTablet]}>
         <View style={s.logoCircle}>
-          <Ionicons name="wallet" size={20} color="#00A86B" />
+          <Ionicons name="wallet" size={20} color={Colors.primaryLight} />
         </View>
         {!isTablet && <Text style={s.brandText}>DompetBareng</Text>}
       </View>
@@ -103,7 +103,7 @@ export default function DesktopSidebar() {
             <OtterMascot variant="welcome" size="sm" />
           </View>
           <Text style={s.mascotQuote}>
-            Keuangan lebih mudah kalau dilakukan Bareng-bareng ❤️
+            Keuangan lebih mudah kalau dilakukan Bareng-bareng.
           </Text>
         </View>
       )}
@@ -114,9 +114,9 @@ export default function DesktopSidebar() {
 const s = StyleSheet.create({
   sidebar: {
     width: 250,
-    backgroundColor: '#062126',
+    backgroundColor: Colors.sidebarBg,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.08)',
+    borderRightColor: Colors.sidebarBorder,
     paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 22,
@@ -157,7 +157,7 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,168,107,0.18)',
+    backgroundColor: 'rgba(199,143,102,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -194,10 +194,10 @@ const s = StyleSheet.create({
     width: 66,
   },
   navItemActive: {
-    backgroundColor: '#00A86B',
+    backgroundColor: Colors.primary,
   },
   navItemActiveTablet: {
-    backgroundColor: '#00A86B',
+    backgroundColor: Colors.primary,
   },
   navLabel: {
     fontSize: 14,

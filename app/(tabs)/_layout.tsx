@@ -22,7 +22,7 @@ function TabIcon({
       <Ionicons
         name={active ? nameFocused : name}
         size={22}
-        color={active ? Colors.forestGreen : Colors.textMuted}
+        color={active ? Colors.primary : Colors.textMuted}
       />
     </View>
   );
@@ -38,7 +38,7 @@ export default function TabLayout() {
   const tabsContent = (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.forestGreen,
+        tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: -4 },
         tabBarStyle: isLargeScreen
@@ -46,7 +46,7 @@ export default function TabLayout() {
           : {
               backgroundColor: '#FFFFFF',
               borderTopWidth: 1,
-              borderTopColor: '#E2E8F0',
+              borderTopColor: Colors.border,
               height: tabBarHeight,
               paddingBottom: Math.max(insets.bottom, 8),
               paddingTop: 6,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   desktopRoot: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#F0F8F6',
+    backgroundColor: Colors.background,
     height: '100%',
   },
   desktopMainContent: {

@@ -727,14 +727,14 @@ export default function HomeScreen() {
               </Text>
               <View style={{ marginTop: 8 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: isTablet ? 10 : 11, color: '#64748B', fontWeight: '600' }}>Pemakaian Budget</Text>
-                  <Text style={{ fontSize: isTablet ? 10 : 11, color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B', fontWeight: '800' }}>
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: Colors.textSecondary, fontWeight: '600' }}>Rasio Pengeluaran</Text>
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: budgetPercent > 90 ? Colors.expense : Colors.income, fontWeight: '800' }}>
                     {budgetPercent}%
                   </Text>
                 </View>
                 <AnimatedProgressBar
-                  progress={budgetPercent / 100}
-                  color={budgetPercent > 90 ? Colors.coralExpense : budgetPercent > 75 ? Colors.accentOrange : Colors.mintGreen}
+                  progress={budgetPercent}
+                  color={budgetPercent > 90 ? Colors.expense : budgetPercent > 75 ? Colors.warning : Colors.income}
                   height={isTablet ? 5 : 6}
                 />
               </View>
@@ -855,16 +855,16 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ marginVertical: 10 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>
+                    <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600' }}>
                       Status: {budgetPercent > 90 ? 'Perhatian!' : budgetPercent > 70 ? 'Waspada' : 'Aman'}
                     </Text>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetPercent > 90 ? Colors.expense : Colors.income }}>
                       {budgetPercent}%
                     </Text>
                   </View>
                   <AnimatedProgressBar
-                    progress={budgetPercent / 100}
-                    color={budgetPercent > 90 ? Colors.coralExpense : budgetPercent > 75 ? Colors.accentOrange : Colors.mintGreen}
+                    progress={budgetPercent}
+                    color={budgetPercent > 90 ? Colors.expense : budgetPercent > 75 ? Colors.warning : Colors.income}
                     height={8}
                   />
                 </View>

@@ -40,16 +40,41 @@ export const Colors = {
   borderLight: '#F6F1EA',
   skeletonBase: '#EDE5DC',
   skeletonHighlight: '#FBF7F0',
-  // Modern Fintech tokens (from mockups)
-  forestGreen: '#0F3832',
-  forestGreenDark: '#0A1E24',
-  mintGreen: '#00A86B',
-  mintSoft: '#D4F4E4',
-  coralExpense: '#FA5A5A',
-  coralSoft: '#FFEAEA',
-  cardCanvas: '#F4FBF7',
-  goldWarning: '#FFB84D',
-  goldSoft: '#FFF4E0',
+  // Warm Caramel theme & Sidebar tokens
+  sidebarBg: '#2E180E',
+  sidebarDark: '#23120A',
+  sidebarBorder: 'rgba(255,255,255,0.08)',
+  sidebarActive: '#9E5727',
+  warning: '#E58A3A',
+  warningSoft: '#FFF4E8',
+  // Backward compatibility: alias modern fintech tokens to warm caramel brand
+  forestGreen: '#9E5727',
+  forestGreenDark: '#2E180E',
+  mintGreen: '#2E8B57',
+  mintSoft: '#EBF7EE',
+  coralExpense: '#DC4C40',
+  coralSoft: '#FDEFEF',
+  cardCanvas: '#F5EDE2',
+  goldWarning: '#E5A036',
+  goldSoft: '#FFF8EB',
+};
+
+export const Motion = {
+  duration: {
+    instant: 100,
+    fast: 150,
+    normal: 220,
+    slow: 320,
+    emphasis: 450,
+  },
+  stagger: {
+    short: 35,
+    normal: 55,
+  },
+  scale: {
+    pressed: 0.97,
+    selected: 1.025,
+  },
 };
 
 export const Shadows = {

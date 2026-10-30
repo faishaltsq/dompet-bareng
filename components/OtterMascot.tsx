@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Image,
@@ -10,7 +10,16 @@ import {
   TextStyle,
   Platform,
 } from 'react-native';
-import { Colors, Shadows, Radius } from '@/constants/theme';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withSpring,
+  useReducedMotion,
+  FadeIn,
+} from 'react-native-reanimated';
+import { Colors, Shadows, Radius, Motion } from '@/constants/theme';
 
 export type OtterVariant =
   | 'welcome'
@@ -54,6 +63,7 @@ export interface OtterMascotProps {
   bubbleStyle?: StyleProp<ViewStyle>;
   accessible?: boolean;
   accessibilityLabel?: string;
+  animated?: boolean;
 }
 
 export default function OtterMascot({
@@ -68,12 +78,93 @@ export default function OtterMascot({
   bubbleStyle,
   accessible = true,
   accessibilityLabel,
+  animated = true,
 }: OtterMascotProps) {
   const pixelSize = typeof size === 'number' ? size : SIZE_MAP[size] || 72;
   const source = MASCOT_SOURCES[variant] || MASCOT_SOURCES.welcome;
+  const shouldReduceMotion = useReducedMotion();
 
   const defaultLabel = `Maskot DompetBareng (${variant})`;
   const label = accessibilityLabel || (speech ? `${defaultLabel}: ${speech}` : defaultLabel);
+
+  const scale = useSharedValue(1);
+  const translateY = useSharedValue(0);
+  const rotation = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const prevVariantRef = useRef(variant);
+
+  useEffect(() => {
+    if (!animated || shouldReduceMotion) {
+      scale.value = 1;
+      translateY.value = 0;
+      rotation.value = 0;
+      opacity.value = 1;
+      prevVariantRef.current = variant;
+      return;
+    }
+
+    // Trigger one-time restrained entrance motion based on emotion variant
+    if (variant === 'welcome') {
+      scale.value = withSequence(
+        withTiming(0.92, { duration: 0 }),
+        withSpring(1, { damping: 14, stiffness: 200 })
+      );
+      translateY.value = withSequence(
+        withTiming(-4, { duration: 120 }),
+        withSpring(0, { damping: 14, stiffness: 200 })
+      );
+    } else if (variant === 'happy') {
+      scale.value = withSequence(
+        withTiming(1.06, { duration: 150 }),
+        withSpring(1, { damping: 12, stiffness: 220 })
+      );
+    } else if (variant === 'rich') {
+      translateY.value = withSequence(
+        withTiming(-6, { duration: 140 }),
+        withSpring(0, { damping: 12, stiffness: 200 })
+      );
+    } else if (variant === 'thinking') {
+      rotation.value = withSequence(
+        withTiming(-3, { duration: 180 }),
+        withTiming(0, { duration: 220 })
+      );
+    } else if (variant === 'reminder') {
+      rotation.value = withSequence(
+        withTiming(-3, { duration: 120 }),
+        withTiming(3, { duration: 140 }),
+        withTiming(0, { duration: 120 })
+      );
+    } else if (variant === 'panic') {
+      // Non-looping, brief 240ms attention shake
+      translateY.value = withSequence(
+        withTiming(-2, { duration: 60 }),
+        withTiming(2, { duration: 60 }),
+        withTiming(-1, { duration: 60 }),
+        withTiming(0, { duration: 60 })
+      );
+    } else if (variant === 'crying') {
+      opacity.value = withSequence(
+        withTiming(0.7, { duration: 0 }),
+        withTiming(1, { duration: 300 })
+      );
+    } else if (variant === 'sleeping') {
+      opacity.value = withSequence(
+        withTiming(0.8, { duration: 0 }),
+        withTiming(1, { duration: 350 })
+      );
+    }
+
+    prevVariantRef.current = variant;
+  }, [variant, animated, shouldReduceMotion]);
+
+  const animatedMascotStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateY: translateY.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
 
   const renderBubble = () => {
     if (!speech) return null;
@@ -105,7 +196,7 @@ export default function OtterMascot({
     >
       {speech && speechPosition === 'top' && renderBubble()}
 
-      <Image
+      <Animated.Image
         source={source}
         style={[
           {
@@ -113,6 +204,7 @@ export default function OtterMascot({
             height: pixelSize,
           },
           imageStyle,
+          animatedMascotStyle,
         ]}
         resizeMode="contain"
       />
