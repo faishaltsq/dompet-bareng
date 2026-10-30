@@ -70,7 +70,7 @@ export function generateMonthlyRecap(
     mascotMood = 'panic';
     headline = 'Perhatian! Pengeluaran melebihi 150% pemasukan bulan ini.';
   } else {
-    mascotMood = 'warning';
+    mascotMood = 'reminder';
     headline = 'Pengeluaran melebihi pemasukan. Waktunya evaluasi anggaran.';
   }
 
