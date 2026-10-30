@@ -44,6 +44,8 @@ import { filterTransactions } from '@/lib/transactionSearch';
 import { createDuplicateDraft } from '@/lib/transactionDuplicate';
 import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
 import TransactionSearchBar from '@/components/TransactionSearchBar';
+import SavingsGoalCard from '@/components/SavingsGoalCard';
+import { computeEnvelopeBalance, type SavingsGoal } from '@/lib/envelopeAccounting';
 import UpcomingBillsCard from '@/components/UpcomingBillsCard';
 import { getUrgentBills, type RecurringBill } from '@/lib/billReminderEngine';
 import { supabase } from '@/lib/supabase';
@@ -178,6 +180,30 @@ export default function HomeScreen() {
       },
     });
   }, [router]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    let isMounted = true;
+    supabase
+      .from('savings_goals')
+      .select('*')
+      .eq('workspace_id', activeWorkspace.id)
+      .eq('is_achieved', false)
+      .then(({ data }) => {
+        if (isMounted && data) {
+          setSavingsGoals(data as SavingsGoal[]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspace?.id]);
+
+  const envelope = useMemo(() => {
+    return computeEnvelopeBalance(summary.income, summary.expense, savingsGoals);
+  }, [summary.income, summary.expense, savingsGoals]);
+
 
   const googleAvatarUrl = avatarUrl;
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('userFallback');
@@ -471,6 +497,23 @@ export default function HomeScreen() {
               </Text>
             )}
           </View>
+          {/* ENVELOPE SUB-BALANCES (Sprint 3) */}
+          {savingsGoals.length > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 8, marginTop: 12 }}>
+              <View>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)' }}>Siap Pakai</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: envelope.isOverallocated ? '#FCA5A5' : '#FFFFFF' }}>
+                  {formatRupiah(envelope.freeToSpend)}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)' }}>Terkunci di Goals</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>
+                  {formatRupiah(envelope.reservedInGoals)}
+                </Text>
+              </View>
+            </View>
+          )}
         </FadeSlideIn>
 
         {/* QUICK ACTIONS ROW */}
@@ -546,6 +589,27 @@ export default function HomeScreen() {
             <UpcomingBillsCard
               bills={urgentBills}
               onPayAndRecord={handlePayAndRecordBill}
+            />
+          </FadeSlideIn>
+        )}
+
+        {/* SAVINGS GOALS (Sprint 3) */}
+        {savingsGoals.length > 0 && (
+          <FadeSlideIn delay={160}>
+            <SavingsGoalCard
+              goals={savingsGoals}
+              onContribute={(goal) => {
+                router.push({
+                  pathname: '/modal',
+                  params: {
+                    duplicateType: 'expense',
+                    duplicateAmount: '100000',
+                    duplicateCategory: 'Tabungan',
+                    duplicateDescription: `Nabung untuk ${goal.title}`,
+                    duplicateDate: new Date().toISOString().split('T')[0],
+                  },
+                });
+              }}
             />
           </FadeSlideIn>
         )}
@@ -1048,6 +1112,27 @@ export default function HomeScreen() {
                   </Text>
                 )}
               </View>
+
+              {/* CARD 3: TARGET TABUNGAN (Sprint 3) */}
+              {savingsGoals.length > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <SavingsGoalCard
+                    goals={savingsGoals}
+                    onContribute={(goal) => {
+                      router.push({
+                        pathname: '/modal',
+                        params: {
+                          duplicateType: 'expense',
+                          duplicateAmount: '100000',
+                          duplicateCategory: 'Tabungan',
+                          duplicateDescription: `Nabung untuk ${goal.title}`,
+                          duplicateDate: new Date().toISOString().split('T')[0],
+                        },
+                      });
+                    }}
+                  />
+                </View>
+              )}
 
               {/* CARD 3: INSIGHT KEUANGAN BERSAMA OTTER */}
               <View style={s.desktopOtterCard}>
