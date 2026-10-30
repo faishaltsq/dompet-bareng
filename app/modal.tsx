@@ -241,7 +241,7 @@ export default function AddTransactionModal() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backBtnText}>✕</Text>
+          <Ionicons name="close" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{t('recordTxTitle')}</Text>
         <View style={{ width: 40 }} />
@@ -410,7 +410,8 @@ export default function AddTransactionModal() {
             <View style={s.noteLabelRow}>
               <Text style={s.sectionLabel}>{t('noteOptional')}</Text>
               <TouchableOpacity style={s.receiptBtn} onPress={handlePickReceipt}>
-                <Text style={s.receiptBtnText}>📎 {t('addReceipt')}</Text>
+                <Ionicons name="attach" size={14} color={Colors.primary} />
+                <Text style={s.receiptBtnText}>{t('addReceipt')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -431,9 +432,13 @@ export default function AddTransactionModal() {
             {receiptUri && (
               <Animated.View entering={FadeIn.duration(250)} style={s.receiptPreview}>
                 <View style={s.receiptPreviewHeader}>
-                  <Text style={s.receiptPreviewLabel}>📷 {language === 'id' ? 'Foto Struk' : 'Receipt Photo'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Ionicons name="camera-outline" size={13} color={Colors.textSecondary} />
+                    <Text style={s.receiptPreviewLabel}>{language === 'id' ? 'Foto Struk' : 'Receipt Photo'}</Text>
+                  </View>
                   <TouchableOpacity onPress={handleRemoveReceipt} style={s.receiptRemoveBtn}>
-                    <Text style={s.receiptRemoveBtnText}>✕ {language === 'id' ? 'Hapus' : 'Remove'}</Text>
+                    <Ionicons name="close" size={13} color={Colors.expense} />
+                    <Text style={s.receiptRemoveBtnText}>{language === 'id' ? 'Hapus' : 'Remove'}</Text>
                   </TouchableOpacity>
                 </View>
                 <Image source={{ uri: receiptUri }} style={s.receiptImg} resizeMode="cover" />
@@ -472,7 +477,7 @@ export default function AddTransactionModal() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.forestGreen },
+  root: { flex: 1, backgroundColor: Colors.primaryDark },
   kav: { flex: 1 },
 
   header: {
@@ -495,7 +500,7 @@ const s = StyleSheet.create({
 
   content: {
     flexGrow: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
     padding: 24,
@@ -515,7 +520,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   switchBtnExpense: {
@@ -523,8 +528,8 @@ const s = StyleSheet.create({
     borderColor: Colors.coralExpense,
   },
   switchBtnIncome: {
-    backgroundColor: Colors.mintSoft,
-    borderColor: Colors.mintGreen,
+    backgroundColor: Colors.incomeSoft,
+    borderColor: Colors.income,
   },
   switchBtnInactive: { opacity: 0.55 },
   switchEmoji: { fontSize: 16 },
@@ -539,7 +544,7 @@ const s = StyleSheet.create({
     padding: 20,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   amountCurrency: { fontSize: 28, fontWeight: '800', color: Colors.textMuted },
@@ -576,6 +581,7 @@ const s = StyleSheet.create({
   receiptBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
     backgroundColor: Colors.accentBlueSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -590,7 +596,7 @@ const s = StyleSheet.create({
   },
   noteInput: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -607,7 +613,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: 8,
   },
   receiptPreviewHeader: {
@@ -621,6 +627,9 @@ const s = StyleSheet.create({
     color: Colors.textSecondary,
   },
   receiptRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: Colors.expenseSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -650,7 +659,7 @@ const s = StyleSheet.create({
     marginVertical: 4,
   },
   scanBtn: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     borderRadius: Radius.md,
     paddingVertical: 14,
     paddingHorizontal: 16,

@@ -13,13 +13,13 @@ import {
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useWorkspace, WorkspaceBudget } from '@/context/WorkspaceContext';
 import { formatRupiah, getCategoryMeta, EXPENSE_CATEGORIES, formatCurrencyInput } from '@/lib/utils';
-import { Colors, Shadows, Radius } from '@/constants/theme';
+import { Colors, Shadows, Radius, Motion } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AnimatedProgressBar, AnimatedFinanceAmount, AnimatedPressable } from '@/components/Animated';
+import { AnimatedProgressBar, AnimatedFinanceAmount, AnimatedPressable, AnimatedTabIndicator } from '@/components/Animated';
 import SwipeableModal from '@/components/SwipeableModal';
 import { useLanguage } from '@/context/LanguageContext';
 import CalendarDropdownModal, { DateFilterState } from '@/components/CalendarDropdownModal';
@@ -35,6 +35,7 @@ type TabType = 'expense' | 'income';
 
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const isTablet = width >= 768 && width < 1024;
@@ -460,7 +461,7 @@ export default function StatisticsScreen() {
           <View style={s.desktopActions}>
             {activeWorkspace && (
               <View style={[s.desktopWsPill, isTablet && s.desktopWsPillTablet]}>
-                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.forestGreen} />
+                <Ionicons name="home" size={isTablet ? 12 : 14} color={Colors.primaryDark} />
                 <Text style={[s.desktopWsPillText, isTablet && s.desktopWsPillTextTablet]}>{activeWorkspace.name}</Text>
               </View>
             )}
@@ -470,9 +471,9 @@ export default function StatisticsScreen() {
               onPress={() => setCalendarVisible(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="calendar-outline" size={isTablet ? 13 : 15} color="#0F3832" />
+              <Ionicons name="calendar-outline" size={isTablet ? 13 : 15} color={Colors.primaryDark} />
               <Text style={[s.desktopCalendarText, isTablet && s.desktopCalendarTextTablet]}>{dateFilter.label}</Text>
-              <Ionicons name="chevron-down" size={isTablet ? 11 : 13} color="#64748B" />
+              <Ionicons name="chevron-down" size={isTablet ? 11 : 13} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -488,19 +489,15 @@ export default function StatisticsScreen() {
             {/* CARD 1: PEMASUKAN */}
             <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeader}>
-                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: '#E8F8F5' }]}>
+                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: Colors.primarySoft }]}>
                   <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color="#00A86B" />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('income')}</Text>
               </View>
-              <Text
+              <AnimatedFinanceAmount
+                value={monthSummary.income}
                 style={[s.desktopKpiAmt, isTablet && s.desktopKpiAmtTablet, { color: Colors.income }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {formatRupiah(monthSummary.income)}
-              </Text>
+              />
               <Text style={[s.desktopKpiSub, isTablet && s.desktopKpiSubTablet]} numberOfLines={1}>
                 Pemasukan {dateFilter.label}
               </Text>
@@ -509,19 +506,15 @@ export default function StatisticsScreen() {
             {/* CARD 2: PENGELUARAN */}
             <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeader}>
-                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: '#FEE2E2' }]}>
-                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color="#FA5A5A" />
+                <View style={[s.desktopKpiIconWrap, isTablet && { width: 30, height: 30 }, { backgroundColor: Colors.expenseSoft }]}>
+                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color={Colors.expense} />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('expense')}</Text>
               </View>
-              <Text
+              <AnimatedFinanceAmount
+                value={monthSummary.expense}
                 style={[s.desktopKpiAmt, isTablet && s.desktopKpiAmtTablet, { color: Colors.expense }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {formatRupiah(monthSummary.expense)}
-              </Text>
+              />
               <Text style={[s.desktopKpiSub, isTablet && s.desktopKpiSubTablet]} numberOfLines={1}>
                 Pengeluaran {dateFilter.label}
               </Text>
@@ -541,14 +534,11 @@ export default function StatisticsScreen() {
                   />
                 </View>
               </View>
-              <Text
+              <AnimatedFinanceAmount
+                value={balance}
+                prefix={balance >= 0 ? '+Rp ' : '-Rp '}
                 style={[s.desktopKpiAmtLight, isTablet && s.desktopKpiAmtLightTablet]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
-              </Text>
+              />
               <View style={[s.desktopBadgeGreen, isTablet && { paddingVertical: 2, paddingHorizontal: 6 }]}>
                 <Text style={[s.desktopBadgeGreenText, isTablet && { fontSize: 10 }]}>
                   {balance >= 0 ? 'Surplus Finansial' : 'Defisit Anggaran'}
@@ -614,7 +604,7 @@ export default function StatisticsScreen() {
 
               {/* Tab Switch & Pie Chart */}
               <View style={s.desktopCardBox}>
-                <View style={s.tabSwitch}>
+                <View style={[s.tabSwitch, { marginBottom: 6 }]}>
                   <TouchableOpacity
                     style={[s.tabBtn, tab === 'expense' && s.tabBtnActiveExpense]}
                     onPress={() => setTab('expense')}
@@ -646,7 +636,12 @@ export default function StatisticsScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-
+                <AnimatedTabIndicator
+                  activeIndex={tab === 'expense' ? 0 : 1}
+                  totalTabs={2}
+                  indicatorColor={tab === 'expense' ? Colors.expense : Colors.income}
+                  height={3}
+                />
                 {pieSlices.length > 0 && (
                   <View style={{ alignItems: 'center', marginVertical: 16 }}>
                     <PieChart
@@ -841,7 +836,7 @@ export default function StatisticsScreen() {
         {/* BODY */}
         <View style={s.body}>
           {/* Summary Cards Row */}
-          <Animated.View entering={FadeInDown.duration(450)} style={s.summaryCardRow}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.duration(450)} style={s.summaryCardRow}>
             <View style={[s.summaryCard, s.summaryCardIncome]}>
               <View style={s.summaryCardHeader}>
                 <View style={[s.summaryDot, { backgroundColor: Colors.incomeSoft }]}>
@@ -849,9 +844,7 @@ export default function StatisticsScreen() {
                 </View>
                 <Text style={[s.summaryCardLabel, { color: Colors.income }]}>{t('income')}</Text>
               </View>
-              <Text style={[s.summaryCardAmt, { color: Colors.income }]}>
-                {formatRupiah(monthSummary.income)}
-              </Text>
+              <AnimatedFinanceAmount value={monthSummary.income} style={[s.summaryCardAmt, { color: Colors.income }]} />
             </View>
 
             <View style={[s.summaryCard, s.summaryCardExpense]}>
@@ -861,22 +854,22 @@ export default function StatisticsScreen() {
                 </View>
                 <Text style={[s.summaryCardLabel, { color: Colors.expense }]}>{t('expense')}</Text>
               </View>
-              <Text style={[s.summaryCardAmt, { color: Colors.expense }]}>
-                {formatRupiah(monthSummary.expense)}
-              </Text>
+              <AnimatedFinanceAmount value={monthSummary.expense} style={[s.summaryCardAmt, { color: Colors.expense }]} />
             </View>
           </Animated.View>
 
           {/* Net Balance card with Mascot */}
-          <Animated.View entering={FadeInDown.delay(80).duration(450)} style={s.netCard}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(80).duration(450)} style={s.netCard}>
             <View style={s.netCardHeaderRow}>
               <View style={{ flex: 1 }}>
                 <Text style={s.netLabel}>{t('netBalance')} — {dateFilter.label}</Text>
-                <Text style={[s.netAmount, {
-                  color: balance >= 0 ? '#059669' : '#DC2626',
-                }]}>
-                  {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
-                </Text>
+                <AnimatedFinanceAmount
+                  value={balance}
+                  prefix={balance >= 0 ? '+Rp ' : '-Rp '}
+                  style={[s.netAmount, {
+                    color: balance >= 0 ? '#059669' : '#DC2626',
+                  }]}
+                />
               </View>
               <View style={s.netMascotWrap}>
                 <OtterMascot
@@ -931,48 +924,55 @@ export default function StatisticsScreen() {
           </Animated.View>
 
           {/* Financial Trend Chart (6 Months) */}
-          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginBottom: 16 }}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(120).duration(400)} style={{ marginBottom: 16 }}>
             <FinancialTrendChart data={monthlyTrends} />
           </Animated.View>
 
           {/* Tab switch: pengeluaran / pemasukan kategori */}
-          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.tabSwitch}>
-            <TouchableOpacity
-              style={[s.tabBtn, tab === 'expense' && s.tabBtnActiveExpense]}
-              onPress={() => setTab('expense')}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="arrow-down-circle-outline"
-                size={16}
-                color={tab === 'expense' ? Colors.expense : Colors.textMuted}
-                style={{ marginRight: 6 }}
-              />
-              <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActiveExpense]}>
-                {t('expense')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.tabBtn, tab === 'income' && s.tabBtnActiveIncome]}
-              onPress={() => setTab('income')}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="arrow-up-circle-outline"
-                size={16}
-                color={tab === 'income' ? Colors.income : Colors.textMuted}
-                style={{ marginRight: 6 }}
-              />
-              <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActiveIncome]}>
-                {t('income')}
-              </Text>
-            </TouchableOpacity>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(150).duration(400)} style={{ marginBottom: 16 }}>
+            <View style={[s.tabSwitch, { marginBottom: 6 }]}>
+              <TouchableOpacity
+                style={[s.tabBtn, tab === 'expense' && s.tabBtnActiveExpense]}
+                onPress={() => setTab('expense')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="arrow-down-circle-outline"
+                  size={16}
+                  color={tab === 'expense' ? Colors.expense : Colors.textMuted}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActiveExpense]}>
+                  {t('expense')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.tabBtn, tab === 'income' && s.tabBtnActiveIncome]}
+                onPress={() => setTab('income')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="arrow-up-circle-outline"
+                  size={16}
+                  color={tab === 'income' ? Colors.income : Colors.textMuted}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActiveIncome]}>
+                  {t('income')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <AnimatedTabIndicator
+              activeIndex={tab === 'expense' ? 0 : 1}
+              totalTabs={2}
+              indicatorColor={tab === 'expense' ? Colors.expense : Colors.income}
+              height={3}
+            />
           </Animated.View>
-
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* COLLAPSIBLE PIE / DONUT CHART                             */}
           {/* ═══════════════════════════════════════════════════════════ */}
-          <Animated.View entering={FadeInDown.delay(155).duration(400)}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(155).duration(400)}>
             <TouchableOpacity
               style={s.pieToggleBtn}
               onPress={() => setShowPieChart(prev => !prev)}
@@ -1015,7 +1015,7 @@ export default function StatisticsScreen() {
           {/* SECTION: ANGGARAN & KUOTA (HANYA TAB PENGELUARAN) */}
           {/* ═══════════════════════════════════════════════════════════ */}
           {tab === 'expense' && (
-            <Animated.View entering={FadeInDown.delay(160).duration(400)} style={s.budgetSection}>
+            <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(160).duration(400)} style={s.budgetSection}>
               <View style={s.budgetHeaderRow}>
                 <View>
                   <Text style={s.budgetSectionTitle}>{t('categoryBudgetLimits')}</Text>
@@ -1123,7 +1123,7 @@ export default function StatisticsScreen() {
               return (
                 <Animated.View
                   key={cat}
-                  entering={FadeInUp.delay(index * 60).duration(350)}
+                  entering={reducedMotion ? FadeIn.duration(150) : FadeInUp.delay(Math.min(index, 8) * 35).duration(300)}
                   style={s.catCard}
                 >
                   <View style={[s.catIcon, { backgroundColor: meta.bg }]}>
@@ -1156,9 +1156,9 @@ export default function StatisticsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F7FAFC' },
+  root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -1215,7 +1215,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: 8,
     ...Shadows.card,
   },
@@ -1253,7 +1253,7 @@ const s = StyleSheet.create({
     padding: 20,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   netCardHeaderRow: {
@@ -1373,7 +1373,7 @@ const s = StyleSheet.create({
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: 14,
     ...Shadows.card,
   },
@@ -1398,7 +1398,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
     gap: 12,
   },
@@ -1691,12 +1691,12 @@ const s = StyleSheet.create({
   // Desktop Web Styles
   desktopContainer: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
   },
   desktopHeader: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border,
     paddingHorizontal: 28,
     paddingVertical: 18,
     flexDirection: 'row',
@@ -1706,12 +1706,12 @@ const s = StyleSheet.create({
   desktopTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
   },
   desktopSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   desktopActions: {
@@ -1723,9 +1723,9 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#E8F8F5',
+    backgroundColor: Colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#C3EBE3',
+    borderColor: Colors.primaryMuted,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: Radius.full,
@@ -1733,13 +1733,13 @@ const s = StyleSheet.create({
   desktopWsPillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopCalendarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.cardAlt,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: Radius.full,
@@ -1747,7 +1747,7 @@ const s = StyleSheet.create({
   desktopCalendarText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopScroll: {
     flex: 1,
@@ -1770,7 +1770,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     justifyContent: 'space-between',
     ...Shadows.card,
   },
@@ -1790,7 +1790,7 @@ const s = StyleSheet.create({
   desktopKpiLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
+    color: Colors.textSecondary,
   },
   desktopKpiAmt: {
     fontSize: 22,
@@ -1800,11 +1800,11 @@ const s = StyleSheet.create({
   },
   desktopKpiSub: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textMuted,
   },
   desktopKpiCardPrimary: {
     flex: 1.25,
-    backgroundColor: '#0F3832',
+    backgroundColor: Colors.primaryDark,
     borderRadius: Radius.xl,
     padding: 20,
     justifyContent: 'space-between',
@@ -1859,13 +1859,13 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   desktopCardBoxTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     marginBottom: 14,
   },
   desktopRightCol: {
@@ -1873,24 +1873,24 @@ const s = StyleSheet.create({
     gap: 18,
   },
   desktopOtterCard: {
-    backgroundColor: '#E6F7F2',
+    backgroundColor: Colors.primarySoft,
     borderRadius: Radius.xl,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#BCECE0',
+    borderColor: Colors.primaryMuted,
     alignItems: 'center',
     ...Shadows.card,
   },
   desktopOtterTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     marginBottom: 6,
     textAlign: 'center',
   },
   desktopOtterText: {
     fontSize: 12,
-    color: '#2C5E55',
+    color: Colors.textSecondary,
     lineHeight: 18,
     textAlign: 'center',
   },

@@ -58,7 +58,7 @@ export const CATEGORY_META: Record<
   'Transfer':      { icon: 'swap-horizontal-outline', emoji: '🔄', bg: Colors.accentTealSoft, color: Colors.accentTeal },
   'Bonus':         { icon: 'gift-outline', emoji: '🎁', bg: Colors.savingsSoft, color: Colors.savings },
   'Investasi':     { icon: 'trending-up-outline', emoji: '📈', bg: Colors.primarySoft, color: Colors.primaryDark },
-  'Lainnya':       { icon: 'ellipsis-horizontal-circle-outline', emoji: '📌', bg: '#F1F5F9', color: Colors.textMuted },
+  'Lainnya':       { icon: 'ellipsis-horizontal-circle-outline', emoji: '📌', bg: Colors.cardAlt, color: Colors.textMuted },
 };
 
 export const CATEGORY_TRANSLATIONS: Record<string, { id: string; en: string }> = {

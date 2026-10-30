@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Colors, Radius } from '@/constants/theme';
 import OtterMascot, { OtterVariant, OtterSize } from '@/components/OtterMascot';
-
+import { FadeSlideIn } from '@/components/Animated';
 export interface EmptyStateProps {
   mascot?: OtterVariant;
   mascotSize?: OtterSize;
@@ -33,25 +33,27 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <View style={[styles.container, compact && styles.containerCompact, style]}>
-      <OtterMascot
-        variant={mascot}
-        size={compact ? 'md' : mascotSize}
-        style={styles.mascot}
-      />
-      <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
-      {subtitle ? (
-        <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text>
-      ) : null}
-      {onAction && actionLabel ? (
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={onAction}
-          accessibilityRole="button"
-          accessibilityLabel={actionLabel}
-        >
-          <Text style={styles.actionText}>{actionLabel}</Text>
-        </TouchableOpacity>
-      ) : null}
+      <FadeSlideIn direction="up" delay={0} style={{ alignItems: 'center', width: '100%' }}>
+        <OtterMascot
+          variant={mascot}
+          size={compact ? 'md' : mascotSize}
+          style={styles.mascot}
+        />
+        <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text>
+        ) : null}
+        {onAction && actionLabel ? (
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={onAction}
+            accessibilityRole="button"
+            accessibilityLabel={actionLabel}
+          >
+            <Text style={styles.actionText}>{actionLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </FadeSlideIn>
     </View>
   );
 }

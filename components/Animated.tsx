@@ -2,17 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ViewStyle,
+  TextStyle,
   StyleProp,
   View,
   Text,
   StyleSheet,
   Platform,
+  DimensionValue,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
+  withSequence,
   useReducedMotion,
   FadeIn,
   FadeInDown,
@@ -36,6 +39,8 @@ export {
   SlideInDown, SlideInUp, ZoomIn,
   Layout, LinearTransition,
 };
+
+export const SpringPresets = Motion.spring;
 
 /** Stagger helper: generates FadeInUp with index-based delay */
 export const stagger = (index: number, base = Motion.stagger.normal) =>
@@ -82,12 +87,12 @@ export function AnimatedPressable({
         accessibilityLabel={accessibilityLabel}
         onPressIn={() => {
           if (!disabled && !shouldReduceMotion) {
-            scale.value = withSpring(activeScale, { damping: 15, stiffness: 250 });
+            scale.value = withSpring(activeScale, Motion.spring.snappy);
           }
         }}
         onPressOut={() => {
           if (!disabled && !shouldReduceMotion) {
-            scale.value = withSpring(1, { damping: 15, stiffness: 250 });
+            scale.value = withSpring(1, Motion.spring.snappy);
           }
         }}
       >
@@ -158,6 +163,77 @@ export function StaggeredEntrance({
     </Animated.View>
   );
 }
+/** AnimatedListItem: Wraps a list row with FadeSlideIn + LinearTransition */
+export interface AnimatedListItemProps {
+  children: React.ReactNode;
+  index: number;
+  style?: StyleProp<ViewStyle>;
+  maxStaggerIndex?: number;
+}
+
+export function AnimatedListItem({
+  children,
+  index,
+  style,
+  maxStaggerIndex = 8,
+}: AnimatedListItemProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const cappedIndex = Math.min(index, maxStaggerIndex);
+  const delay = cappedIndex * Motion.stagger.short;
+
+  const entering = shouldReduceMotion
+    ? FadeIn.duration(Motion.duration.fast)
+    : FadeInUp.delay(delay).duration(Motion.duration.normal);
+
+  return (
+    <Animated.View
+      layout={shouldReduceMotion ? undefined : LinearTransition.duration(Motion.duration.normal)}
+      entering={entering}
+      style={style}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** MotionFeedback: Subtle opacity pulse when a key changes (e.g. KPI update) */
+export interface MotionFeedbackProps {
+  children: React.ReactNode;
+  triggerKey?: unknown;
+  style?: StyleProp<ViewStyle>;
+}
+export function MotionFeedback({
+  children,
+  triggerKey,
+  style,
+}: MotionFeedbackProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const opacity = useSharedValue(1);
+  const firstRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      return;
+    }
+    if (shouldReduceMotion) return;
+
+    opacity.value = withSequence(
+      withTiming(0.9, { duration: Motion.duration.instant }),
+      withTiming(1, { duration: Motion.duration.fast })
+    );
+  }, [triggerKey, shouldReduceMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: shouldReduceMotion ? 1 : opacity.value,
+  }));
+
+  return (
+    <Animated.View style={[style, animatedStyle]}>
+      {children}
+    </Animated.View>
+  );
+}
 
 /** AnimatedCard: Entrance card with warm shadow */
 export function AnimatedCard({
@@ -190,20 +266,27 @@ export function AnimatedFinanceAmount({
   currency = 'IDR',
 }: {
   value: number;
-  style?: any;
+  style?: StyleProp<TextStyle>;
   prefix?: string;
   suffix?: string;
   currency?: 'IDR' | 'none';
 }) {
+  const shouldReduceMotion = useReducedMotion();
   const [displayValue, setDisplayValue] = useState(value);
   const prevValueRef = useRef(value);
   const animOpacity = useSharedValue(1);
 
   useEffect(() => {
     if (value === prevValueRef.current) return;
-    const startValue = prevValueRef.current;
-    const endValue = value;
     prevValueRef.current = value;
+
+    if (shouldReduceMotion) {
+      setDisplayValue(value);
+      return;
+    }
+
+    const startValue = displayValue;
+    const endValue = value;
 
     animOpacity.value = withTiming(0.7, { duration: 80 }, () => {
       animOpacity.value = withTiming(1, { duration: 180 });
@@ -211,7 +294,7 @@ export function AnimatedFinanceAmount({
 
     const startTime = Date.now();
     const duration = 320;
-    let frameId: any;
+    let frameId: number;
 
     const tick = () => {
       const elapsed = Date.now() - startTime;
@@ -229,8 +312,7 @@ export function AnimatedFinanceAmount({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [value]);
-
+  }, [value, shouldReduceMotion]);
   const formatted =
     currency === 'IDR'
       ? `${displayValue < 0 ? '-' : ''}${prefix}${Math.abs(displayValue).toLocaleString('id-ID')}${suffix}`
@@ -255,7 +337,7 @@ export function AnimatedNumber({
   formatFn,
 }: {
   value: number;
-  style?: any;
+  style?: StyleProp<TextStyle>;
   prefix?: string;
   formatFn?: (n: number) => string;
 }) {
@@ -301,7 +383,7 @@ export function AnimatedProgressBar({
   }, [clamped, shouldReduceMotion]);
 
   const fillStyle = useAnimatedStyle(() => ({
-    width: `${width.value}%` as any,
+    width: `${width.value}%` as DimensionValue,
   }));
 
   return (
@@ -330,17 +412,14 @@ export function AnimatedTabIndicator({
     if (shouldReduceMotion) {
       position.value = activeIndex;
     } else {
-      position.value = withSpring(activeIndex, {
-        damping: 18,
-        stiffness: 220,
-      });
+      position.value = withSpring(activeIndex, Motion.spring.responsive);
     }
   }, [activeIndex, shouldReduceMotion]);
 
   const tabWidthPct = 100 / Math.max(1, totalTabs);
   const animStyle = useAnimatedStyle(() => ({
-    left: `${position.value * tabWidthPct}%` as any,
-    width: `${tabWidthPct}%` as any,
+    left: `${position.value * tabWidthPct}%` as DimensionValue,
+    width: `${tabWidthPct}%` as DimensionValue,
   }));
 
   return (

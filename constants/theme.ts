@@ -75,6 +75,12 @@ export const Motion = {
     pressed: 0.97,
     selected: 1.025,
   },
+  spring: {
+    snappy: { damping: 18, stiffness: 280 },
+    responsive: { damping: 15, stiffness: 220 },
+    gentle: { damping: 20, stiffness: 140 },
+    bounce: { damping: 10, stiffness: 200 },
+  },
 };
 
 export const Shadows = {

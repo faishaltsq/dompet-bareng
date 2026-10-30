@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
 import Svg, { Rect, Line, Text as SvgText } from 'react-native-svg';
-import { Colors, Radius, Shadows } from '@/constants/theme';
+import Animated, {
+  useSharedValue,
+  useAnimatedProps,
+  withSpring,
+  useReducedMotion,
+  SharedValue,
+} from 'react-native-reanimated';
+import { Colors, Radius, Shadows, Motion } from '@/constants/theme';
 import { formatRupiah } from '@/lib/utils';
 import { useLanguage } from '@/context/LanguageContext';
-
 export interface MonthlyTrendData {
   monthKey: string; // e.g. "2026-05"
   label: string; // e.g. "Mei" or "May"
@@ -31,9 +38,50 @@ export default function FinancialTrendChart({
   onSelectMonth,
 }: FinancialTrendChartProps) {
   const { language } = useLanguage();
+  const shouldReduceMotion = useReducedMotion();
   const [containerWidth, setContainerWidth] = useState(320);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const progress = useSharedValue(shouldReduceMotion ? 1 : 0);
+  const [webProgress, setWebProgress] = useState(shouldReduceMotion ? 1 : 0);
+  const prevDataKeyRef = useRef('');
 
+  const dataKey = data.map((d) => `${d.monthKey}:${d.income}:${d.expense}`).join('|');
+
+  useEffect(() => {
+    if (shouldReduceMotion) {
+      progress.value = 1;
+      setWebProgress(1);
+      prevDataKeyRef.current = dataKey;
+      return;
+    }
+
+    if (prevDataKeyRef.current !== dataKey) {
+      prevDataKeyRef.current = dataKey;
+      progress.value = 0;
+      progress.value = withSpring(1, Motion.spring.gentle);
+
+      if (Platform.OS === 'web') {
+        setWebProgress(0);
+        const startTime = Date.now();
+        const duration = Motion.duration.slow;
+        let frameId: number;
+
+        const tick = () => {
+          const elapsed = Date.now() - startTime;
+          const p = Math.min(1, elapsed / duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          setWebProgress(eased);
+          if (p < 1) {
+            frameId = requestAnimationFrame(tick);
+          } else {
+            setWebProgress(1);
+          }
+        };
+        frameId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frameId);
+      }
+    }
+  }, [dataKey, shouldReduceMotion]);
   const handleLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0 && Math.abs(w - containerWidth) > 5) {
@@ -135,8 +183,7 @@ export default function FinancialTrendChart({
               const incomeX = groupCenterX - barWidth - gap / 2;
               const expenseX = groupCenterX + gap / 2;
 
-              const incomeY = paddingTop + innerHeight - incomeHeight;
-              const expenseY = paddingTop + innerHeight - expenseHeight;
+              const baselineY = paddingTop + innerHeight;
 
               const isSelected = selectedIndex === idx;
 
@@ -157,27 +204,33 @@ export default function FinancialTrendChart({
 
                   {/* Income Bar */}
                   {incomeHeight > 0 && (
-                    <Rect
+                    <TrendBar
                       x={incomeX}
-                      y={incomeY}
+                      baselineY={baselineY}
+                      targetHeight={incomeHeight}
                       width={barWidth}
-                      height={incomeHeight}
                       rx={3}
                       fill={Colors.income}
                       opacity={selectedIndex !== null && !isSelected ? 0.45 : 1}
+                      progress={progress}
+                      webProgress={webProgress}
+                      shouldReduceMotion={shouldReduceMotion}
                     />
                   )}
 
                   {/* Expense Bar */}
                   {expenseHeight > 0 && (
-                    <Rect
+                    <TrendBar
                       x={expenseX}
-                      y={expenseY}
+                      baselineY={baselineY}
+                      targetHeight={expenseHeight}
                       width={barWidth}
-                      height={expenseHeight}
                       rx={3}
                       fill={Colors.expense}
                       opacity={selectedIndex !== null && !isSelected ? 0.45 : 1}
+                      progress={progress}
+                      webProgress={webProgress}
+                      shouldReduceMotion={shouldReduceMotion}
                     />
                   )}
 
@@ -261,6 +314,68 @@ export default function FinancialTrendChart({
   );
 }
 
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+function TrendBar({
+  x,
+  baselineY,
+  targetHeight,
+  width,
+  rx,
+  fill,
+  opacity,
+  progress,
+  webProgress,
+  shouldReduceMotion,
+}: {
+  x: number;
+  baselineY: number;
+  targetHeight: number;
+  width: number;
+  rx: number;
+  fill: string;
+  opacity: number;
+  progress: SharedValue<number>;
+  webProgress: number;
+  shouldReduceMotion: boolean | null;
+}) {
+  const animatedProps = useAnimatedProps(() => {
+    'worklet';
+    const p = shouldReduceMotion ? 1 : progress.value;
+    const h = targetHeight * p;
+    return {
+      height: h,
+      y: baselineY - h,
+    };
+  });
+
+  if (Platform.OS === 'web') {
+    const p = shouldReduceMotion ? 1 : webProgress;
+    const h = targetHeight * p;
+    return (
+      <Rect
+        x={x}
+        y={baselineY - h}
+        width={width}
+        height={h}
+        rx={rx}
+        fill={fill}
+        opacity={opacity}
+      />
+    );
+  }
+
+  return (
+    <AnimatedRect
+      x={x}
+      width={width}
+      rx={rx}
+      fill={fill}
+      opacity={opacity}
+      animatedProps={animatedProps}
+    />
+  );
+}
 const styles = StyleSheet.create({
   container: {
     width: '100%',

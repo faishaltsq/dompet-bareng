@@ -18,6 +18,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -405,7 +406,7 @@ export function MascotOverlay() {
           setParsedTx(parsed);
           const meta = getCategoryMeta(parsed.category);
           setSpeech(
-            `${meta.emoji} ${t('mascotTxDetected')}\n${parsed.type === 'expense' ? t('expense') : t('income')} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\n${t('mascotPressToSave')}`
+            `${t('mascotTxDetected')}\n${parsed.type === 'expense' ? t('expense') : t('income')} ${formatRupiah(parsed.amount)} untuk ${parsed.category}.\n\n${t('mascotPressToSave')}`
           );
           setLastUserPrompt(text);
           setLoading(false);
@@ -545,7 +546,7 @@ export function MascotOverlay() {
                 accessibilityRole="button"
                 accessibilityLabel="Tutup"
               >
-                <Text style={s.closeBtnText}>✕</Text>
+                <Ionicons name="close" size={18} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -590,7 +591,7 @@ export function MascotOverlay() {
                   <View style={s.actionCardHeader}>
                     <Text style={s.actionCardTitle}>{t('mascotQuickNote')}</Text>
                     <TouchableOpacity onPress={() => setParsedTx(null)}>
-                      <Text style={s.actionCardClose}>✕</Text>
+                      <Ionicons name="close" size={16} color={Colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                   <View style={s.actionDetailRow}>
@@ -631,7 +632,7 @@ export function MascotOverlay() {
               )}
               {aiOnline === false && (
                 <View style={[s.aiBanner, s.aiBannerOffline]}>
-                  <Text style={s.aiBannerIcon}>🔧</Text>
+                  <Ionicons name="construct-outline" size={18} color={Colors.warning} />
                   <View style={{ flex: 1 }}>
                     <Text style={[s.aiBannerText, s.aiBannerTextOffline]}>{t('mascotAiOffline')}</Text>
                     <Text style={s.aiBannerSub}>{t('mascotAiOfflineSub')}</Text>
@@ -672,7 +673,7 @@ export function MascotOverlay() {
                 {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={s.sendBtnText}>↑</Text>
+                  <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
                 )}
               </TouchableOpacity>
             </View>

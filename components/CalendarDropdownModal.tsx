@@ -265,7 +265,7 @@ export default function CalendarDropdownModal({
         <View style={s.headerRow}>
           <Text style={s.headerTitle}>{t('selectPeriod')}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={22} color="#64748B" />
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -451,7 +451,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.cardAlt,
   },
   presetChipActive: {
     backgroundColor: Colors.primary,
@@ -471,7 +471,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.cardAlt,
     borderRadius: 12,
     marginBottom: 8,
   },
@@ -494,7 +494,7 @@ const s = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: Colors.textMuted,
   },
   grid: {
     flexDirection: 'row',
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
     fontWeight: '500',
   },
   cellNumDimmed: {
-    color: '#CBD5E1',
+    color: Colors.borderDark,
   },
   cellNumSelected: {
     color: '#FFFFFF',
@@ -561,7 +561,7 @@ const s = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.cardAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -572,7 +572,7 @@ const s = StyleSheet.create({
   },
   rangePreviewLabel: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
   },
   rangePreviewVal: {
     fontSize: 13,

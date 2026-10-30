@@ -23,6 +23,7 @@ import Animated, {
   FadeInUp,
   FadeIn,
   SlideInDown,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,9 +34,9 @@ import { useLanguage } from '@/context/LanguageContext';
 import NotificationModal from '@/components/NotificationModal';
 import SwipeableModal from '@/components/SwipeableModal';
 import { formatRupiah, getCategoryMeta } from '@/lib/utils';
-import { Colors, Shadows, Radius } from '@/constants/theme';
+import { Colors, Shadows, Radius, Motion } from '@/constants/theme';
 import { HomeSkeleton } from '@/components/Skeleton';
-import { PressableScale, AnimatedProgressBar } from '@/components/Animated';
+import { PressableScale, AnimatedProgressBar, FadeSlideIn, AnimatedFinanceAmount } from '@/components/Animated';
 import { triggerDownloadApk } from '@/lib/downloadApp';
 import OtterMascot from '@/components/OtterMascot';
 import EmptyState from '@/components/EmptyState';
@@ -115,9 +116,10 @@ export default function HomeScreen() {
     hasMoreTx,
     loadMoreTransactions,
     refetchTransactions,
+    budgets,
   } = useWorkspace();
-
   const router = useRouter();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
@@ -198,15 +200,35 @@ export default function HomeScreen() {
     });
   }, [transactions, period, activeWorkspace]);
 
-  // Budget persentase pengeluaran vs pemasukan
-  const budgetPercent = summary.income > 0
+  // Rasio pengeluaran terhadap pemasukan (expense-to-income ratio), 0-100.
+  // Dipakai HANYA untuk metrik "Rasio Pengeluaran" — bukan progres anggaran.
+  const expenseRatioPercent = summary.income > 0
     ? Math.min(Math.round((summary.expense / summary.income) * 100), 100)
     : summary.expense > 0 ? 100 : 0;
-
+  // Total anggaran bulan berjalan yang benar-benar dikonfigurasi di workspace.
+  const totalBudget = useMemo(
+    () => budgets.reduce((acc, b) => acc + (b.amount || 0), 0),
+    [budgets]
+  );
+  // Progres anggaran nyata: total pengeluaran periode ini / total anggaran. 0-100.
+  const budgetProgressPercent = totalBudget > 0
+    ? Math.min(Math.round((summary.expense / totalBudget) * 100), 100)
+    : 0;
+  const hasBudget = totalBudget > 0;
+  // Nilai yang ditampilkan di hero card: anggaran nyata bila ada, jika tidak rasio pengeluaran.
+  const heroGaugeValue = hasBudget ? budgetProgressPercent : expenseRatioPercent;
+  const heroGaugeColor = heroGaugeValue > 90
+    ? Colors.expense
+    : heroGaugeValue > 75 ? Colors.warning : Colors.income;
+  const heroGaugeBadgeBg = heroGaugeValue > 90
+    ? 'rgba(220,76,64,0.25)'
+    : heroGaugeValue > 75 ? 'rgba(229,138,58,0.25)' : 'rgba(46,139,87,0.25)';
+  const heroGaugeStatus = heroGaugeValue > 90
+    ? t('budgetCritical')
+    : heroGaugeValue > 75 ? t('budgetWarning') : t('budgetHealthy');
   if (loadingWorkspaces && workspaces.length === 0) {
     return (
       <View style={[s.root, { paddingTop: insets.top }]}>
-        <StatusBar style="light" />
         <HomeSkeleton />
       </View>
     );
@@ -217,7 +239,7 @@ export default function HomeScreen() {
     return (
       <View style={[s.root, s.emptyCenter, { paddingTop: insets.top }]}>
         <StatusBar style="dark" />
-        <Animated.View entering={FadeInUp.springify()} style={s.emptyBox}>
+        <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInUp.springify()} style={s.emptyBox}>
           <View style={s.emptyIconCircle}>
             <Ionicons name="wallet-outline" size={32} color={Colors.primary} />
           </View>
@@ -307,7 +329,7 @@ export default function HomeScreen() {
       {/* 2. BODY SHEET WITH ROUNDED CORNERS */}
       <View style={s.sheetBody}>
         {/* HERO BALANCE CARD (Modern Fintech Card with Otter Mascot) */}
-        <Animated.View entering={FadeInDown.duration(450)} style={s.heroCard}>
+        <FadeSlideIn direction="down" delay={0} style={s.heroCard}>
           <View style={s.heroTopRow}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -319,7 +341,7 @@ export default function HomeScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatRupiah(summary.balance)}</Text>
+              <AnimatedFinanceAmount value={summary.balance} style={s.heroAmount} />
             </View>
             <View style={s.heroMascotWrap}>
               <OtterMascot
@@ -333,48 +355,49 @@ export default function HomeScreen() {
           <View style={s.metricsRow}>
             <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-up-circle" size={16} color="#34D399" />
-                <Text style={[s.metricLabel, { color: '#E6FFFA' }]}>{t('income')}</Text>
+                <Ionicons name="arrow-up-circle" size={16} color={Colors.income} />
+                <Text style={[s.metricLabel, { color: Colors.primarySoft }]}>{t('income')}</Text>
               </View>
-              <Text style={[s.metricValue, { color: '#6EE7B7' }]}>
-                {formatRupiah(summary.income)}
-              </Text>
+              <AnimatedFinanceAmount value={summary.income} style={[s.metricValue, { color: Colors.incomeSoft }]} />
             </View>
             <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-down-circle" size={16} color="#F87171" />
-                <Text style={[s.metricLabel, { color: '#FFE4E6' }]}>{t('expense')}</Text>
+                <Ionicons name="arrow-down-circle" size={16} color={Colors.expense} />
+                <Text style={[s.metricLabel, { color: Colors.expenseSoft }]}>{t('expense')}</Text>
               </View>
-              <Text style={[s.metricValue, { color: '#FCA5A5' }]}>
-                {formatRupiah(summary.expense)}
-              </Text>
+              <AnimatedFinanceAmount value={summary.expense} style={[s.metricValue, { color: Colors.expenseSoft }]} />
             </View>
           </View>
 
-          {/* Budget Progress Bar */}
+          {/* Budget Progress Bar — anggaran nyata bila dikonfigurasi */}
           <View style={s.budgetSection}>
             <View style={s.budgetHeader}>
-              <Text style={s.budgetTitle}>{t('budgetUsed')}</Text>
+              <Text style={s.budgetTitle}>{hasBudget ? t('budgetUsed') : t('expenseRatio')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[s.budgetPercent, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>{budgetPercent}%</Text>
-                <View style={[s.budgetBadge, { backgroundColor: budgetPercent <= 50 ? 'rgba(16,185,129,0.25)' : budgetPercent <= 80 ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)' }]}>
-                  <Text style={[s.budgetBadgeText, { color: budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171' }]}>
-                    {budgetPercent <= 50 ? t('budgetHealthy') : budgetPercent <= 80 ? t('budgetWarning') : t('budgetCritical')}
+                <Text style={[s.budgetPercent, { color: heroGaugeColor }]}>{heroGaugeValue}%</Text>
+                <View style={[s.budgetBadge, { backgroundColor: heroGaugeBadgeBg }]}>
+                  <Text style={[s.budgetBadgeText, { color: heroGaugeColor }]}>
+                    {heroGaugeStatus}
                   </Text>
                 </View>
               </View>
             </View>
             <AnimatedProgressBar
-              progress={budgetPercent}
-              color={budgetPercent <= 50 ? '#34D399' : budgetPercent <= 80 ? '#FBBF24' : '#F87171'}
+              progress={heroGaugeValue}
+              color={heroGaugeColor}
               trackColor="rgba(255,255,255,0.15)"
               height={8}
             />
+            {hasBudget && (
+              <Text style={s.budgetFootnote}>
+                {formatRupiah(summary.expense)} / {formatRupiah(totalBudget)}
+              </Text>
+            )}
           </View>
-        </Animated.View>
+        </FadeSlideIn>
 
         {/* QUICK ACTIONS ROW */}
-        <Animated.View entering={FadeInDown.delay(100).duration(450)} style={s.quickActionsRow}>
+        <FadeSlideIn delay={100} style={s.quickActionsRow}>
           <TouchableOpacity
             style={s.quickActionBtn}
             onPress={() => router.push('/modal')}
@@ -404,10 +427,10 @@ export default function HomeScreen() {
             </View>
             <Text style={s.quickActionLabel}>{t('statisticsTab')}</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </FadeSlideIn>
 
         {/* PERIOD FILTER (FinWise Segmented Control) */}
-        <Animated.View entering={FadeInDown.delay(150).duration(450)} style={s.periodSegment}>
+        <FadeSlideIn delay={150} style={s.periodSegment}>
           {(['month', 'week', 'day', 'all'] as PeriodFilter[]).map(p => {
             const labels: Record<PeriodFilter, string> = {
               month: t('thisMonth'),
@@ -430,15 +453,15 @@ export default function HomeScreen() {
               </TouchableOpacity>
             );
           })}
-        </Animated.View>
+        </FadeSlideIn>
 
         {/* SECTION TITLE */}
-        <View style={s.txSectionHeader}>
+        <FadeSlideIn delay={180} style={s.txSectionHeader}>
           <Text style={s.txSectionTitle}>{t('recentTx')}</Text>
           <Text style={s.txSectionCount}>
             {filteredTransactions.length} {t('txCount')}
           </Text>
-        </View>
+        </FadeSlideIn>
 
         {loadingTx && transactions.length === 0 && (
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
@@ -508,7 +531,8 @@ export default function HomeScreen() {
               setShowCreate(true);
             }}
           >
-            <Text style={s.modalActionBtnText}>＋ {t('newWallet')}</Text>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={s.modalActionBtnText}>{t('newWallet')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -518,7 +542,8 @@ export default function HomeScreen() {
               router.push('/(tabs)/two');
             }}
           >
-            <Text style={s.modalActionBtnTextOutline}>📥 {t('joinOther')}</Text>
+            <Ionicons name="enter-outline" size={16} color={Colors.primary} />
+            <Text style={s.modalActionBtnTextOutline}>{t('joinOther')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -549,7 +574,7 @@ export default function HomeScreen() {
         <View style={[s.desktopHeader, isTablet && s.desktopHeaderTablet]}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={[s.desktopGreetingTitle, isTablet && s.desktopGreetingTitleTablet]} numberOfLines={1}>
-              Halo, {displayName} 👋
+              Halo, {displayName}
             </Text>
             {!isTablet && (
               <Text style={s.desktopGreetingSub}>
@@ -565,11 +590,11 @@ export default function HomeScreen() {
               onPress={() => setShowSwitchModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="home" size={isTablet ? 13 : 16} color={Colors.forestGreen} />
+              <Ionicons name="home" size={isTablet ? 13 : 16} color={Colors.primaryDark} />
               <Text style={[s.desktopPillText, isTablet && s.desktopPillTextTablet]} numberOfLines={1}>
                 {activeWorkspace?.name || 'Pilih Dompet'}
               </Text>
-              <Ionicons name="chevron-down" size={isTablet ? 12 : 14} color="#64748B" />
+              <Ionicons name="chevron-down" size={isTablet ? 12 : 14} color={Colors.textSecondary} />
             </TouchableOpacity>
 
             {/* Period Selector Pills */}
@@ -612,7 +637,7 @@ export default function HomeScreen() {
               onPress={() => setShowNotifModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="notifications-outline" size={isTablet ? 18 : 20} color="#0F3832" />
+              <Ionicons name="notifications-outline" size={isTablet ? 18 : 20} color={Colors.primaryDark} />
               {unreadCount > 0 && (
                 <View style={s.notifBadge}>
                   <Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -671,7 +696,7 @@ export default function HomeScreen() {
 
               <View style={s.desktopKpiBottom}>
                 <View style={[s.desktopBadgeGreen, isTablet && { paddingVertical: 2, paddingHorizontal: 6 }]}>
-                  <Ionicons name="trending-up" size={isTablet ? 10 : 12} color="#00A86B" />
+                  <Ionicons name="trending-up" size={isTablet ? 10 : 12} color={Colors.income} />
                   <Text style={[s.desktopBadgeGreenText, isTablet && { fontSize: 10 }]}>
                     {summary.income >= summary.expense ? '+Surplus Sehat' : 'Defisit Pengeluaran'}
                   </Text>
@@ -682,7 +707,7 @@ export default function HomeScreen() {
                   onPress={() => router.push('/modal')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="add" size={isTablet ? 14 : 16} color="#0F3832" />
+                  <Ionicons name="add" size={isTablet ? 14 : 16} color={Colors.primaryDark} />
                   <Text style={[s.desktopRecordBtnText, isTablet && s.desktopRecordBtnTextTablet]}>{t('recordBtn')}</Text>
                 </TouchableOpacity>
               </View>
@@ -691,8 +716,8 @@ export default function HomeScreen() {
             {/* CARD 2: PEMASUKAN */}
             <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeaderRow}>
-                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: '#E8F8F5' }]}>
-                  <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color="#00A86B" />
+                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: Colors.primarySoft }]}>
+                  <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color={Colors.income} />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('income')}</Text>
               </View>
@@ -712,8 +737,8 @@ export default function HomeScreen() {
             {/* CARD 3: PENGELUARAN */}
             <View style={[s.desktopKpiCard, isTablet && s.desktopKpiCardTablet]}>
               <View style={s.desktopKpiHeaderRow}>
-                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: '#FEE2E2' }]}>
-                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color="#FA5A5A" />
+                <View style={[s.desktopKpiIconCircle, isTablet && { width: 30, height: 30 }, { backgroundColor: Colors.expenseSoft }]}>
+                  <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color={Colors.expense} />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('expense')}</Text>
               </View>
@@ -728,13 +753,13 @@ export default function HomeScreen() {
               <View style={{ marginTop: 8 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                   <Text style={{ fontSize: isTablet ? 10 : 11, color: Colors.textSecondary, fontWeight: '600' }}>Rasio Pengeluaran</Text>
-                  <Text style={{ fontSize: isTablet ? 10 : 11, color: budgetPercent > 90 ? Colors.expense : Colors.income, fontWeight: '800' }}>
-                    {budgetPercent}%
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: expenseRatioPercent > 90 ? Colors.expense : Colors.income, fontWeight: '800' }}>
+                    {expenseRatioPercent}%
                   </Text>
                 </View>
                 <AnimatedProgressBar
-                  progress={budgetPercent}
-                  color={budgetPercent > 90 ? Colors.expense : budgetPercent > 75 ? Colors.warning : Colors.income}
+                  progress={expenseRatioPercent}
+                  color={expenseRatioPercent > 90 ? Colors.expense : expenseRatioPercent > 75 ? Colors.warning : Colors.income}
                   height={isTablet ? 5 : 6}
                 />
               </View>
@@ -822,7 +847,7 @@ export default function HomeScreen() {
               {/* CARD 1: RINGKASAN DOMPET */}
               <View style={s.desktopSideCard}>
                 <View style={s.desktopSideCardHeader}>
-                  <Ionicons name="home-outline" size={18} color="#0F3832" />
+                  <Ionicons name="home-outline" size={18} color={Colors.primaryDark} />
                   <Text style={s.desktopSideCardTitle}>Dompet Keluarga</Text>
                 </View>
                 <Text style={s.desktopWsName}>{activeWorkspace?.name || 'Dompet Bareng'}</Text>
@@ -834,14 +859,14 @@ export default function HomeScreen() {
                     style={s.desktopOutlineBtn}
                     onPress={() => setShowSwitchModal(true)}
                   >
-                    <Ionicons name="swap-horizontal" size={14} color="#0F3832" />
+                    <Ionicons name="swap-horizontal" size={14} color={Colors.primaryDark} />
                     <Text style={s.desktopOutlineBtnText}>Ganti Dompet</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={s.desktopOutlineBtn}
                     onPress={() => router.push('/(tabs)/two')}
                   >
-                    <Ionicons name="people-outline" size={14} color="#0F3832" />
+                    <Ionicons name="people-outline" size={14} color={Colors.primaryDark} />
                     <Text style={s.desktopOutlineBtnText}>Kelola Anggota</Text>
                   </TouchableOpacity>
                 </View>
@@ -850,36 +875,44 @@ export default function HomeScreen() {
               {/* CARD 2: PROGRES ANGGARAN */}
               <View style={s.desktopSideCard}>
                 <View style={s.desktopSideCardHeader}>
-                  <Ionicons name="pie-chart-outline" size={18} color="#0F3832" />
+                  <Ionicons name="pie-chart-outline" size={18} color={Colors.primaryDark} />
                   <Text style={s.desktopSideCardTitle}>Progres Anggaran</Text>
                 </View>
                 <View style={{ marginVertical: 10 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                     <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600' }}>
-                      Status: {budgetPercent > 90 ? 'Perhatian!' : budgetPercent > 70 ? 'Waspada' : 'Aman'}
+                      Status: {budgetProgressPercent > 90 ? 'Perhatian!' : budgetProgressPercent > 70 ? 'Waspada' : 'Aman'}
                     </Text>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetPercent > 90 ? Colors.expense : Colors.income }}>
-                      {budgetPercent}%
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetProgressPercent > 90 ? Colors.expense : Colors.income }}>
+                      {budgetProgressPercent}%
                     </Text>
                   </View>
                   <AnimatedProgressBar
-                    progress={budgetPercent}
-                    color={budgetPercent > 90 ? Colors.expense : budgetPercent > 75 ? Colors.warning : Colors.income}
+                    progress={budgetProgressPercent}
+                    color={budgetProgressPercent > 90 ? Colors.expense : budgetProgressPercent > 75 ? Colors.warning : Colors.income}
                     height={8}
                   />
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, fontWeight: '600', marginTop: 6 }}>
+                    {formatRupiah(summary.expense)} / {formatRupiah(totalBudget)}
+                  </Text>
                 </View>
                 <Text style={s.desktopBudgetNote}>
-                  {budgetPercent > 90
-                    ? 'Pengeluaran mendekati pemasukan. Tinjau kembali pos anggaran belanja.'
-                    : 'Pengeluaran masih dalam batas aman. Pertahankan pola hemat keluarga!'}
+                  {budgetProgressPercent > 90
+                    ? 'Pengeluaran hampir menyentuh batas anggaran. Tinjau kembali pos belanja.'
+                    : 'Pengeluaran masih dalam batas anggaran. Pertahankan pola hemat keluarga!'}
                 </Text>
+                {!hasBudget && (
+                  <Text style={s.desktopBudgetNote}>
+                    Belum ada anggaran bulan ini. Rasio pengeluaran terhadap pemasukan {expenseRatioPercent}%.
+                  </Text>
+                )}
               </View>
 
               {/* CARD 3: INSIGHT KEUANGAN BERSAMA OTTER */}
               <View style={s.desktopOtterCard}>
                 <View style={{ alignItems: 'center', marginBottom: 10 }}>
                   <OtterMascot
-                    variant={budgetPercent > 90 ? 'panic' : summary.balance > 0 ? 'rich' : 'happy'}
+                    variant={heroGaugeValue > 90 ? 'panic' : summary.balance > 0 ? 'rich' : 'happy'}
                     size="md"
                   />
                 </View>
@@ -892,7 +925,8 @@ export default function HomeScreen() {
                   onPress={() => router.push('/(tabs)/statistics')}
                   activeOpacity={0.8}
                 >
-                  <Text style={s.desktopOtterBtnText}>Lihat Analisis Lengkap →</Text>
+                  <Text style={s.desktopOtterBtnText}>Lihat Analisis Lengkap</Text>
+                  <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -930,7 +964,7 @@ export default function HomeScreen() {
           const isIncome = item.type === 'income';
 
           return (
-            <Animated.View entering={FadeInUp.delay(Math.min(index, 10) * 35).duration(300)}>
+            <Animated.View entering={reducedMotion ? FadeIn.duration(150) : FadeInUp.delay(Math.min(index, 10) * 35).duration(300)}>
               <TouchableOpacity
                 style={s.txItem}
                 onPress={() => router.push(`/transaction/${item.id}` as any)}
@@ -995,15 +1029,15 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
   },
 
   // 1. Top Bar
   headerContainer: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
   },
   finTopBar: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
@@ -1142,10 +1176,13 @@ const s = StyleSheet.create({
   },
   modalActionBtn: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: Colors.primary,
     paddingVertical: 12,
     borderRadius: Radius.md,
-    alignItems: 'center',
   },
   modalActionBtnOutline: {
     backgroundColor: Colors.background,
@@ -1165,7 +1202,7 @@ const s = StyleSheet.create({
 
   // 2. Sheet Body
   sheetBody: {
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 18,
@@ -1174,7 +1211,7 @@ const s = StyleSheet.create({
 
   // Hero Card
   heroCard: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     borderRadius: Radius.xl,
     padding: 22,
     gap: 16,
@@ -1217,14 +1254,14 @@ const s = StyleSheet.create({
     gap: 6,
   },
   metricIncome: {
-    backgroundColor: 'rgba(16, 185, 129, 0.30)',
+    backgroundColor: 'rgba(46, 139, 87, 0.30)',
     borderWidth: 1.5,
-    borderColor: 'rgba(110, 231, 183, 0.6)',
+    borderColor: 'rgba(46, 139, 87, 0.60)',
   },
   metricExpense: {
-    backgroundColor: 'rgba(239, 68, 68, 0.30)',
+    backgroundColor: 'rgba(220, 76, 64, 0.30)',
     borderWidth: 1.5,
-    borderColor: 'rgba(252, 165, 165, 0.6)',
+    borderColor: 'rgba(220, 76, 64, 0.60)',
   },
   metricHeader: {
     flexDirection: 'row',
@@ -1271,6 +1308,12 @@ const s = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
+  budgetFootnote: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+    marginTop: 2,
+  },
 
   // Quick actions
   quickActionsRow: {
@@ -1287,7 +1330,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   quickActionIcon: {
@@ -1306,7 +1349,7 @@ const s = StyleSheet.create({
   // Segmented Control
   periodSegment: {
     flexDirection: 'row',
-    backgroundColor: '#EDF2F7',
+    backgroundColor: Colors.cardAlt,
     borderRadius: Radius.full,
     padding: 4,
     marginTop: 20,
@@ -1327,7 +1370,7 @@ const s = StyleSheet.create({
     color: Colors.textMuted,
   },
   periodPillTextActive: {
-    color: Colors.forestGreen,
+    color: Colors.primaryDark,
     fontWeight: '700',
   },
 
@@ -1360,7 +1403,7 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: 12,
     ...Shadows.card,
   },
@@ -1381,17 +1424,17 @@ const s = StyleSheet.create({
     color: Colors.textDark,
   },
   editedTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Colors.savingsSoft,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: Radius.xs,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: Colors.primaryMuted,
   },
   editedTagText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#B45309',
+    color: Colors.primaryDark,
   },
   txSubtitle: {
     fontSize: 12,
@@ -1538,12 +1581,12 @@ const s = StyleSheet.create({
   // Desktop Web Styles
   desktopContainer: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
   },
   desktopHeader: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border,
     paddingHorizontal: 28,
     paddingVertical: 18,
     flexDirection: 'row',
@@ -1553,12 +1596,12 @@ const s = StyleSheet.create({
   desktopGreetingTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
   },
   desktopGreetingSub: {
     fontSize: 13,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   desktopHeaderActions: {
@@ -1570,9 +1613,9 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#E8F8F5',
+    backgroundColor: Colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#C3EBE3',
+    borderColor: Colors.primaryMuted,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: Radius.full,
@@ -1580,12 +1623,12 @@ const s = StyleSheet.create({
   desktopPillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     maxWidth: 160,
   },
   desktopPeriodPills: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.cardAlt,
     borderRadius: Radius.full,
     padding: 3,
     gap: 2,
@@ -1602,17 +1645,17 @@ const s = StyleSheet.create({
   desktopPeriodPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.textSecondary,
   },
   desktopPeriodPillTextActive: {
-    color: '#0F3832',
+    color: Colors.primaryDark,
     fontWeight: '800',
   },
   desktopNotifBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.cardAlt,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1621,7 +1664,7 @@ const s = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1643,7 +1686,7 @@ const s = StyleSheet.create({
   },
   desktopKpiCardPrimary: {
     flex: 1.25,
-    backgroundColor: '#0F3832',
+    backgroundColor: Colors.primaryDark,
     borderRadius: Radius.xl,
     padding: 22,
     justifyContent: 'space-between',
@@ -1688,7 +1731,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0,168,107,0.18)',
+    backgroundColor: 'rgba(46,139,87,0.18)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: Radius.full,
@@ -1696,7 +1739,7 @@ const s = StyleSheet.create({
   desktopBadgeGreenText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#27C93F',
+    color: Colors.income,
   },
   desktopRecordBtn: {
     flexDirection: 'row',
@@ -1710,7 +1753,7 @@ const s = StyleSheet.create({
   desktopRecordBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopKpiCard: {
     flex: 1,
@@ -1718,7 +1761,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     justifyContent: 'space-between',
     ...Shadows.card,
   },
@@ -1737,7 +1780,7 @@ const s = StyleSheet.create({
   desktopKpiLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
+    color: Colors.textSecondary,
   },
   desktopKpiAmount: {
     fontSize: 22,
@@ -1747,7 +1790,7 @@ const s = StyleSheet.create({
   },
   desktopKpiFootnote: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textMuted,
     marginTop: 4,
   },
   desktopContentGrid: {
@@ -1767,11 +1810,11 @@ const s = StyleSheet.create({
   desktopSectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopSectionCount: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -1779,7 +1822,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0F3832',
+    backgroundColor: Colors.primaryDark,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: Radius.md,
@@ -1793,7 +1836,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     overflow: 'hidden',
     ...Shadows.card,
   },
@@ -1806,7 +1849,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   desktopSideCardHeader: {
@@ -1818,16 +1861,16 @@ const s = StyleSheet.create({
   desktopSideCardTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopWsName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopWsRole: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 4,
     marginBottom: 14,
   },
@@ -1843,46 +1886,49 @@ const s = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.borderDark,
     borderRadius: Radius.md,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.cardAlt,
   },
   desktopOutlineBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopBudgetNote: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 6,
     lineHeight: 16,
   },
   desktopOtterCard: {
-    backgroundColor: '#E6F7F2',
+    backgroundColor: Colors.primarySoft,
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#BCECE0',
+    borderColor: Colors.primaryMuted,
     alignItems: 'center',
     ...Shadows.card,
   },
   desktopOtterTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     marginBottom: 6,
     textAlign: 'center',
   },
   desktopOtterText: {
     fontSize: 12,
-    color: '#2C5E55',
+    color: Colors.textSecondary,
     lineHeight: 18,
     textAlign: 'center',
     marginBottom: 14,
   },
   desktopOtterBtn: {
-    backgroundColor: '#0F3832',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primaryDark,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: Radius.full,

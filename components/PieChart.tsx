@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
-import { Colors } from '@/constants/theme';
+import { useReducedMotion } from 'react-native-reanimated';
+import { Colors, Motion } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 
 export interface PieSlice {
@@ -40,8 +41,16 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 }
 
 const DEFAULT_COLORS = [
-  '#059669', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  Colors.income,
+  Colors.accentBlue,
+  Colors.warning,
+  Colors.expense,
+  Colors.accentPurple,
+  Colors.accentTeal,
+  Colors.accentOrange,
+  Colors.savings,
+  Colors.primaryDark,
+  Colors.accentBlue,
 ];
 
 export default function PieChart({
@@ -55,6 +64,7 @@ export default function PieChart({
 }: PieChartProps) {
   const { language } = useLanguage();
   const isEn = language === 'en';
+  const shouldReduceMotion = useReducedMotion();
   const [activeSlice, setActiveSlice] = useState<PieSlice | null>(null);
 
   const cx = size / 2;
@@ -115,11 +125,14 @@ export default function PieChart({
             {slices.map((s) => {
               const isActive = highlighted?.key === s.key;
               return (
-                <Path
+                <PieSliceGroup
                   key={s.key}
-                  d={s.path}
-                  fill={s.color}
-                  opacity={highlighted && !isActive ? 0.35 : 1}
+                  slice={s}
+                  isSelected={isActive}
+                  hasSelection={highlighted !== null}
+                  cx={cx}
+                  cy={cy}
+                  shouldReduceMotion={shouldReduceMotion}
                   onPress={() => handleSlicePress(s)}
                 />
               );
@@ -133,7 +146,7 @@ export default function PieChart({
             y={cy - 10}
             textAnchor="middle"
             fontSize={11}
-            fill={Colors.textMuted ?? '#64748B'}
+            fill={Colors.textMuted}
             fontWeight="400"
           >
             {centerLabel.top}
@@ -204,6 +217,91 @@ export default function PieChart({
   );
 }
 
+function PieSliceGroup({
+  slice,
+  isSelected,
+  hasSelection,
+  cx,
+  cy,
+  shouldReduceMotion,
+  onPress,
+}: {
+  slice: { key: string; path: string; color: string };
+  isSelected: boolean;
+  hasSelection: boolean;
+  cx: number;
+  cy: number;
+  shouldReduceMotion: boolean | null;
+  onPress: () => void;
+}) {
+  const targetScale = isSelected && !shouldReduceMotion ? 1.03 : 1;
+  const targetOpacity = hasSelection && !isSelected ? 0.7 : 1;
+
+  const [scale, setScale] = useState(targetScale);
+  const [opacity, setOpacity] = useState(targetOpacity);
+  const animRef = useRef<{ scale: number; opacity: number }>({
+    scale: targetScale,
+    opacity: targetOpacity,
+  });
+
+  useEffect(() => {
+    if (shouldReduceMotion) {
+      setScale(targetScale);
+      setOpacity(targetOpacity);
+      animRef.current = { scale: targetScale, opacity: targetOpacity };
+      return;
+    }
+
+    const startScale = animRef.current.scale;
+    const endScale = targetScale;
+    const startOpacity = animRef.current.opacity;
+    const endOpacity = targetOpacity;
+
+    if (startScale === endScale && startOpacity === endOpacity) return;
+
+    const startTime = Date.now();
+    const duration = Motion.duration.fast;
+    let frameId: number;
+
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
+      const p = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+
+      const curScale = startScale + (endScale - startScale) * eased;
+      const curOpacity = startOpacity + (endOpacity - startOpacity) * eased;
+
+      animRef.current = { scale: curScale, opacity: curOpacity };
+      setScale(curScale);
+      setOpacity(curOpacity);
+
+      if (p < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        animRef.current = { scale: endScale, opacity: endOpacity };
+        setScale(endScale);
+        setOpacity(endOpacity);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [targetScale, targetOpacity, shouldReduceMotion]);
+
+  const transform = scale !== 1
+    ? `translate(${cx}, ${cy}) scale(${scale}) translate(${-cx}, ${-cy})`
+    : undefined;
+
+  return (
+    <G transform={transform} opacity={opacity}>
+      <Path
+        d={slice.path}
+        fill={slice.color}
+        onPress={onPress}
+      />
+    </G>
+  );
+}
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',

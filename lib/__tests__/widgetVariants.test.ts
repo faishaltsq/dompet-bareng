@@ -33,7 +33,13 @@ vi.mock('react-native', () => ({
 vi.mock('react-native-android-widget', () => ({ requestPinWidget: ui.pin }))
 vi.mock('react-native-reanimated', () => {
   const animation = { duration: () => animation, delay: () => animation }
-  return { default: { View: 'AnimatedView' }, FadeInDown: animation, SlideInDown: animation }
+  return {
+    default: { View: 'AnimatedView' },
+    FadeIn: animation,
+    FadeInDown: animation,
+    SlideInDown: animation,
+    useReducedMotion: () => false,
+  }
 })
 vi.mock('expo-status-bar', () => ({ StatusBar: 'StatusBar' }))
 vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0 }) }))

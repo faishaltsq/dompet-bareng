@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, SlideInDown, FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useIsFocused } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,12 +30,11 @@ import { WorkspaceJoinRequestsPanel } from '@/components/WorkspaceJoinRequestsPa
 import { useJoinRequests } from '@/hooks/useJoinRequests';
 import { parseInviteInput } from '@/lib/inviteLinks';
 import type { InviteKind } from '@/lib/inviteTypes';
-
-import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
 import { useAuth } from '@/context/AuthContext';
+import { useWorkspace, Workspace } from '@/context/WorkspaceContext';
+import { Colors, Shadows, Radius, Motion } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
-import { Colors, Shadows, Radius } from '@/constants/theme';
 import {
   scheduleDailyReminder,
   cancelAllReminders,
@@ -58,6 +57,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const isTablet = width >= 768 && width < 1024;
@@ -578,7 +578,7 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                 </View>
-                {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
+                {isActive && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
               </TouchableOpacity>
             );
           })}
@@ -671,7 +671,7 @@ export default function SettingsScreen() {
         onClose={() => setKickModalVisible(false)}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Text style={{ fontSize: 22 }}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
           <Text style={s.sheetTitle}>{t('kickMemberTitle')}</Text>
         </View>
 
@@ -741,17 +741,23 @@ export default function SettingsScreen() {
 
         {/* Done phase */}
         {updatePhase === 'done' && updateResult && (() => {
-          const cfg = {
-            updated:       { icon: '🚀' as const, color: Colors.income,   title: t('otaTitleUpdated'),        bg: Colors.incomeSoft },
-            no_update:     { icon: '✅' as const, color: Colors.income,   title: t('otaTitleNoUpdate'),     bg: Colors.incomeSoft },
-            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: t('otaTitleInfo'),                  bg: Colors.accentBlueSoft },
-            error:         { icon: '⚠️' as const, color: Colors.expense,  title: t('otaTitleError'),  bg: Colors.expenseSoft },
-          }[updateResult.status] ?? { icon: 'ℹ️' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
+          const statusMap: Record<string, {
+            icon: keyof typeof Ionicons.glyphMap;
+            color: string;
+            title: string;
+            bg: string;
+          }> = {
+            updated:       { icon: 'rocket-outline',             color: Colors.income,     title: t('otaTitleUpdated'),  bg: Colors.incomeSoft },
+            no_update:     { icon: 'checkmark-circle-outline',   color: Colors.income,     title: t('otaTitleNoUpdate'), bg: Colors.incomeSoft },
+            not_supported: { icon: 'information-circle-outline', color: Colors.accentBlue, title: t('otaTitleInfo'),     bg: Colors.accentBlueSoft },
+            error:         { icon: 'alert-circle-outline',       color: Colors.expense,    title: t('otaTitleError'),    bg: Colors.expenseSoft },
+          };
+          const cfg = statusMap[updateResult.status] ?? { icon: 'information-circle-outline' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
 
           return (
             <View style={s.updateModalBody}>
               <View style={[s.updateModalIconWrap, { backgroundColor: cfg.bg }]}>
-                <Text style={{ fontSize: 36 }}>{cfg.icon}</Text>
+                <Ionicons name={cfg.icon} size={36} color={cfg.color} />
               </View>
               <Text style={[s.updateModalTitle, { color: cfg.color }]}>{cfg.title}</Text>
               <Text style={s.updateModalSub}>{updateResult.message}</Text>
@@ -836,7 +842,7 @@ export default function SettingsScreen() {
                         {profile?.display_name || user?.user_metadata?.full_name || t('userFallback')}
                       </Text>
                       <TouchableOpacity onPress={handleOpenEditProfile} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Text style={s.editNameIcon}>✏️</Text>
+                        <Ionicons name="pencil-outline" size={15} color={Colors.primary} />
                       </TouchableOpacity>
                     </View>
                     <Text style={s.userEmailText} numberOfLines={1}>
@@ -881,7 +887,7 @@ export default function SettingsScreen() {
                 <Text style={s.desktopCardBoxTitle}>{t('othersSection')}</Text>
 
                 {/* Language */}
-                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}>
+                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: Colors.cardAlt }]}>
                   <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
                     <Ionicons name="globe-outline" size={18} color={Colors.primary} />
                   </View>
@@ -908,7 +914,7 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Reminder */}
-                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}>
+                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: Colors.cardAlt }]}>
                   <View style={[s.menuIcon, { backgroundColor: Colors.savingsSoft }]}>
                     <Ionicons name="notifications-outline" size={18} color={Colors.savings} />
                   </View>
@@ -926,7 +932,7 @@ export default function SettingsScreen() {
 
                 {/* Join Wallet */}
                 <TouchableOpacity
-                  style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}
+                  style={[s.menuRow, { borderBottomWidth: 1, borderColor: Colors.cardAlt }]}
                   onPress={() => setJoinModalVisible(true)}
                 >
                   <View style={[s.menuIcon, { backgroundColor: '#F3E8FF' }]}>
@@ -942,7 +948,7 @@ export default function SettingsScreen() {
                 {/* Android APK Download */}
                 {Platform.OS === 'web' && (
                   <TouchableOpacity
-                    style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}
+                    style={[s.menuRow, { borderBottomWidth: 1, borderColor: Colors.cardAlt }]}
                     onPress={() => triggerDownloadApk()}
                     activeOpacity={0.8}
                   >
@@ -1051,7 +1057,7 @@ export default function SettingsScreen() {
                     onPress={handleShare}
                     disabled={sharing}
                   >
-                    <Ionicons name="share-social-outline" size={16} color="#0F3832" />
+                    <Ionicons name="share-social-outline" size={16} color={Colors.primaryDark} />
                     <Text style={s.desktopWsActionText}>{t('inviteMembers')}</Text>
                   </TouchableOpacity>
 
@@ -1060,7 +1066,7 @@ export default function SettingsScreen() {
                       style={s.desktopWsActionBtn}
                       onPress={() => { setModalScope(inviteScope); setQrVisible(true); }}
                     >
-                      <Ionicons name="qr-code-outline" size={16} color="#0F3832" />
+                      <Ionicons name="qr-code-outline" size={16} color={Colors.primaryDark} />
                       <Text style={s.desktopWsActionText}>{t('walletQrTitle')}</Text>
                     </TouchableOpacity>
                   )}
@@ -1073,7 +1079,7 @@ export default function SettingsScreen() {
                         setEditWsModalVisible(true);
                       }}
                     >
-                      <Ionicons name="pencil-outline" size={16} color="#0F3832" />
+                      <Ionicons name="pencil-outline" size={16} color={Colors.primaryDark} />
                       <Text style={s.desktopWsActionText}>{t('renameWallet')}</Text>
                     </TouchableOpacity>
                   )}
@@ -1129,7 +1135,7 @@ export default function SettingsScreen() {
                               style={s.kickBtn}
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                              <Text style={s.kickBtnText}>✕</Text>
+                              <Ionicons name="close" size={13} color="#FFFFFF" />
                             </TouchableOpacity>
                           )}
                         </View>
@@ -1140,7 +1146,7 @@ export default function SettingsScreen() {
               </View>
 
               {/* Danger Zone */}
-              <View style={[s.desktopCardBox, { borderColor: '#FEE2E2' }]}>
+              <View style={[s.desktopCardBox, { borderColor: Colors.expenseSoft }]}>
                 <Text style={[s.desktopCardBoxTitle, { color: Colors.expense }]}>Zona Bahaya</Text>
                 {!isAdmin && (
                   <TouchableOpacity
@@ -1212,7 +1218,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           <Text style={s.sectionHeader}>{t('myAccount')}</Text>
 
-          <Animated.View entering={FadeInDown.duration(400)} style={s.userCard}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.duration(400)} style={s.userCard}>
             <View style={s.userCardMainRow}>
               <View style={s.userAvatarWrapper}>
                 {googleAvatarUrl ? (
@@ -1235,7 +1241,7 @@ export default function SettingsScreen() {
                     {profile?.display_name || user?.user_metadata?.full_name || t('userFallback')}
                   </Text>
                   <TouchableOpacity onPress={handleOpenEditProfile} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={s.editNameIcon}>✏️</Text>
+                    <Ionicons name="pencil-outline" size={15} color={Colors.primary} />
                   </TouchableOpacity>
                 </View>
                 <Text style={s.userEmailText} numberOfLines={1}>
@@ -1283,7 +1289,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           <Text style={s.sectionHeader}>{t('activeWalletHeader')}</Text>
 
-          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.wsActiveCard}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(60).duration(400)} style={s.wsActiveCard}>
             <View style={s.wsActiveHeader}>
               <TouchableOpacity
                 onPress={handlePickWorkspaceImage}
@@ -1346,7 +1352,7 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}><Text style={s.menuTitle}>{t('myJoinRequests')}</Text></View><Text style={s.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.menuGroup}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(100).duration(400)} style={s.menuGroup}>
             {isAdmin && isRegisteredUser && <TouchableOpacity testID="show-wallet-qr" accessibilityRole="button" style={s.menuRow} onPress={() => { setModalScope(inviteScope); setQrVisible(true); }}>
               <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}><Ionicons name="qr-code-outline" size={18} color={Colors.primary} /></View>
               <View style={{ flex: 1 }}><Text style={s.menuTitle}>{t('walletQrTitle')}</Text></View><Text style={s.menuArrow}>›</Text>
@@ -1457,7 +1463,7 @@ export default function SettingsScreen() {
             {t('walletMembersTitle')} ({members.length})
           </Text>
 
-          <Animated.View entering={FadeInDown.delay(140).duration(400)} style={s.menuGroup}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(140).duration(400)} style={s.menuGroup}>
             {loadingMembers ? (
               <ActivityIndicator color={Colors.primary} style={{ padding: 20 }} />
             ) : (
@@ -1503,7 +1509,7 @@ export default function SettingsScreen() {
                           style={s.kickBtn}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <Text style={s.kickBtnText}>✕</Text>
+                          <Ionicons name="close" size={13} color="#FFFFFF" />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1518,7 +1524,7 @@ export default function SettingsScreen() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           <Text style={s.sectionHeader}>{t('othersSection')}</Text>
 
-          <Animated.View entering={FadeInDown.delay(180).duration(400)} style={s.menuGroup}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(180).duration(400)} style={s.menuGroup}>
             <TouchableOpacity style={s.menuRow} onPress={() => setJoinModalVisible(true)}>
               <View style={[s.menuIcon, { backgroundColor: '#F3E8FF' }]}>
                 <Ionicons name="enter-outline" size={18} color={Colors.accentPurple} />
@@ -1637,7 +1643,7 @@ export default function SettingsScreen() {
           </Animated.View>
 
           {/* KELUAR AKUN */}
-          <Animated.View entering={FadeInDown.delay(220).duration(400)} style={{ marginTop: 20 }}>
+          <Animated.View entering={reducedMotion ? FadeIn.duration(Motion.duration.fast) : FadeInDown.delay(220).duration(400)} style={{ marginTop: 20 }}>
             <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
               <Ionicons name="log-out-outline" size={18} color={Colors.expense} style={{ marginRight: 6 }} />
               <Text style={s.signOutBtnText}>{t('logOut')}</Text>
@@ -1652,9 +1658,9 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F7FAFC' },
+  root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -1670,7 +1676,7 @@ const s = StyleSheet.create({
   },
 
   body: {
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 18,
@@ -1695,7 +1701,7 @@ const s = StyleSheet.create({
     padding: 18,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   userCardMascot: {
@@ -1832,7 +1838,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   wsActiveHeader: {
@@ -1924,7 +1930,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     overflow: 'hidden',
     ...Shadows.card,
   },
@@ -2200,7 +2206,7 @@ const s = StyleSheet.create({
   },
   updateModalCloseBtn: {
     marginTop: 14,
-    backgroundColor: Colors.forestGreen,
+    backgroundColor: Colors.primaryDark,
     borderRadius: Radius.md,
     paddingVertical: 12,
     paddingHorizontal: 36,
@@ -2215,12 +2221,12 @@ const s = StyleSheet.create({
   // Desktop Web Styles
   desktopContainer: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: Colors.background,
   },
   desktopHeader: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border,
     paddingHorizontal: 28,
     paddingVertical: 18,
     flexDirection: 'row',
@@ -2230,12 +2236,12 @@ const s = StyleSheet.create({
   desktopTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
   },
   desktopSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   desktopActions: {
@@ -2247,9 +2253,9 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#E8F8F5',
+    backgroundColor: Colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#C3EBE3',
+    borderColor: Colors.primaryMuted,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: Radius.full,
@@ -2257,7 +2263,7 @@ const s = StyleSheet.create({
   desktopWsPillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
   desktopScroll: {
     flex: 1,
@@ -2287,22 +2293,22 @@ const s = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   desktopCardBoxTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F3832',
+    color: Colors.primaryDark,
     marginBottom: 14,
   },
   desktopWsActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.cardAlt,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -2310,7 +2316,7 @@ const s = StyleSheet.create({
   desktopWsActionText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F3832',
+    color: Colors.primaryDark,
   },
 
   // Tablet Styles

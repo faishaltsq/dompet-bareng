@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolateColor,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
 import OtterMascot from '@/components/OtterMascot';
-import { Radius, Colors } from '@/constants/theme';
-
+import { Radius, Colors, Motion } from '@/constants/theme';
 export default function DesktopSidebar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -17,7 +23,15 @@ export default function DesktopSidebar() {
   const isStatsActive = pathname.includes('statistics');
   const isSettingsActive = pathname.includes('two');
 
-  const navItems = [
+  interface NavItemData {
+    key: string;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    active: boolean;
+    onPress: () => void;
+  }
+
+  const navItems: NavItemData[] = [
     {
       key: 'home',
       label: t('tabHome') || 'Beranda',
@@ -63,32 +77,7 @@ export default function DesktopSidebar() {
       {/* 3. Navigation Links */}
       <View style={[s.navGroup, isTablet && s.navGroupTablet]}>
         {navItems.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            style={[
-              s.navItem,
-              isTablet && s.navItemTablet,
-              item.active && (isTablet ? s.navItemActiveTablet : s.navItemActive),
-            ]}
-            onPress={item.onPress}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={item.icon as any}
-              size={isTablet ? 22 : 20}
-              color={item.active ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
-            />
-            <Text
-              style={[
-                s.navLabel,
-                isTablet && s.navLabelTablet,
-                item.active && s.navLabelActive,
-              ]}
-              numberOfLines={1}
-            >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
+          <DesktopNavItem key={item.key} item={item} isTablet={isTablet} />
         ))}
       </View>
 
@@ -108,6 +97,84 @@ export default function DesktopSidebar() {
         </View>
       )}
     </View>
+  );
+}
+
+function DesktopNavItem({
+  item,
+  isTablet,
+}: {
+  item: {
+    key: string;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    active: boolean;
+    onPress: () => void;
+  };
+  isTablet: boolean;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  const progress = useSharedValue(item.active ? 1 : 0);
+
+  useEffect(() => {
+    if (shouldReduceMotion) {
+      progress.value = item.active ? 1 : 0;
+    } else {
+      progress.value = withTiming(item.active ? 1 : 0, {
+        duration: Motion.duration.fast,
+      });
+    }
+  }, [item.active, shouldReduceMotion]);
+
+  const animatedBgStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      progress.value,
+      [0, 1],
+      ['rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 1)']
+    ),
+  }));
+
+  return (
+    <TouchableOpacity
+      style={[
+        s.navItem,
+        isTablet && s.navItemTablet,
+      ]}
+      onPress={item.onPress}
+      activeOpacity={0.8}
+    >
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: Colors.primary,
+            borderRadius: Radius.md,
+          },
+          animatedBgStyle,
+        ]}
+        pointerEvents="none"
+      />
+      <Ionicons
+        name={item.icon}
+        size={isTablet ? 22 : 20}
+        color={item.active ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
+      />
+      <Animated.Text
+        style={[
+          s.navLabel,
+          isTablet && s.navLabelTablet,
+          item.active && s.navLabelActive,
+          animatedTextStyle,
+        ]}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Animated.Text>
+    </TouchableOpacity>
   );
 }
 
@@ -182,6 +249,8 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: Radius.md,
+    position: 'relative',
+    overflow: 'hidden',
   },
   navItemTablet: {
     flexDirection: 'column',
@@ -192,6 +261,8 @@ const s = StyleSheet.create({
     gap: 4,
     borderRadius: Radius.md,
     width: 66,
+    position: 'relative',
+    overflow: 'hidden',
   },
   navItemActive: {
     backgroundColor: Colors.primary,
