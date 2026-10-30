@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
-import { View, ColorValue, StyleSheet } from 'react-native';
+import { View, ColorValue, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/context/LanguageContext';
+import DesktopSidebar from '@/components/DesktopSidebar';
 
 function TabIcon({
   name,
@@ -30,23 +31,27 @@ function TabIcon({
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 768;
   const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
-  return (
+  const tabsContent = (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.forestGreen,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: -4 },
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E2E8F0',
-          height: tabBarHeight,
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 6,
-          ...Shadows.header,
-        },
+        tabBarStyle: isDesktop
+          ? { display: 'none' }
+          : {
+              backgroundColor: '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: '#E2E8F0',
+              height: tabBarHeight,
+              paddingBottom: Math.max(insets.bottom, 8),
+              paddingTop: 6,
+              ...Shadows.header,
+            },
         headerShown: false,
       }}
     >
@@ -80,9 +85,32 @@ export default function TabLayout() {
       {/* Tab AI dihapus — diganti floating MascotOverlay di _layout.tsx */}
     </Tabs>
   );
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopRoot}>
+        <DesktopSidebar />
+        <View style={styles.desktopMainContent}>
+          {tabsContent}
+        </View>
+      </View>
+    );
+  }
+
+  return tabsContent;
 }
 
 const styles = StyleSheet.create({
+  desktopRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#F0F8F6',
+    height: '100%',
+  },
+  desktopMainContent: {
+    flex: 1,
+    height: '100%',
+  },
   tabIconWrap: {
     width: 38,
     height: 34,

@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useState, useMemo, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -33,6 +34,8 @@ type TabType = 'expense' | 'income';
 
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 768;
   const { t, language } = useLanguage();
   const MONTHS = language === 'id' ? MONTHS_ID : MONTHS_EN;
   const { activeWorkspace, transactions, loadingTx, budgets, setBudget, updateBudget, deleteBudget } = useWorkspace();
@@ -202,6 +205,474 @@ export default function StatisticsScreen() {
       ]
     );
   };
+
+  const modals = (
+    <>
+      <SwipeableModal
+        visible={budgetModalVisible}
+        onClose={() => {
+          setBudgetModalVisible(false);
+          setEditingBudget(null);
+        }}
+      >
+        <Text style={s.sheetTitle}>
+          {editingBudget ? t('editBudgetTitle') : t('setBudgetTitle')}
+        </Text>
+        <Text style={s.sheetSubtitle}>
+          {editingBudget ? t('editBudgetSubtitle') : t('setBudgetSubtitle')}
+        </Text>
+
+        {/* Category selector */}
+        <Text style={s.inputSectionLabel}>{t('categoryLabel') || 'Kategori'}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+          {EXPENSE_CATEGORIES.map(cat => {
+            const isSelected = budgetCategory === cat;
+            const cMeta = getCategoryMeta(cat);
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  s.catChip,
+                  isSelected && {
+                    backgroundColor: cMeta.bg,
+                    borderColor: cMeta.color,
+                    borderWidth: 1.5,
+                  },
+                ]}
+                onPress={() => setBudgetCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={cMeta.icon || 'receipt-outline'}
+                  size={14}
+                  color={isSelected ? cMeta.color : Colors.textSecondary}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  style={[
+                    s.catChipText,
+                    isSelected && { color: cMeta.color, fontWeight: '800' },
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Nominal input */}
+        <Text style={s.inputSectionLabel}>{t('labelBudgetAmount')}</Text>
+        <TextInput
+          style={s.sheetInput}
+          value={budgetAmount}
+          onChangeText={val => setBudgetAmount(formatCurrencyInput(val))}
+          placeholder={t('budgetPlaceholder')}
+          placeholderTextColor={Colors.textMuted}
+          keyboardType="number-pad"
+        />
+
+        {/* Quick Amount Row */}
+        <View style={s.quickAmountRow}>
+          {['500.000', '1.000.000', '2.000.000', '5.000.000'].map(amt => (
+            <TouchableOpacity
+              key={amt}
+              style={s.quickAmountBtn}
+              onPress={() => setBudgetAmount(amt)}
+              activeOpacity={0.7}
+            >
+              <Text style={s.quickAmountBtnText}>Rp {amt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Save button */}
+        <TouchableOpacity
+          style={[s.sheetBtn, savingBudget && { opacity: 0.6 }]}
+          onPress={handleSaveBudget}
+          disabled={savingBudget}
+          activeOpacity={0.8}
+        >
+          {savingBudget ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>
+              {editingBudget ? t('saveChangesBtn') : t('saveBudgetBtn')}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Delete budget button (if in editing mode) */}
+        {editingBudget && (
+          <TouchableOpacity
+            style={s.deleteBudgetBtn}
+            onPress={() => handleDeleteBudget(editingBudget)}
+            disabled={savingBudget}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.expense} style={{ marginRight: 6 }} />
+            <Text style={s.deleteBudgetBtnText}>{t('deleteBudgetBtn')}</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          onPress={() => {
+            setBudgetModalVisible(false);
+            setEditingBudget(null);
+          }}
+          style={s.cancelBtn}
+        >
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      <CalendarDropdownModal
+        visible={calendarVisible}
+        onClose={() => setCalendarVisible(false)}
+        currentFilter={dateFilter}
+        onSelectFilter={setDateFilter}
+        transactionDates={txDateSet}
+      />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={s.desktopContainer}>
+        <StatusBar style="dark" />
+
+        {/* 1. DESKTOP HEADER */}
+        <View style={s.desktopHeader}>
+          <View>
+            <Text style={s.desktopTitle}>{t('statsTitle')} 📊</Text>
+            <Text style={s.desktopSubtitle}>Lihat pola dan tren pengeluaran keluarga</Text>
+          </View>
+
+          <View style={s.desktopActions}>
+            {activeWorkspace && (
+              <View style={s.desktopWsPill}>
+                <Ionicons name="home" size={14} color={Colors.forestGreen} />
+                <Text style={s.desktopWsPillText}>{activeWorkspace.name}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={s.desktopCalendarBtn}
+              onPress={() => setCalendarVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="calendar-outline" size={15} color="#0F3832" />
+              <Text style={s.desktopCalendarText}>{dateFilter.label}</Text>
+              <Ionicons name="chevron-down" size={13} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 2. DESKTOP BODY SCROLL */}
+        <ScrollView
+          style={s.desktopScroll}
+          contentContainerStyle={s.desktopScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ROW 1: 3 KPI CARDS */}
+          <View style={s.desktopKpiRow}>
+            {/* CARD 1: PEMASUKAN */}
+            <View style={s.desktopKpiCard}>
+              <View style={s.desktopKpiHeader}>
+                <View style={[s.desktopKpiIconWrap, { backgroundColor: '#E8F8F5' }]}>
+                  <Ionicons name="arrow-up" size={18} color="#00A86B" />
+                </View>
+                <Text style={s.desktopKpiLabel}>{t('income')}</Text>
+              </View>
+              <Text style={[s.desktopKpiAmt, { color: Colors.income }]}>
+                {formatRupiah(monthSummary.income)}
+              </Text>
+              <Text style={s.desktopKpiSub}>Pemasukan periode {dateFilter.label}</Text>
+            </View>
+
+            {/* CARD 2: PENGELUARAN */}
+            <View style={s.desktopKpiCard}>
+              <View style={s.desktopKpiHeader}>
+                <View style={[s.desktopKpiIconWrap, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="arrow-down" size={18} color="#FA5A5A" />
+                </View>
+                <Text style={s.desktopKpiLabel}>{t('expense')}</Text>
+              </View>
+              <Text style={[s.desktopKpiAmt, { color: Colors.expense }]}>
+                {formatRupiah(monthSummary.expense)}
+              </Text>
+              <Text style={s.desktopKpiSub}>Pengeluaran periode {dateFilter.label}</Text>
+            </View>
+
+            {/* CARD 3: SALDO BERSIH DENGAN OTTER */}
+            <View style={s.desktopKpiCardPrimary}>
+              <View style={s.desktopKpiHeader}>
+                <View>
+                  <Text style={s.desktopKpiLabelLight}>{t('netBalance')}</Text>
+                  <Text style={s.desktopKpiSubLight}>Periode: {dateFilter.label}</Text>
+                </View>
+                <View style={s.desktopOtterWrap}>
+                  <OtterMascot
+                    variant={balance > 0 ? 'happy' : balance < 0 ? 'crying' : 'thinking'}
+                    size="sm"
+                  />
+                </View>
+              </View>
+              <Text style={s.desktopKpiAmtLight}>
+                {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
+              </Text>
+              <View style={s.desktopBadgeGreen}>
+                <Text style={s.desktopBadgeGreenText}>
+                  {balance >= 0 ? 'Surplus Finansial' : 'Defisit Anggaran'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ROW 2: TWO-COLUMN GRID */}
+          <View style={s.desktopContentGrid}>
+            {/* LEFT COLUMN: TREN & BREAKDOWN KATEGORI */}
+            <View style={s.desktopLeftCol}>
+              {/* Comparative bars */}
+              <View style={s.desktopCardBox}>
+                <Text style={s.desktopCardBoxTitle}>Rasio Pemasukan vs Pengeluaran</Text>
+                <View style={s.comparativeBarsWrap}>
+                  <View style={s.barHeaderRow}>
+                    <View style={s.barLabelGroup}>
+                      <Ionicons name="arrow-up-circle-outline" size={14} color={Colors.income} />
+                      <Text style={s.barLabel}>{t('income')}</Text>
+                    </View>
+                    <Text style={[s.barValue, { color: Colors.income }]}>
+                      {monthSummary.income > 0
+                        ? `${Math.round((monthSummary.income / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
+                        : '0%'}
+                    </Text>
+                  </View>
+                  <AnimatedProgressBar
+                    progress={monthSummary.income > 0
+                      ? (monthSummary.income / Math.max(monthSummary.income, monthSummary.expense)) * 100
+                      : 0}
+                    color={Colors.income}
+                    height={7}
+                    borderRadius={4}
+                  />
+
+                  <View style={[s.barHeaderRow, { marginTop: 8 }]}>
+                    <View style={s.barLabelGroup}>
+                      <Ionicons name="arrow-down-circle-outline" size={14} color={Colors.expense} />
+                      <Text style={s.barLabel}>{t('expense')}</Text>
+                    </View>
+                    <Text style={[s.barValue, { color: Colors.expense }]}>
+                      {monthSummary.expense > 0
+                        ? `${Math.round((monthSummary.expense / Math.max(monthSummary.income, monthSummary.expense)) * 100)}%`
+                        : '0%'}
+                    </Text>
+                  </View>
+                  <AnimatedProgressBar
+                    progress={monthSummary.expense > 0
+                      ? (monthSummary.expense / Math.max(monthSummary.income, monthSummary.expense)) * 100
+                      : 0}
+                    color={Colors.expense}
+                    height={7}
+                    borderRadius={4}
+                  />
+                </View>
+              </View>
+
+              {/* Tab Switch & Pie Chart */}
+              <View style={s.desktopCardBox}>
+                <View style={s.tabSwitch}>
+                  <TouchableOpacity
+                    style={[s.tabBtn, tab === 'expense' && s.tabBtnActiveExpense]}
+                    onPress={() => setTab('expense')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="arrow-down-circle-outline"
+                      size={16}
+                      color={tab === 'expense' ? Colors.expense : Colors.textMuted}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[s.tabBtnText, tab === 'expense' && s.tabBtnTextActiveExpense]}>
+                      {t('expense')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.tabBtn, tab === 'income' && s.tabBtnActiveIncome]}
+                    onPress={() => setTab('income')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="arrow-up-circle-outline"
+                      size={16}
+                      color={tab === 'income' ? Colors.income : Colors.textMuted}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[s.tabBtnText, tab === 'income' && s.tabBtnTextActiveIncome]}>
+                      {t('income')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {pieSlices.length > 0 && (
+                  <View style={{ alignItems: 'center', marginVertical: 16 }}>
+                    <PieChart
+                      data={pieSlices}
+                      total={totalForTab}
+                      size={220}
+                      showNegative={tab === 'expense'}
+                      formatValue={(v) => formatRupiah(tab === 'expense' ? -v : v)}
+                    />
+                  </View>
+                )}
+
+                {/* Categories */}
+                <View style={{ marginTop: 12 }}>
+                  {loadingTx ? (
+                    <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
+                  ) : byCategory.length === 0 ? (
+                    <EmptyState
+                      mascot="thinking"
+                      title={language === 'id' ? 'Belum Ada Transaksi' : 'No Transactions Yet'}
+                      subtitle={`Tidak ada data ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} pada periode ini.`}
+                      compact
+                    />
+                  ) : (
+                    byCategory.map(([cat, amount], index) => {
+                      const meta = getCategoryMeta(cat);
+                      const pct = totalForTab > 0 ? Math.round((amount / totalForTab) * 100) : 0;
+                      return (
+                        <View key={cat} style={s.catCard}>
+                          <View style={[s.catIcon, { backgroundColor: meta.bg }]}>
+                            <Ionicons name={meta.icon || 'receipt-outline'} size={22} color={meta.color} />
+                          </View>
+                          <View style={s.catMid}>
+                            <View style={s.catNameRow}>
+                              <Text style={s.catName}>{cat}</Text>
+                              <Text style={[s.catPct, { color: meta.color }]}>{pct}%</Text>
+                            </View>
+                            <AnimatedProgressBar
+                              progress={pct}
+                              color={meta.color}
+                              height={5}
+                              borderRadius={3}
+                              style={{ marginTop: 6 }}
+                            />
+                            <Text style={s.catAmt}>{formatRupiah(amount)}</Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* RIGHT COLUMN: BATAS ANGGARAN & OTTER MASCOT */}
+            <View style={s.desktopRightCol}>
+              {/* Budgets Limit */}
+              {tab === 'expense' && (
+                <View style={s.desktopCardBox}>
+                  <View style={s.budgetHeaderRow}>
+                    <View>
+                      <Text style={s.budgetSectionTitle}>{t('categoryBudgetLimits')}</Text>
+                      <Text style={s.budgetSectionSubtitle}>Target & batasan belanja bulanan</Text>
+                    </View>
+                    {isAdmin && (
+                      <TouchableOpacity
+                        style={s.setBudgetBtn}
+                        onPress={handleOpenAddBudget}
+                      >
+                        <Text style={s.setBudgetBtnText}>+ {t('setBudget')}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {budgets.length === 0 ? (
+                    <View style={s.noBudgetBox}>
+                      <Text style={s.noBudgetText}>{t('noBudgetYet')}</Text>
+                      {isAdmin && (
+                        <TouchableOpacity onPress={handleOpenAddBudget}>
+                          <Text style={s.noBudgetAction}>+ {t('setBudgetTarget')}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    budgets.map((b) => {
+                      const spent = filtered
+                        .filter((tx) => tx.type === 'expense' && tx.category === b.category)
+                        .reduce((acc, tx) => acc + tx.amount, 0);
+                      const pct = Math.round((spent / b.amount) * 100);
+                      const isOver = pct > 100;
+                      const isWarning = pct >= 75 && !isOver;
+                      const barColor = isOver ? Colors.expense : isWarning ? '#FF9800' : Colors.savings;
+                      const meta = getCategoryMeta(b.category);
+
+                      return (
+                        <TouchableOpacity
+                          key={b.id}
+                          style={s.budgetCard}
+                          onPress={() => isAdmin && handleOpenEditBudget(b)}
+                          activeOpacity={isAdmin ? 0.7 : 1}
+                        >
+                          <View style={s.budgetTopRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <View style={[s.budgetCatIconCircle, { backgroundColor: meta.bg }]}>
+                                <Ionicons name={meta.icon || 'receipt-outline'} size={14} color={meta.color} />
+                              </View>
+                              <Text style={s.budgetCategoryName}>{b.category}</Text>
+                            </View>
+                            <Text style={[s.budgetStatusText, isOver && { color: Colors.expense }]}>
+                              {pct}%
+                            </Text>
+                          </View>
+                          <AnimatedProgressBar
+                            progress={Math.min(pct, 100)}
+                            color={barColor}
+                            height={6}
+                            borderRadius={3}
+                            style={{ marginVertical: 6 }}
+                          />
+                          <View style={s.budgetBottomRow}>
+                            <Text style={s.budgetSpentText}>
+                              {formatRupiah(spent)} / {formatRupiah(b.amount)}
+                            </Text>
+                            {isAdmin && (
+                              <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              )}
+
+              {/* Otter Mascot Motivational Card */}
+              <View style={s.desktopOtterCard}>
+                <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                  <OtterMascot
+                    variant={balance > 0 ? 'happy' : balance < 0 ? 'crying' : 'thinking'}
+                    size="md"
+                  />
+                </View>
+                <Text style={s.desktopOtterTitle}>Evaluasi Finansial Otter</Text>
+                <Text style={s.desktopOtterText}>
+                  {balance > 0
+                    ? '"Hebat! Keuangan bulan ini surplus. Pertahankan kebiasaan menabung keluarga ya!"'
+                    : balance < 0
+                    ? '"Ada sedikit defisit pengeluaran dibanding pemasukan. Yuk periksa pos anggaran belanja!"'
+                    : '"Pemasukan dan pengeluaran seimbang. Coba cari celah untuk menambah porsi tabungan."'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {modals}
+      </View>
+    );
+  }
 
   return (
     <View style={s.root}>
@@ -541,133 +1012,7 @@ export default function StatisticsScreen() {
         </View>
       </ScrollView>
 
-      {/* MODAL ATUR / UBAH ANGGARAN */}
-      <SwipeableModal
-        visible={budgetModalVisible}
-        onClose={() => {
-          setBudgetModalVisible(false);
-          setEditingBudget(null);
-        }}
-      >
-        <Text style={s.sheetTitle}>
-          {editingBudget ? t('editBudgetTitle') : t('setBudgetTitle')}
-        </Text>
-        <Text style={s.sheetSubtitle}>
-          {editingBudget ? t('editBudgetSubtitle') : t('setBudgetSubtitle')}
-        </Text>
-
-        {/* Category selector */}
-        <Text style={s.inputSectionLabel}>{t('categoryLabel') || 'Kategori'}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-          {EXPENSE_CATEGORIES.map(cat => {
-            const isSelected = budgetCategory === cat;
-            const cMeta = getCategoryMeta(cat);
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  s.catChip,
-                  isSelected && {
-                    backgroundColor: cMeta.bg,
-                    borderColor: cMeta.color,
-                    borderWidth: 1.5,
-                  },
-                ]}
-                onPress={() => setBudgetCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={cMeta.icon || 'receipt-outline'}
-                  size={14}
-                  color={isSelected ? cMeta.color : Colors.textSecondary}
-                  style={{ marginRight: 5 }}
-                />
-                <Text
-                  style={[
-                    s.catChipText,
-                    isSelected && { color: cMeta.color, fontWeight: '800' },
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Nominal input */}
-        <Text style={s.inputSectionLabel}>{t('labelBudgetAmount')}</Text>
-        <TextInput
-          style={s.sheetInput}
-          value={budgetAmount}
-          onChangeText={val => setBudgetAmount(formatCurrencyInput(val))}
-          placeholder={t('budgetPlaceholder')}
-          placeholderTextColor={Colors.textMuted}
-          keyboardType="number-pad"
-        />
-
-        {/* Quick Amount Row */}
-        <View style={s.quickAmountRow}>
-          {['500.000', '1.000.000', '2.000.000', '5.000.000'].map(amt => (
-            <TouchableOpacity
-              key={amt}
-              style={s.quickAmountBtn}
-              onPress={() => setBudgetAmount(amt)}
-              activeOpacity={0.7}
-            >
-              <Text style={s.quickAmountBtnText}>Rp {amt}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Save button */}
-        <TouchableOpacity
-          style={[s.sheetBtn, savingBudget && { opacity: 0.6 }]}
-          onPress={handleSaveBudget}
-          disabled={savingBudget}
-          activeOpacity={0.8}
-        >
-          {savingBudget ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={s.sheetBtnText}>
-              {editingBudget ? t('saveChangesBtn') : t('saveBudgetBtn')}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Delete budget button (if in editing mode) */}
-        {editingBudget && (
-          <TouchableOpacity
-            style={s.deleteBudgetBtn}
-            onPress={() => handleDeleteBudget(editingBudget)}
-            disabled={savingBudget}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trash-outline" size={16} color={Colors.expense} style={{ marginRight: 6 }} />
-            <Text style={s.deleteBudgetBtnText}>{t('deleteBudgetBtn')}</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          onPress={() => {
-            setBudgetModalVisible(false);
-            setEditingBudget(null);
-          }}
-          style={s.cancelBtn}
-        >
-          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* CALENDAR DROPDOWN MODAL */}
-      <CalendarDropdownModal
-        visible={calendarVisible}
-        onClose={() => setCalendarVisible(false)}
-        currentFilter={dateFilter}
-        onSelectFilter={setDateFilter}
-        transactionDates={txDateSet}
-      />
+      {modals}
     </View>
   );
 }
@@ -1202,6 +1547,213 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 8,
+    textAlign: 'center',
+  },
+
+  // Desktop Web Styles
+  desktopContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFC',
+  },
+  desktopHeader: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  desktopTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F3832',
+    letterSpacing: -0.3,
+  },
+  desktopSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  desktopActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopWsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F8F5',
+    borderWidth: 1,
+    borderColor: '#C3EBE3',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.full,
+  },
+  desktopWsPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F3832',
+  },
+  desktopCalendarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.full,
+  },
+  desktopCalendarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F3832',
+  },
+  desktopScroll: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+    maxWidth: 1240,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  desktopKpiRow: {
+    flexDirection: 'row',
+    gap: 18,
+    marginBottom: 24,
+  },
+  desktopKpiCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-between',
+    ...Shadows.card,
+  },
+  desktopKpiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  desktopKpiIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  desktopKpiLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  desktopKpiAmt: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginVertical: 4,
+  },
+  desktopKpiSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  desktopKpiCardPrimary: {
+    flex: 1.25,
+    backgroundColor: '#0F3832',
+    borderRadius: Radius.xl,
+    padding: 20,
+    justifyContent: 'space-between',
+    ...Shadows.card,
+  },
+  desktopKpiLabelLight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  desktopKpiSubLight: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  desktopOtterWrap: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopKpiAmtLight: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginVertical: 8,
+  },
+  desktopBadgeGreen: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,168,107,0.2)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
+  },
+  desktopBadgeGreenText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#27C93F',
+  },
+  desktopContentGrid: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  desktopLeftCol: {
+    flex: 1.5,
+    gap: 18,
+  },
+  desktopCardBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
+  },
+  desktopCardBoxTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F3832',
+    marginBottom: 14,
+  },
+  desktopRightCol: {
+    flex: 1,
+    gap: 18,
+  },
+  desktopOtterCard: {
+    backgroundColor: '#E6F7F2',
+    borderRadius: Radius.xl,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#BCECE0',
+    alignItems: 'center',
+    ...Shadows.card,
+  },
+  desktopOtterTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F3832',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  desktopOtterText: {
+    fontSize: 12,
+    color: '#2C5E55',
+    lineHeight: 18,
     textAlign: 'center',
   },
 });

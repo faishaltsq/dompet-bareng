@@ -14,6 +14,7 @@ import {
   RefreshControl,
   Image,
   Vibration,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -118,6 +119,8 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 768;
 
   const [showCreate, setShowCreate] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -442,89 +445,8 @@ export default function HomeScreen() {
     </View>
   );
 
-  return (
-    <View style={s.root}>
-      <StatusBar style="light" />
-
-      <FlatList
-        data={filteredTransactions}
-        keyExtractor={item => item.id}
-        ListHeaderComponent={ListHeader}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        onEndReached={() => { if (hasMoreTx) loadMoreTransactions(); }}
-        onEndReachedThreshold={0.3}
-        ListFooterComponent={hasMoreTx ? (
-          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
-        ) : null}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={Colors.primary}
-          />
-        }
-        renderItem={({ item, index }) => {
-          const meta = getCategoryMeta(item.category);
-          const isIncome = item.type === 'income';
-
-          return (
-            <Animated.View entering={FadeInUp.delay(Math.min(index, 10) * 35).duration(300)}>
-              <TouchableOpacity
-                style={s.txItem}
-                onPress={() => router.push(`/transaction/${item.id}` as any)}
-                onLongPress={() => handleDelete(item.id)}
-                activeOpacity={0.8}
-                accessible={true}
-                accessibilityLabel={`${item.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}, ${item.category}, ${formatRupiah(item.amount)}`}
-                accessibilityHint="Tekan lama untuk menghapus"
-              >
-                <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
-                  <Ionicons name={meta.icon || 'receipt-outline'} size={20} color={meta.color} />
-                </View>
-
-                <View style={s.txDetails}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={s.txTitle}>{item.category}</Text>
-                    {item.updated_at && item.updated_at !== item.created_at && (
-                      <View style={s.editedTag}>
-                        <Text style={s.editedTagText}>{t('editedTag')}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={s.txSubtitle} numberOfLines={1}>
-                    {item.description || item.transaction_date}
-                  </Text>
-                  {item.user_display_name || item.user_email ? (
-                    <Text style={s.txAuthor} numberOfLines={1}>
-                      {t('byAuthor')} {item.user_display_name || item.user_email?.split('@')[0]}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <View style={s.txAmountCol}>
-                  <Text style={[s.txAmountText, { color: isIncome ? Colors.income : Colors.expense }]}>
-                    {isIncome ? '+' : '-'}{formatRupiah(item.amount)}
-                  </Text>
-                  <Text style={s.txDateText}>{item.transaction_date}</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        }}
-        ListEmptyComponent={
-          !loadingTx ? (
-            <EmptyState
-              mascot="sleeping"
-              title={t('emptyTxTitle')}
-              subtitle={t('emptyTxDesc')}
-              actionLabel={t('recordBtn')}
-              onAction={() => router.push('/modal')}
-              compact
-            />
-          ) : null
-        }
-      />
-
+  const modals = (
+    <>
       <SwipeableModal
         visible={showSwitchModal}
         onClose={() => setShowSwitchModal(false)}
@@ -613,6 +535,424 @@ export default function HomeScreen() {
         visible={showNotifModal}
         onClose={() => setShowNotifModal(false)}
       />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={s.desktopContainer}>
+        <StatusBar style="dark" />
+
+        {/* 1. DESKTOP TOP HEADER */}
+        <View style={s.desktopHeader}>
+          <View>
+            <Text style={s.desktopGreetingTitle}>Halo, {displayName} 👋</Text>
+            <Text style={s.desktopGreetingSub}>
+              Kelola keuangan rumah tanggamu bersama-sama dengan mudah
+            </Text>
+          </View>
+
+          <View style={s.desktopHeaderActions}>
+            {/* Workspace Selector Pill */}
+            <TouchableOpacity
+              style={s.desktopPill}
+              onPress={() => setShowSwitchModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="home" size={16} color={Colors.forestGreen} />
+              <Text style={s.desktopPillText} numberOfLines={1}>
+                {activeWorkspace?.name || 'Pilih Dompet'}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color="#64748B" />
+            </TouchableOpacity>
+
+            {/* Period Selector Pills */}
+            <View style={s.desktopPeriodPills}>
+              {(['month', 'week', 'day', 'all'] as PeriodFilter[]).map((p) => {
+                const labels: Record<PeriodFilter, string> = {
+                  month: t('thisMonth'),
+                  week: t('thisWeek'),
+                  day: t('today'),
+                  all: t('allTime'),
+                };
+                const active = period === p;
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    style={[s.desktopPeriodPill, active && s.desktopPeriodPillActive]}
+                    onPress={() => setPeriod(p)}
+                  >
+                    <Text style={[s.desktopPeriodPillText, active && s.desktopPeriodPillTextActive]}>
+                      {labels[p]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Notification */}
+            <TouchableOpacity
+              style={s.desktopNotifBtn}
+              onPress={() => setShowNotifModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={20} color="#0F3832" />
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}>
+                  <Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Avatar */}
+            <TouchableOpacity
+              style={s.desktopAvatar}
+              onPress={() => router.push('/(tabs)/two')}
+              activeOpacity={0.8}
+            >
+              {googleAvatarUrl ? (
+                <Image source={{ uri: googleAvatarUrl }} style={s.avatarImg} />
+              ) : (
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>{userInitial}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 2. DESKTOP MAIN SCROLL AREA */}
+        <ScrollView
+          style={s.desktopScroll}
+          contentContainerStyle={s.desktopScrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+          }
+        >
+          {/* ROW 1: 3 KPI CARDS */}
+          <View style={s.desktopKpiRow}>
+            {/* CARD 1: TOTAL SALDO */}
+            <View style={s.desktopKpiCardPrimary}>
+              <View style={s.desktopKpiTop}>
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="wallet" size={16} color="rgba(255,255,255,0.85)" />
+                    <Text style={s.desktopKpiLabelLight}>{t('totalBalance')}</Text>
+                  </View>
+                  <Text style={s.desktopKpiSubLight}>• {activeWorkspace?.name || 'Utama'}</Text>
+                </View>
+                <View style={s.desktopOtterWrap}>
+                  <OtterMascot variant={summary.balance >= 0 ? 'rich' : 'panic'} size="sm" />
+                </View>
+              </View>
+
+              <Text style={s.desktopKpiAmountLight}>{formatRupiah(summary.balance)}</Text>
+
+              <View style={s.desktopKpiBottom}>
+                <View style={s.desktopBadgeGreen}>
+                  <Ionicons name="trending-up" size={12} color="#00A86B" />
+                  <Text style={s.desktopBadgeGreenText}>
+                    {summary.income >= summary.expense ? '+Surplus Sehat' : 'Defisit Pengeluaran'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={s.desktopRecordBtn}
+                  onPress={() => router.push('/modal')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color="#0F3832" />
+                  <Text style={s.desktopRecordBtnText}>{t('recordBtn')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* CARD 2: PEMASUKAN */}
+            <View style={s.desktopKpiCard}>
+              <View style={s.desktopKpiHeaderRow}>
+                <View style={[s.desktopKpiIconCircle, { backgroundColor: '#E8F8F5' }]}>
+                  <Ionicons name="arrow-up" size={18} color="#00A86B" />
+                </View>
+                <Text style={s.desktopKpiLabel}>{t('income')}</Text>
+              </View>
+              <Text style={[s.desktopKpiAmount, { color: Colors.income }]}>
+                {formatRupiah(summary.income)}
+              </Text>
+              <Text style={s.desktopKpiFootnote}>Total pemasukan tercatat periode ini</Text>
+            </View>
+
+            {/* CARD 3: PENGELUARAN */}
+            <View style={s.desktopKpiCard}>
+              <View style={s.desktopKpiHeaderRow}>
+                <View style={[s.desktopKpiIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="arrow-down" size={18} color="#FA5A5A" />
+                </View>
+                <Text style={s.desktopKpiLabel}>{t('expense')}</Text>
+              </View>
+              <Text style={[s.desktopKpiAmount, { color: Colors.expense }]}>
+                {formatRupiah(summary.expense)}
+              </Text>
+              <View style={{ marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>Pemakaian Budget</Text>
+                  <Text style={{ fontSize: 11, color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B', fontWeight: '800' }}>
+                    {budgetPercent}%
+                  </Text>
+                </View>
+                <AnimatedProgressBar
+                  progress={budgetPercent / 100}
+                  color={budgetPercent > 90 ? Colors.coralExpense : budgetPercent > 75 ? Colors.accentOrange : Colors.mintGreen}
+                  height={6}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* ROW 2: TWO-COLUMN CONTENT GRID */}
+          <View style={s.desktopContentGrid}>
+            {/* LEFT COLUMN: TRANSAKSI TERBARU */}
+            <View style={s.desktopLeftCol}>
+              <View style={s.desktopSectionHeader}>
+                <View>
+                  <Text style={s.desktopSectionTitle}>{t('recentTx')}</Text>
+                  <Text style={s.desktopSectionCount}>
+                    {filteredTransactions.length} {t('txCount')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={s.desktopAddTxBtn}
+                  onPress={() => router.push('/modal')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={s.desktopAddTxBtnText}>+ Transaksi</Text>
+                </TouchableOpacity>
+              </View>
+
+              {filteredTransactions.length === 0 ? (
+                <EmptyState
+                  mascot="sleeping"
+                  title={t('emptyTxTitle')}
+                  subtitle={t('emptyTxDesc')}
+                  actionLabel={`+ ${t('recordBtn')}`}
+                  onAction={() => router.push('/modal')}
+                />
+              ) : (
+                <View style={s.desktopTxList}>
+                  {filteredTransactions.map((item) => {
+                    const meta = getCategoryMeta(item.category);
+                    const isIncome = item.type === 'income';
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={s.txItem}
+                        onPress={() => router.push(`/transaction/${item.id}` as any)}
+                        onLongPress={() => handleDelete(item.id)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
+                          <Ionicons name={meta.icon || 'receipt-outline'} size={20} color={meta.color} />
+                        </View>
+                        <View style={s.txDetails}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={s.txTitle}>{item.category}</Text>
+                            {item.updated_at && item.updated_at !== item.created_at && (
+                              <View style={s.editedTag}>
+                                <Text style={s.editedTagText}>{t('editedTag')}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={s.txSubtitle} numberOfLines={1}>
+                            {item.description || item.transaction_date}
+                          </Text>
+                          {item.user_display_name || item.user_email ? (
+                            <Text style={s.txAuthor} numberOfLines={1}>
+                              {t('byAuthor')} {item.user_display_name || item.user_email?.split('@')[0]}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View style={s.txAmountCol}>
+                          <Text style={[s.txAmountText, { color: isIncome ? Colors.income : Colors.expense }]}>
+                            {isIncome ? '+' : '-'}{formatRupiah(item.amount)}
+                          </Text>
+                          <Text style={s.txDateText}>{item.transaction_date}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* RIGHT COLUMN: RINGKASAN DOMPET & ANGGARAN & OTTER */}
+            <View style={s.desktopRightCol}>
+              {/* CARD 1: RINGKASAN DOMPET */}
+              <View style={s.desktopSideCard}>
+                <View style={s.desktopSideCardHeader}>
+                  <Ionicons name="home-outline" size={18} color="#0F3832" />
+                  <Text style={s.desktopSideCardTitle}>Dompet Keluarga</Text>
+                </View>
+                <Text style={s.desktopWsName}>{activeWorkspace?.name || 'Dompet Bareng'}</Text>
+                <Text style={s.desktopWsRole}>
+                  Peran: {activeWorkspace?.role === 'admin' ? 'Pemilik (Admin)' : 'Anggota'}
+                </Text>
+                <View style={s.desktopWsActions}>
+                  <TouchableOpacity
+                    style={s.desktopOutlineBtn}
+                    onPress={() => setShowSwitchModal(true)}
+                  >
+                    <Ionicons name="swap-horizontal" size={14} color="#0F3832" />
+                    <Text style={s.desktopOutlineBtnText}>Ganti Dompet</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.desktopOutlineBtn}
+                    onPress={() => router.push('/(tabs)/two')}
+                  >
+                    <Ionicons name="people-outline" size={14} color="#0F3832" />
+                    <Text style={s.desktopOutlineBtnText}>Kelola Anggota</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* CARD 2: PROGRES ANGGARAN */}
+              <View style={s.desktopSideCard}>
+                <View style={s.desktopSideCardHeader}>
+                  <Ionicons name="pie-chart-outline" size={18} color="#0F3832" />
+                  <Text style={s.desktopSideCardTitle}>Progres Anggaran</Text>
+                </View>
+                <View style={{ marginVertical: 10 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>
+                      Status: {budgetPercent > 90 ? 'Perhatian!' : budgetPercent > 70 ? 'Waspada' : 'Aman'}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetPercent > 90 ? '#FA5A5A' : '#00A86B' }}>
+                      {budgetPercent}%
+                    </Text>
+                  </View>
+                  <AnimatedProgressBar
+                    progress={budgetPercent / 100}
+                    color={budgetPercent > 90 ? Colors.coralExpense : budgetPercent > 75 ? Colors.accentOrange : Colors.mintGreen}
+                    height={8}
+                  />
+                </View>
+                <Text style={s.desktopBudgetNote}>
+                  {budgetPercent > 90
+                    ? 'Pengeluaran mendekati pemasukan. Tinjau kembali pos anggaran belanja.'
+                    : 'Pengeluaran masih dalam batas aman. Pertahankan pola hemat keluarga!'}
+                </Text>
+              </View>
+
+              {/* CARD 3: INSIGHT KEUANGAN BERSAMA OTTER */}
+              <View style={s.desktopOtterCard}>
+                <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                  <OtterMascot
+                    variant={budgetPercent > 90 ? 'panic' : summary.balance > 0 ? 'rich' : 'happy'}
+                    size="md"
+                  />
+                </View>
+                <Text style={s.desktopOtterTitle}>Catatan Sahabat Otter</Text>
+                <Text style={s.desktopOtterText}>
+                  "Keuangan yang tercatat rapi membawa ketenangan dalam rumah tangga. Jangan lupa cek statistik berkala!"
+                </Text>
+                <TouchableOpacity
+                  style={s.desktopOtterBtn}
+                  onPress={() => router.push('/(tabs)/statistics')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.desktopOtterBtnText}>Lihat Analisis Lengkap →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {modals}
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.root}>
+      <StatusBar style="light" />
+
+      <FlatList
+        data={filteredTransactions}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onEndReached={() => { if (hasMoreTx) loadMoreTransactions(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={hasMoreTx ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
+        ) : null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+        renderItem={({ item, index }) => {
+          const meta = getCategoryMeta(item.category);
+          const isIncome = item.type === 'income';
+
+          return (
+            <Animated.View entering={FadeInUp.delay(Math.min(index, 10) * 35).duration(300)}>
+              <TouchableOpacity
+                style={s.txItem}
+                onPress={() => router.push(`/transaction/${item.id}` as any)}
+                onLongPress={() => handleDelete(item.id)}
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityLabel={`${item.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}, ${item.category}, ${formatRupiah(item.amount)}`}
+                accessibilityHint="Tekan lama untuk menghapus"
+              >
+                <View style={[s.txIconCircle, { backgroundColor: meta.bg }]}>
+                  <Ionicons name={meta.icon || 'receipt-outline'} size={20} color={meta.color} />
+                </View>
+
+                <View style={s.txDetails}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.txTitle}>{item.category}</Text>
+                    {item.updated_at && item.updated_at !== item.created_at && (
+                      <View style={s.editedTag}>
+                        <Text style={s.editedTagText}>{t('editedTag')}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={s.txSubtitle} numberOfLines={1}>
+                    {item.description || item.transaction_date}
+                  </Text>
+                  {item.user_display_name || item.user_email ? (
+                    <Text style={s.txAuthor} numberOfLines={1}>
+                      {t('byAuthor')} {item.user_display_name || item.user_email?.split('@')[0]}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View style={s.txAmountCol}>
+                  <Text style={[s.txAmountText, { color: isIncome ? Colors.income : Colors.expense }]}>
+                    {isIncome ? '+' : '-'}{formatRupiah(item.amount)}
+                  </Text>
+                  <Text style={s.txDateText}>{item.transaction_date}</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        }}
+        ListEmptyComponent={
+          !loadingTx ? (
+            <EmptyState
+              mascot="sleeping"
+              title={t('emptyTxTitle')}
+              subtitle={t('emptyTxDesc')}
+              actionLabel={t('recordBtn')}
+              onAction={() => router.push('/modal')}
+              compact
+            />
+          ) : null
+        }
+      />
+
+      {modals}
     </View>
   );
 }
@@ -1158,5 +1498,363 @@ const s = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     color: Colors.primaryDark,
+  },
+
+  // Desktop Web Styles
+  desktopContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFC',
+  },
+  desktopHeader: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  desktopGreetingTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F3832',
+    letterSpacing: -0.3,
+  },
+  desktopGreetingSub: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  desktopHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E8F8F5',
+    borderWidth: 1,
+    borderColor: '#C3EBE3',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.full,
+  },
+  desktopPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F3832',
+    maxWidth: 160,
+  },
+  desktopPeriodPills: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: Radius.full,
+    padding: 3,
+    gap: 2,
+  },
+  desktopPeriodPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  desktopPeriodPillActive: {
+    backgroundColor: '#FFFFFF',
+    ...Shadows.card,
+  },
+  desktopPeriodPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  desktopPeriodPillTextActive: {
+    color: '#0F3832',
+    fontWeight: '800',
+  },
+  desktopNotifBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  desktopAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.forestGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  desktopScroll: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+    maxWidth: 1240,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  desktopKpiRow: {
+    flexDirection: 'row',
+    gap: 18,
+    marginBottom: 24,
+  },
+  desktopKpiCardPrimary: {
+    flex: 1.25,
+    backgroundColor: '#0F3832',
+    borderRadius: Radius.xl,
+    padding: 22,
+    justifyContent: 'space-between',
+    ...Shadows.card,
+  },
+  desktopKpiTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  desktopKpiLabelLight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 0.2,
+  },
+  desktopKpiSubLight: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  desktopOtterWrap: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopKpiAmountLight: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginVertical: 14,
+  },
+  desktopKpiBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  desktopBadgeGreen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,168,107,0.18)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radius.full,
+  },
+  desktopBadgeGreenText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#27C93F',
+  },
+  desktopRecordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  desktopRecordBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F3832',
+  },
+  desktopKpiCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-between',
+    ...Shadows.card,
+  },
+  desktopKpiHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  desktopKpiIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopKpiLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  desktopKpiAmount: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginTop: 8,
+  },
+  desktopKpiFootnote: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  desktopContentGrid: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  desktopLeftCol: {
+    flex: 1.55,
+  },
+  desktopSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  desktopSectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F3832',
+  },
+  desktopSectionCount: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  desktopAddTxBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0F3832',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.md,
+  },
+  desktopAddTxBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  desktopTxList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    ...Shadows.card,
+  },
+  desktopRightCol: {
+    flex: 1,
+    gap: 18,
+  },
+  desktopSideCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
+  },
+  desktopSideCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  desktopSideCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F3832',
+  },
+  desktopWsName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F3832',
+  },
+  desktopWsRole: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  desktopWsActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  desktopOutlineBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: Radius.md,
+    backgroundColor: '#F8FAFC',
+  },
+  desktopOutlineBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F3832',
+  },
+  desktopBudgetNote: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  desktopOtterCard: {
+    backgroundColor: '#E6F7F2',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#BCECE0',
+    alignItems: 'center',
+    ...Shadows.card,
+  },
+  desktopOtterTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F3832',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  desktopOtterText: {
+    fontSize: 12,
+    color: '#2C5E55',
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  desktopOtterBtn: {
+    backgroundColor: '#0F3832',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: Radius.full,
+  },
+  desktopOtterBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

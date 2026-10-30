@@ -12,6 +12,7 @@ import {
   Modal,
   Switch,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
@@ -57,6 +58,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 768;
   const { user, profile, signOut, updateDisplayName, signInWithGoogle, avatarUrl } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -453,6 +456,740 @@ export default function SettingsScreen() {
   const googleAvatarUrl = avatarUrl;
   const userInitial = (profile?.display_name?.[0] || user?.email?.[0] || 'U').toUpperCase();
 
+
+  const modals = (
+    <>
+      {Platform.OS === 'android' && (
+        <SwipeableModal
+          visible={widgetSizeModalVisible}
+          onClose={() => setWidgetSizeModalVisible(false)}
+        >
+          <Text style={s.sheetTitle}>{t('widgetSizeChooserTitle')}</Text>
+          <Text style={s.sheetSubtitle}>{t('widgetSizeChooserDetails')}</Text>
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+            {WIDGET_VARIANTS.map((variant) => (
+              <TouchableOpacity
+                key={variant.name}
+                testID={`widget-size-${variant.kind}`}
+                style={s.wsPickerRow}
+                onPress={() => handlePinWidget(variant.name)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t(variant.labelKey)}, ${variant.columns}×${variant.rows}`}
+                accessibilityHint={t(variant.descriptionKey)}
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Text style={s.menuTitle}>{t(variant.labelKey)}</Text>
+                  <Text style={s.menuDesc}>{t(variant.descriptionKey)}</Text>
+                </View>
+                <View style={[s.badgeSmall, s.badgeSmallAdmin]}>
+                  <Text style={[s.badgeSmallText, s.badgeSmallTextAdmin]}>
+                    {variant.columns}×{variant.rows}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={s.cancelBtn}
+            onPress={() => setWidgetSizeModalVisible(false)}
+            accessibilityRole="button"
+            accessibilityLabel={t('widgetSizeChooserCancel')}
+          >
+            <Text style={s.cancelBtnText}>{t('widgetSizeChooserCancel')}</Text>
+          </TouchableOpacity>
+        </SwipeableModal>
+      )}
+
+      {/* ── MODAL 1: EDIT PROFILE DISPLAY NAME ── */}
+      <SwipeableModal
+        visible={editProfileModalVisible}
+        onClose={() => setEditProfileModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>{t('editProfileTitle')}</Text>
+        <Text style={s.sheetSubtitle}>{t('editProfileSubtitle')}</Text>
+
+        <TextInput
+          style={s.sheetInput}
+          value={profileNameInput}
+          onChangeText={setProfileNameInput}
+          placeholder={t('placeholderProfileName')}
+          placeholderTextColor={Colors.textMuted}
+          autoFocus
+        />
+
+        <TouchableOpacity
+          style={[s.sheetBtn, { marginTop: 16 }, savingProfileName && { opacity: 0.6 }]}
+          onPress={handleSaveProfileName}
+          disabled={savingProfileName}
+        >
+          {savingProfileName ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>{t('saveNameBtn')}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      {/* ── MODAL 2: SWITCH WORKSPACE ── */}
+      <SwipeableModal
+        visible={switchWsModalVisible}
+        onClose={() => setSwitchWsModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>{t('selectWallet')}</Text>
+        <Text style={s.sheetSubtitle}>{t('selectWalletSubtitle')}</Text>
+
+        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+          {workspaces.map(ws => {
+            const isActive = ws.id === activeWorkspace?.id;
+            return (
+              <TouchableOpacity
+                key={ws.id}
+                style={[s.wsPickerRow, isActive && s.wsPickerRowActive]}
+                onPress={() => {
+                  setActiveWorkspace(ws);
+                  setSwitchWsModalVisible(false);
+                }}
+              >
+                {ws.image_url ? (
+                  <Image source={{ uri: ws.image_url }} style={s.wsPickerImg} />
+                ) : (
+                  <View style={s.wsPickerImgPlaceholder}>
+                    <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+                  </View>
+                )}
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.wsPickerName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
+                    {ws.name}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons
+                      name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                      size={12}
+                      color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
+                    />
+                    <Text style={s.wsPickerRole}>
+                      {ws.role === 'admin' ? t('roleOwner') : t('roleMember')}
+                    </Text>
+                  </View>
+                </View>
+                {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <TouchableOpacity onPress={() => setSwitchWsModalVisible(false)} style={s.cancelBtn}>
+          <Text style={s.cancelBtnText}>{t('close')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      {/* ── MODAL 3: EDIT WORKSPACE NAME ── */}
+      <SwipeableModal
+        visible={editWsModalVisible}
+        onClose={() => setEditWsModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>{t('renameWalletTitle')}</Text>
+
+        <TextInput
+          style={s.sheetInput}
+          value={editWsName}
+          onChangeText={setEditWsName}
+          placeholder={t('placeholderWalletName')}
+          placeholderTextColor={Colors.textMuted}
+          autoFocus
+        />
+
+        <TouchableOpacity
+          style={[s.sheetBtn, { marginTop: 16 }, savingWsEdit && { opacity: 0.6 }]}
+          onPress={handleSaveWsEdit}
+          disabled={savingWsEdit}
+        >
+          {savingWsEdit ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>{t('saveChangesBtn')}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      {/* ── MODAL INVITE SHARE ── */}
+      {inviteModalVisible && modalScope === inviteScope && <InviteShareModal
+        visible={inviteModalVisible}
+        onClose={() => setInviteModalVisible(false)}
+        inviteLink={generatedInviteLink}
+        workspaceName={activeWorkspace?.name || ''}
+        inviteKind={inviteKind}
+        onShowQr={isAdmin && isRegisteredUser ? () => { setInviteModalVisible(false); setQrVisible(true); } : undefined}
+      />}
+      {qrVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceQrPanel key={inviteScope} visible workspaceId={activeWorkspace.id} walletName={activeWorkspace.name} onClose={() => setQrVisible(false)} onShareLink={link => { setGeneratedInviteLink(link); setInviteKind('static'); setQrVisible(false); setInviteModalVisible(true); }} />}
+      {requestsVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceJoinRequestsPanel key={inviteScope} visible workspaceId={activeWorkspace.id} onClose={() => setRequestsVisible(false)} />}
+
+      {/* ── MODAL 4: GABUNG WORKSPACE ── */}
+      <SwipeableModal
+        visible={joinModalVisible}
+        onClose={() => setJoinModalVisible(false)}
+      >
+        <Text style={s.sheetTitle}>{t('joinWalletTitle')}</Text>
+        <Text style={s.sheetSubtitle}>{t('joinWalletSubtitle')}</Text>
+
+        <TouchableOpacity testID="scan-wallet-invite" accessibilityRole="button" style={[s.sheetBtn, { marginBottom: 12 }]} onPress={() => { setJoinModalVisible(false); router.push('/scan-invite'); }}>
+          <Text style={s.sheetBtnText}>{t('scanInviteTitle')}</Text>
+        </TouchableOpacity>
+
+        <TextInput
+          style={s.sheetInput}
+          value={joinInput}
+          onChangeText={setJoinInput}
+          placeholder={t('placeholderJoinWallet')}
+          placeholderTextColor={Colors.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <TouchableOpacity style={[s.sheetBtn, { marginTop: 16 }]} onPress={handleJoinWithInput}>
+          <Text style={s.sheetBtnText}>{t('joinWalletBtn')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      {/* ── MODAL 5: KICK MEMBER CONFIRMATION WITH REASON ── */}
+      <SwipeableModal
+        visible={kickModalVisible}
+        onClose={() => setKickModalVisible(false)}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Text style={{ fontSize: 22 }}>⚠️</Text>
+          <Text style={s.sheetTitle}>{t('kickMemberTitle')}</Text>
+        </View>
+
+        <Text style={s.sheetSubtitle}>
+          {language === 'id' ? 'Apakah kamu yakin ingin mengeluarkan ' : 'Are you sure you want to remove '}
+          <Text style={{ fontWeight: '700', color: Colors.textDark }}>
+            {memberToKick?.display_name || memberToKick?.email || (language === 'id' ? 'anggota ini' : 'this member')}
+          </Text>{' '}
+          {language === 'id' ? `dari dompet "${activeWorkspace?.name}"?` : `from wallet "${activeWorkspace?.name}"?`}
+        </Text>
+
+        <View style={{ marginTop: 12, marginBottom: 6 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textDark, marginBottom: 6 }}>
+            {t('kickReasonLabel')}
+          </Text>
+          <TextInput
+            style={[s.sheetInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+            value={kickReason}
+            onChangeText={setKickReason}
+            placeholder={t('kickReasonPlaceholder')}
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[s.sheetBtn, { backgroundColor: Colors.expense }, kicking && { opacity: 0.6 }]}
+          onPress={handleConfirmKick}
+          disabled={kicking}
+        >
+          {kicking ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.sheetBtnText}>{t('kickConfirmBtn')}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setKickModalVisible(false)}
+          style={s.cancelBtn}
+          disabled={kicking}
+        >
+          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
+        </TouchableOpacity>
+      </SwipeableModal>
+
+      {/* ── MODAL: OTA Update Status ── */}
+      <SwipeableModal
+        visible={updatePhase !== 'idle'}
+        onClose={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
+      >
+        {/* Checking / Downloading phase */}
+        {(updatePhase === 'checking' || updatePhase === 'downloading') && (
+          <View style={s.updateModalBody}>
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 16 }} />
+            <Text style={s.updateModalTitle}>
+              {updatePhase === 'downloading' ? t('otaDownloading') : t('otaChecking')}
+            </Text>
+            <Text style={s.updateModalSub}>
+              {updatePhase === 'downloading'
+                ? t('otaDownloadingBody')
+                : t('otaCheckingBody')}
+            </Text>
+          </View>
+        )}
+
+        {/* Done phase */}
+        {updatePhase === 'done' && updateResult && (() => {
+          const cfg = {
+            updated:       { icon: '🚀' as const, color: Colors.income,   title: t('otaTitleUpdated'),        bg: Colors.incomeSoft },
+            no_update:     { icon: '✅' as const, color: Colors.income,   title: t('otaTitleNoUpdate'),     bg: Colors.incomeSoft },
+            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: t('otaTitleInfo'),                  bg: Colors.accentBlueSoft },
+            error:         { icon: '⚠️' as const, color: Colors.expense,  title: t('otaTitleError'),  bg: Colors.expenseSoft },
+          }[updateResult.status] ?? { icon: 'ℹ️' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
+
+          return (
+            <View style={s.updateModalBody}>
+              <View style={[s.updateModalIconWrap, { backgroundColor: cfg.bg }]}>
+                <Text style={{ fontSize: 36 }}>{cfg.icon}</Text>
+              </View>
+              <Text style={[s.updateModalTitle, { color: cfg.color }]}>{cfg.title}</Text>
+              <Text style={s.updateModalSub}>{updateResult.message}</Text>
+              {/* Info versi saat ini */}
+              {updateInfo.runtimeVersion && (
+                <View style={s.updateVersionRow}>
+                  <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+                  <Text style={s.updateVersionText}>
+                    Runtime v{updateInfo.runtimeVersion}
+                    {updateInfo.channel ? ` • channel: ${updateInfo.channel}` : ''}
+                    {updateInfo.isEmbedded ? ' • embedded' : ''}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={s.updateModalCloseBtn}
+                onPress={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
+              >
+                <Text style={s.updateModalCloseBtnText}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
+      </SwipeableModal>
+
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={s.desktopContainer}>
+        <StatusBar style="dark" />
+
+        {/* DESKTOP HEADER */}
+        <View style={s.desktopHeader}>
+          <View>
+            <Text style={s.desktopTitle}>{t('settingsTitle')} ⚙️</Text>
+            <Text style={s.desktopSubtitle}>Kelola profil, dompet keluarga, dan preferensi aplikasi</Text>
+          </View>
+
+          <View style={s.desktopActions}>
+            {activeWorkspace && (
+              <View style={s.desktopWsPill}>
+                <Ionicons name="home" size={14} color={Colors.forestGreen} />
+                <Text style={s.desktopWsPillText}>{activeWorkspace.name}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* DESKTOP BODY SCROLL */}
+        <ScrollView
+          style={s.desktopScroll}
+          contentContainerStyle={s.desktopScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={s.desktopContentGrid}>
+            {/* LEFT COLUMN: PROFIL & PREFERENSI */}
+            <View style={s.desktopLeftCol}>
+              {/* User Profile Card */}
+              <View style={s.desktopCardBox}>
+                <Text style={s.desktopCardBoxTitle}>{t('myAccount')}</Text>
+                <View style={s.userCardMainRow}>
+                  <View style={s.userAvatarWrapper}>
+                    {googleAvatarUrl ? (
+                      <Image
+                        source={{ uri: googleAvatarUrl }}
+                        style={s.userAvatarImage}
+                        // @ts-ignore
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <View style={s.userAvatarPlaceholder}>
+                        <Text style={s.userAvatarInitial}>{userInitial}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={s.userInfo}>
+                    <View style={s.userNameRow}>
+                      <Text style={s.userName} numberOfLines={1}>
+                        {profile?.display_name || user?.user_metadata?.full_name || t('userFallback')}
+                      </Text>
+                      <TouchableOpacity onPress={handleOpenEditProfile} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={s.editNameIcon}>✏️</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={s.userEmailText} numberOfLines={1}>
+                      {user?.email || t('devGuestTag')}
+                    </Text>
+                    <View style={[s.authBadge, isRegisteredUser ? s.authBadgeGoogle : s.authBadgeGuest]}>
+                      {isRegisteredUser && <Text style={s.googleMiniIcon}>G</Text>}
+                      <Text style={[s.authBadgeText, isRegisteredUser ? s.authBadgeTextGoogle : s.authBadgeTextGuest]}>
+                        {isRegisteredUser ? t('googleConnected') : t('googleNotConnected')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={s.userCardMascot}>
+                    <OtterMascot variant="welcome" size="sm" />
+                  </View>
+                </View>
+
+                {!isRegisteredUser && (
+                  <TouchableOpacity
+                    style={[s.googleLoginBtn, { marginTop: 16 }]}
+                    onPress={handleGoogleLogin}
+                    disabled={loggingIn}
+                    activeOpacity={0.85}
+                  >
+                    {loggingIn ? (
+                      <ActivityIndicator size="small" color="#4285F4" />
+                    ) : (
+                      <>
+                        <View style={s.googleIconCircle}>
+                          <Text style={s.googleIconChar}>G</Text>
+                        </View>
+                        <Text style={s.googleLoginBtnText}>{t('signInWithGoogle')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Preferences & System Card */}
+              <View style={s.desktopCardBox}>
+                <Text style={s.desktopCardBoxTitle}>{t('othersSection')}</Text>
+
+                {/* Language */}
+                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}>
+                  <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
+                    <Ionicons name="globe-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.menuTitle}>{t('appLanguage')}</Text>
+                    <Text style={s.menuDesc}>
+                      {language === 'id' ? 'Bahasa Indonesia aktif' : 'English active'}
+                    </Text>
+                  </View>
+                  <View style={s.langSegment}>
+                    <TouchableOpacity
+                      style={[s.langBtn, language === 'id' && s.langBtnActive]}
+                      onPress={() => setLanguage('id')}
+                    >
+                      <Text style={[s.langBtnText, language === 'id' && s.langBtnTextActive]}>ID</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.langBtn, language === 'en' && s.langBtnActive]}
+                      onPress={() => setLanguage('en')}
+                    >
+                      <Text style={[s.langBtnText, language === 'en' && s.langBtnTextActive]}>EN</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Reminder */}
+                <View style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}>
+                  <View style={[s.menuIcon, { backgroundColor: Colors.savingsSoft }]}>
+                    <Ionicons name="notifications-outline" size={18} color={Colors.savings} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.menuTitle}>{t('dailyReminder')}</Text>
+                    <Text style={s.menuDesc}>{t('dailyReminderDesc')}</Text>
+                  </View>
+                  <Switch
+                    value={dailyReminder}
+                    onValueChange={handleToggleReminder}
+                    trackColor={{ false: Colors.border, true: Colors.primarySoft }}
+                    thumbColor={dailyReminder ? Colors.primary : Colors.textMuted}
+                  />
+                </View>
+
+                {/* Join Wallet */}
+                <TouchableOpacity
+                  style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}
+                  onPress={() => setJoinModalVisible(true)}
+                >
+                  <View style={[s.menuIcon, { backgroundColor: '#F3E8FF' }]}>
+                    <Ionicons name="enter-outline" size={18} color={Colors.accentPurple} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.menuTitle}>{t('joinWallet')}</Text>
+                    <Text style={s.menuDesc}>{t('joinWalletDesc')}</Text>
+                  </View>
+                  <Text style={s.menuArrow}>›</Text>
+                </TouchableOpacity>
+
+                {/* Android APK Download */}
+                {Platform.OS === 'web' && (
+                  <TouchableOpacity
+                    style={[s.menuRow, { borderBottomWidth: 1, borderColor: '#F1F5F9' }]}
+                    onPress={() => triggerDownloadApk()}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[s.menuIcon, { backgroundColor: Colors.incomeSoft }]}>
+                      <Ionicons name="logo-android" size={18} color={Colors.income} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.menuTitle}>{t('downloadAndroidApp')}</Text>
+                      <Text style={s.menuDesc}>{t('downloadAndroidAppDesc')}</Text>
+                    </View>
+                    <Text style={s.menuArrow}>›</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Check OTA Update */}
+                <View style={[s.menuRow, { borderBottomWidth: 0 }]}>
+                  <View style={[s.menuIcon, { backgroundColor: Colors.primarySoft }]}>
+                    <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.menuTitle}>{t('checkUpdate')}</Text>
+                    <Text style={s.menuDesc}>{t('checkUpdateDesc')}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleCheckUpdate}
+                    disabled={checkingUpdate}
+                    style={[s.updateBtn, checkingUpdate && { opacity: 0.6 }]}
+                  >
+                    {checkingUpdate ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Text style={s.updateBtnText}>{t('checkUpdateBtn')}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Sign out Card */}
+              <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+                <Ionicons name="log-out-outline" size={18} color={Colors.expense} style={{ marginRight: 6 }} />
+                <Text style={s.signOutBtnText}>{t('logOut')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* RIGHT COLUMN: WORKSPACE AKTIF & ANGGOTA */}
+            <View style={s.desktopRightCol}>
+              {/* Workspace Details */}
+              <View style={s.desktopCardBox}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <Text style={s.desktopCardBoxTitle}>{t('activeWalletHeader')}</Text>
+                  <TouchableOpacity
+                    style={s.switchWsBtn}
+                    onPress={() => setSwitchWsModalVisible(true)}
+                  >
+                    <Text style={s.switchWsBtnText}>{t('switchLabel')}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={s.wsActiveHeader}>
+                  <TouchableOpacity
+                    onPress={handlePickWorkspaceImage}
+                    style={s.wsImageWrapper}
+                    activeOpacity={isAdmin ? 0.7 : 1}
+                    disabled={!isAdmin}
+                  >
+                    {activeWorkspace?.image_url ? (
+                      <Image source={{ uri: activeWorkspace.image_url }} style={s.wsImage} />
+                    ) : (
+                      <View style={s.wsImagePlaceholder}>
+                        <Ionicons name="wallet-outline" size={28} color={Colors.primary} />
+                      </View>
+                    )}
+                    {isAdmin && (
+                      <View style={s.wsCameraBadge}>
+                        {uploadingImage ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Ionicons name="camera" size={11} color="#fff" />
+                        )}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={s.wsActiveInfo}>
+                    <Text style={s.wsActiveName} numberOfLines={1}>
+                      {activeWorkspace?.name || t('selectWallet')}
+                    </Text>
+                    <View style={[s.rolePill, isAdmin ? s.rolePillAdmin : s.rolePillMember]}>
+                      <Ionicons
+                        name={isAdmin ? 'ribbon-outline' : 'person-outline'}
+                        size={11}
+                        color={isAdmin ? Colors.primaryDark : Colors.accentBlue}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={[s.rolePillText, isAdmin ? s.rolePillTextAdmin : s.rolePillTextMember]}>
+                        {isAdmin ? t('roleOwner') : t('roleMember')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Workspace Quick Actions */}
+                <View style={{ marginTop: 16, gap: 8 }}>
+                  <TouchableOpacity
+                    style={s.desktopWsActionBtn}
+                    onPress={handleShare}
+                    disabled={sharing}
+                  >
+                    <Ionicons name="share-social-outline" size={16} color="#0F3832" />
+                    <Text style={s.desktopWsActionText}>{t('inviteMembers')}</Text>
+                  </TouchableOpacity>
+
+                  {isAdmin && isRegisteredUser && (
+                    <TouchableOpacity
+                      style={s.desktopWsActionBtn}
+                      onPress={() => { setModalScope(inviteScope); setQrVisible(true); }}
+                    >
+                      <Ionicons name="qr-code-outline" size={16} color="#0F3832" />
+                      <Text style={s.desktopWsActionText}>{t('walletQrTitle')}</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={s.desktopWsActionBtn}
+                      onPress={() => {
+                        setEditWsName(activeWorkspace?.name || '');
+                        setEditWsModalVisible(true);
+                      }}
+                    >
+                      <Ionicons name="pencil-outline" size={16} color="#0F3832" />
+                      <Text style={s.desktopWsActionText}>{t('renameWallet')}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Members List */}
+              <View style={s.desktopCardBox}>
+                <Text style={s.desktopCardBoxTitle}>
+                  {t('walletMembersTitle')} ({members.length})
+                </Text>
+                {loadingMembers ? (
+                  <ActivityIndicator color={Colors.primary} style={{ padding: 20 }} />
+                ) : (
+                  members.map((m, idx) => {
+                    const isMe = m.user_id === user?.id;
+                    const memberName = m.display_name || m.email?.split('@')[0] || `User #${m.user_id.slice(0, 6)}`;
+                    return (
+                      <View key={m.user_id} style={[s.menuRow, idx === members.length - 1 && { borderBottomWidth: 0 }]}>
+                        <View style={[s.menuIcon, { backgroundColor: Colors.borderLight, overflow: 'hidden' }]}>
+                          {m.avatar_url ? (
+                            <Image
+                              source={{ uri: m.avatar_url }}
+                              style={s.memberAvatarImg}
+                              // @ts-ignore
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <Ionicons
+                              name={m.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
+                              size={18}
+                              color={m.role === 'admin' ? Colors.savings : Colors.textMuted}
+                            />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.menuTitle}>
+                            {isMe ? `${memberName} ${t('labelMemberSuffix')}` : memberName}
+                          </Text>
+                          <Text style={s.menuDesc}>
+                            {m.email ? m.email : `Bergabung ${new Date(m.joined_at).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US')}`}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={[s.badgeSmall, m.role === 'admin' && s.badgeSmallAdmin]}>
+                            <Text style={[s.badgeSmallText, m.role === 'admin' && s.badgeSmallTextAdmin]}>
+                              {m.role === 'admin' ? t('roleOwner') : t('roleMember')}
+                            </Text>
+                          </View>
+                          {isAdmin && !isMe && (
+                            <TouchableOpacity
+                              onPress={() => handleKickMember(m)}
+                              style={s.kickBtn}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={s.kickBtnText}>✕</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+
+              {/* Danger Zone */}
+              <View style={[s.desktopCardBox, { borderColor: '#FEE2E2' }]}>
+                <Text style={[s.desktopCardBoxTitle, { color: Colors.expense }]}>Zona Bahaya</Text>
+                {!isAdmin && (
+                  <TouchableOpacity
+                    style={[s.menuRow, { borderBottomWidth: 0 }]}
+                    onPress={handleLeaveWorkspace}
+                    disabled={leavingWs}
+                  >
+                    <View style={[s.menuIcon, { backgroundColor: Colors.expenseSoft }]}>
+                      <Ionicons name="exit-outline" size={18} color={Colors.expense} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.menuTitle, { color: Colors.expense }]}>{t('leaveWallet')}</Text>
+                      <Text style={s.menuDesc}>{t('leaveWalletDesc')}</Text>
+                    </View>
+                    {leavingWs ? (
+                      <ActivityIndicator size="small" color={Colors.expense} />
+                    ) : (
+                      <Text style={[s.menuArrow, { color: Colors.expense }]}>›</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={[s.menuRow, { borderBottomWidth: 0 }]}
+                    onPress={handleDeleteWorkspace}
+                    disabled={deletingWs}
+                  >
+                    <View style={[s.menuIcon, { backgroundColor: Colors.expenseSoft }]}>
+                      <Ionicons name="trash-outline" size={18} color={Colors.expense} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.menuTitle, { color: Colors.expense }]}>{t('deleteWallet')}</Text>
+                      <Text style={s.menuDesc}>{t('deleteWalletDesc')}</Text>
+                    </View>
+                    {deletingWs ? (
+                      <ActivityIndicator size="small" color={Colors.expense} />
+                    ) : (
+                      <Text style={[s.menuArrow, { color: Colors.expense }]}>›</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {modals}
+      </View>
+    );
+  }
   return (
     <View style={s.root}>
       <StatusBar style="light" />
@@ -907,321 +1644,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {Platform.OS === 'android' && (
-        <SwipeableModal
-          visible={widgetSizeModalVisible}
-          onClose={() => setWidgetSizeModalVisible(false)}
-        >
-          <Text style={s.sheetTitle}>{t('widgetSizeChooserTitle')}</Text>
-          <Text style={s.sheetSubtitle}>{t('widgetSizeChooserDetails')}</Text>
-          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-            {WIDGET_VARIANTS.map((variant) => (
-              <TouchableOpacity
-                key={variant.name}
-                testID={`widget-size-${variant.kind}`}
-                style={s.wsPickerRow}
-                onPress={() => handlePinWidget(variant.name)}
-                accessibilityRole="button"
-                accessibilityLabel={`${t(variant.labelKey)}, ${variant.columns}×${variant.rows}`}
-                accessibilityHint={t(variant.descriptionKey)}
-              >
-                <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={s.menuTitle}>{t(variant.labelKey)}</Text>
-                  <Text style={s.menuDesc}>{t(variant.descriptionKey)}</Text>
-                </View>
-                <View style={[s.badgeSmall, s.badgeSmallAdmin]}>
-                  <Text style={[s.badgeSmallText, s.badgeSmallTextAdmin]}>
-                    {variant.columns}×{variant.rows}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <TouchableOpacity
-            style={s.cancelBtn}
-            onPress={() => setWidgetSizeModalVisible(false)}
-            accessibilityRole="button"
-            accessibilityLabel={t('widgetSizeChooserCancel')}
-          >
-            <Text style={s.cancelBtnText}>{t('widgetSizeChooserCancel')}</Text>
-          </TouchableOpacity>
-        </SwipeableModal>
-      )}
-
-      {/* ── MODAL 1: EDIT PROFILE DISPLAY NAME ── */}
-      <SwipeableModal
-        visible={editProfileModalVisible}
-        onClose={() => setEditProfileModalVisible(false)}
-      >
-        <Text style={s.sheetTitle}>{t('editProfileTitle')}</Text>
-        <Text style={s.sheetSubtitle}>{t('editProfileSubtitle')}</Text>
-
-        <TextInput
-          style={s.sheetInput}
-          value={profileNameInput}
-          onChangeText={setProfileNameInput}
-          placeholder={t('placeholderProfileName')}
-          placeholderTextColor={Colors.textMuted}
-          autoFocus
-        />
-
-        <TouchableOpacity
-          style={[s.sheetBtn, { marginTop: 16 }, savingProfileName && { opacity: 0.6 }]}
-          onPress={handleSaveProfileName}
-          disabled={savingProfileName}
-        >
-          {savingProfileName ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={s.sheetBtnText}>{t('saveNameBtn')}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setEditProfileModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
-          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* ── MODAL 2: SWITCH WORKSPACE ── */}
-      <SwipeableModal
-        visible={switchWsModalVisible}
-        onClose={() => setSwitchWsModalVisible(false)}
-      >
-        <Text style={s.sheetTitle}>{t('selectWallet')}</Text>
-        <Text style={s.sheetSubtitle}>{t('selectWalletSubtitle')}</Text>
-
-        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
-          {workspaces.map(ws => {
-            const isActive = ws.id === activeWorkspace?.id;
-            return (
-              <TouchableOpacity
-                key={ws.id}
-                style={[s.wsPickerRow, isActive && s.wsPickerRowActive]}
-                onPress={() => {
-                  setActiveWorkspace(ws);
-                  setSwitchWsModalVisible(false);
-                }}
-              >
-                {ws.image_url ? (
-                  <Image source={{ uri: ws.image_url }} style={s.wsPickerImg} />
-                ) : (
-                  <View style={s.wsPickerImgPlaceholder}>
-                    <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
-                  </View>
-                )}
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[s.wsPickerName, isActive && { color: Colors.primary, fontWeight: '800' }]}>
-                    {ws.name}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons
-                      name={ws.role === 'admin' ? 'ribbon-outline' : 'person-outline'}
-                      size={12}
-                      color={ws.role === 'admin' ? Colors.savings : Colors.textMuted}
-                    />
-                    <Text style={s.wsPickerRole}>
-                      {ws.role === 'admin' ? t('roleOwner') : t('roleMember')}
-                    </Text>
-                  </View>
-                </View>
-                {isActive && <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 16 }}>✓</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <TouchableOpacity onPress={() => setSwitchWsModalVisible(false)} style={s.cancelBtn}>
-          <Text style={s.cancelBtnText}>{t('close')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* ── MODAL 3: EDIT WORKSPACE NAME ── */}
-      <SwipeableModal
-        visible={editWsModalVisible}
-        onClose={() => setEditWsModalVisible(false)}
-      >
-        <Text style={s.sheetTitle}>{t('renameWalletTitle')}</Text>
-
-        <TextInput
-          style={s.sheetInput}
-          value={editWsName}
-          onChangeText={setEditWsName}
-          placeholder={t('placeholderWalletName')}
-          placeholderTextColor={Colors.textMuted}
-          autoFocus
-        />
-
-        <TouchableOpacity
-          style={[s.sheetBtn, { marginTop: 16 }, savingWsEdit && { opacity: 0.6 }]}
-          onPress={handleSaveWsEdit}
-          disabled={savingWsEdit}
-        >
-          {savingWsEdit ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={s.sheetBtnText}>{t('saveChangesBtn')}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setEditWsModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
-          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* ── MODAL INVITE SHARE ── */}
-      {inviteModalVisible && modalScope === inviteScope && <InviteShareModal
-        visible={inviteModalVisible}
-        onClose={() => setInviteModalVisible(false)}
-        inviteLink={generatedInviteLink}
-        workspaceName={activeWorkspace?.name || ''}
-        inviteKind={inviteKind}
-        onShowQr={isAdmin && isRegisteredUser ? () => { setInviteModalVisible(false); setQrVisible(true); } : undefined}
-      />}
-      {qrVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceQrPanel key={inviteScope} visible workspaceId={activeWorkspace.id} walletName={activeWorkspace.name} onClose={() => setQrVisible(false)} onShareLink={link => { setGeneratedInviteLink(link); setInviteKind('static'); setQrVisible(false); setInviteModalVisible(true); }} />}
-      {requestsVisible && activeWorkspace && modalScope === inviteScope && <WorkspaceJoinRequestsPanel key={inviteScope} visible workspaceId={activeWorkspace.id} onClose={() => setRequestsVisible(false)} />}
-
-      {/* ── MODAL 4: GABUNG WORKSPACE ── */}
-      <SwipeableModal
-        visible={joinModalVisible}
-        onClose={() => setJoinModalVisible(false)}
-      >
-        <Text style={s.sheetTitle}>{t('joinWalletTitle')}</Text>
-        <Text style={s.sheetSubtitle}>{t('joinWalletSubtitle')}</Text>
-
-        <TouchableOpacity testID="scan-wallet-invite" accessibilityRole="button" style={[s.sheetBtn, { marginBottom: 12 }]} onPress={() => { setJoinModalVisible(false); router.push('/scan-invite'); }}>
-          <Text style={s.sheetBtnText}>{t('scanInviteTitle')}</Text>
-        </TouchableOpacity>
-
-        <TextInput
-          style={s.sheetInput}
-          value={joinInput}
-          onChangeText={setJoinInput}
-          placeholder={t('placeholderJoinWallet')}
-          placeholderTextColor={Colors.textMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <TouchableOpacity style={[s.sheetBtn, { marginTop: 16 }]} onPress={handleJoinWithInput}>
-          <Text style={s.sheetBtnText}>{t('joinWalletBtn')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setJoinModalVisible(false)} style={[s.cancelBtn, { marginTop: 8 }]}>
-          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* ── MODAL 5: KICK MEMBER CONFIRMATION WITH REASON ── */}
-      <SwipeableModal
-        visible={kickModalVisible}
-        onClose={() => setKickModalVisible(false)}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Text style={{ fontSize: 22 }}>⚠️</Text>
-          <Text style={s.sheetTitle}>{t('kickMemberTitle')}</Text>
-        </View>
-
-        <Text style={s.sheetSubtitle}>
-          {language === 'id' ? 'Apakah kamu yakin ingin mengeluarkan ' : 'Are you sure you want to remove '}
-          <Text style={{ fontWeight: '700', color: Colors.textDark }}>
-            {memberToKick?.display_name || memberToKick?.email || (language === 'id' ? 'anggota ini' : 'this member')}
-          </Text>{' '}
-          {language === 'id' ? `dari dompet "${activeWorkspace?.name}"?` : `from wallet "${activeWorkspace?.name}"?`}
-        </Text>
-
-        <View style={{ marginTop: 12, marginBottom: 6 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textDark, marginBottom: 6 }}>
-            {t('kickReasonLabel')}
-          </Text>
-          <TextInput
-            style={[s.sheetInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
-            value={kickReason}
-            onChangeText={setKickReason}
-            placeholder={t('kickReasonPlaceholder')}
-            placeholderTextColor={Colors.textMuted}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[s.sheetBtn, { backgroundColor: Colors.expense }, kicking && { opacity: 0.6 }]}
-          onPress={handleConfirmKick}
-          disabled={kicking}
-        >
-          {kicking ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={s.sheetBtnText}>{t('kickConfirmBtn')}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setKickModalVisible(false)}
-          style={s.cancelBtn}
-          disabled={kicking}
-        >
-          <Text style={s.cancelBtnText}>{t('cancel')}</Text>
-        </TouchableOpacity>
-      </SwipeableModal>
-
-      {/* ── MODAL: OTA Update Status ── */}
-      <SwipeableModal
-        visible={updatePhase !== 'idle'}
-        onClose={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
-      >
-        {/* Checking / Downloading phase */}
-        {(updatePhase === 'checking' || updatePhase === 'downloading') && (
-          <View style={s.updateModalBody}>
-            <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 16 }} />
-            <Text style={s.updateModalTitle}>
-              {updatePhase === 'downloading' ? t('otaDownloading') : t('otaChecking')}
-            </Text>
-            <Text style={s.updateModalSub}>
-              {updatePhase === 'downloading'
-                ? t('otaDownloadingBody')
-                : t('otaCheckingBody')}
-            </Text>
-          </View>
-        )}
-
-        {/* Done phase */}
-        {updatePhase === 'done' && updateResult && (() => {
-          const cfg = {
-            updated:       { icon: '🚀' as const, color: Colors.income,   title: t('otaTitleUpdated'),        bg: Colors.incomeSoft },
-            no_update:     { icon: '✅' as const, color: Colors.income,   title: t('otaTitleNoUpdate'),     bg: Colors.incomeSoft },
-            not_supported: { icon: 'ℹ️' as const, color: Colors.accentBlue, title: t('otaTitleInfo'),                  bg: Colors.accentBlueSoft },
-            error:         { icon: '⚠️' as const, color: Colors.expense,  title: t('otaTitleError'),  bg: Colors.expenseSoft },
-          }[updateResult.status] ?? { icon: 'ℹ️' as const, color: Colors.primary, title: 'Update', bg: Colors.primarySoft };
-
-          return (
-            <View style={s.updateModalBody}>
-              <View style={[s.updateModalIconWrap, { backgroundColor: cfg.bg }]}>
-                <Text style={{ fontSize: 36 }}>{cfg.icon}</Text>
-              </View>
-              <Text style={[s.updateModalTitle, { color: cfg.color }]}>{cfg.title}</Text>
-              <Text style={s.updateModalSub}>{updateResult.message}</Text>
-              {/* Info versi saat ini */}
-              {updateInfo.runtimeVersion && (
-                <View style={s.updateVersionRow}>
-                  <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
-                  <Text style={s.updateVersionText}>
-                    Runtime v{updateInfo.runtimeVersion}
-                    {updateInfo.channel ? ` • channel: ${updateInfo.channel}` : ''}
-                    {updateInfo.isEmbedded ? ' • embedded' : ''}
-                  </Text>
-                </View>
-              )}
-              <TouchableOpacity
-                style={s.updateModalCloseBtn}
-                onPress={() => { setUpdatePhase('idle'); setUpdateResult(null); }}
-              >
-                <Text style={s.updateModalCloseBtnText}>Tutup</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })()}
-      </SwipeableModal>
+      {modals}
     </View>
   );
 }
@@ -1785,5 +2208,106 @@ const s = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+
+  // Desktop Web Styles
+  desktopContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFC',
+  },
+  desktopHeader: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  desktopTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F3832',
+    letterSpacing: -0.3,
+  },
+  desktopSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  desktopActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopWsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F8F5',
+    borderWidth: 1,
+    borderColor: '#C3EBE3',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.full,
+  },
+  desktopWsPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F3832',
+  },
+  desktopScroll: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+    maxWidth: 1240,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  desktopContentGrid: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  desktopLeftCol: {
+    flex: 1.2,
+    gap: 18,
+  },
+  desktopRightCol: {
+    flex: 1,
+    gap: 18,
+  },
+  desktopCardBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
+  },
+  desktopCardBoxTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F3832',
+    marginBottom: 14,
+  },
+  desktopWsActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: Radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  desktopWsActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F3832',
   },
 });

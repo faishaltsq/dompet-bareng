@@ -28,6 +28,7 @@ vi.mock('react-native', () => ({
   View: 'View', Text: 'Text', ScrollView: 'ScrollView', TouchableOpacity: 'TouchableOpacity',
   ActivityIndicator: 'ActivityIndicator', Image: 'Image', TextInput: 'TextInput', Modal: 'Modal', Switch: 'Switch',
   StyleSheet: { create: (styles: unknown) => styles }, Platform: ui.platform, Alert: { alert: ui.alert },
+  useWindowDimensions: () => ({ width: 375, height: 812, scale: 1, fontScale: 1 }),
 }))
 vi.mock('react-native-android-widget', () => ({ requestPinWidget: ui.pin }))
 vi.mock('react-native-reanimated', () => {
