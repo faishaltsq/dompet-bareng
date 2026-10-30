@@ -21,7 +21,7 @@ function TabIcon({
       <Ionicons
         name={active ? nameFocused : name}
         size={22}
-        color={active ? Colors.primary : Colors.textMuted}
+        color={active ? Colors.forestGreen : Colors.textMuted}
       />
     </View>
   );
@@ -35,13 +35,13 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
+        tabBarActiveTintColor: Colors.forestGreen,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: -4 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: -4 },
         tabBarStyle: {
-          backgroundColor: Colors.card,
+          backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: Colors.borderLight,
+          borderTopColor: '#E2E8F0',
           height: tabBarHeight,
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 6,

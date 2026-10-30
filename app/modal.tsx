@@ -472,7 +472,7 @@ export default function AddTransactionModal() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.primary },
+  root: { flex: 1, backgroundColor: Colors.forestGreen },
   kav: { flex: 1 },
 
   header: {
@@ -495,7 +495,7 @@ const s = StyleSheet.create({
 
   content: {
     flexGrow: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F7FAFC',
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
     padding: 24,
@@ -513,18 +513,18 @@ const s = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     borderRadius: Radius.md,
-    backgroundColor: Colors.card,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     ...Shadows.card,
   },
   switchBtnExpense: {
-    backgroundColor: Colors.expenseSoft,
-    borderColor: Colors.expense,
+    backgroundColor: Colors.coralSoft,
+    borderColor: Colors.coralExpense,
   },
   switchBtnIncome: {
-    backgroundColor: Colors.incomeSoft,
-    borderColor: Colors.income,
+    backgroundColor: Colors.mintSoft,
+    borderColor: Colors.mintGreen,
   },
   switchBtnInactive: { opacity: 0.55 },
   switchEmoji: { fontSize: 16 },
@@ -534,12 +534,12 @@ const s = StyleSheet.create({
   amountCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     padding: 20,
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     ...Shadows.card,
   },
   amountCurrency: { fontSize: 28, fontWeight: '800', color: Colors.textMuted },
@@ -589,13 +589,13 @@ const s = StyleSheet.create({
     color: Colors.accentBlue,
   },
   noteInput: {
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     minHeight: 80,
     textAlignVertical: 'top',
     color: Colors.textDark,
@@ -603,11 +603,11 @@ const s = StyleSheet.create({
 
   // Receipt preview (di dalam section catatan)
   receiptPreview: {
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     gap: 8,
   },
   receiptPreviewHeader: {
@@ -650,7 +650,7 @@ const s = StyleSheet.create({
     marginVertical: 4,
   },
   scanBtn: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.forestGreen,
     borderRadius: Radius.md,
     paddingVertical: 14,
     paddingHorizontal: 16,

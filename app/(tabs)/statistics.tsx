@@ -23,6 +23,8 @@ import SwipeableModal from '@/components/SwipeableModal';
 import { useLanguage } from '@/context/LanguageContext';
 import CalendarDropdownModal, { DateFilterState } from '@/components/CalendarDropdownModal';
 import PieChart, { PieSlice } from '@/components/PieChart';
+import OtterMascot from '@/components/OtterMascot';
+import EmptyState from '@/components/EmptyState';
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -261,15 +263,23 @@ export default function StatisticsScreen() {
             </View>
           </Animated.View>
 
-          {/* Net Balance card */}
+          {/* Net Balance card with Mascot */}
           <Animated.View entering={FadeInDown.delay(80).duration(450)} style={s.netCard}>
-            <View>
-              <Text style={s.netLabel}>{t('netBalance')} — {dateFilter.label}</Text>
-              <Text style={[s.netAmount, {
-                color: balance >= 0 ? Colors.income : Colors.expense,
-              }]}>
-                {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
-              </Text>
+            <View style={s.netCardHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.netLabel}>{t('netBalance')} — {dateFilter.label}</Text>
+                <Text style={[s.netAmount, {
+                  color: balance >= 0 ? '#059669' : '#DC2626',
+                }]}>
+                  {balance >= 0 ? '+' : ''}{formatRupiah(balance)}
+                </Text>
+              </View>
+              <View style={s.netMascotWrap}>
+                <OtterMascot
+                  variant={balance > 0 ? 'happy' : balance < 0 ? 'crying' : 'thinking'}
+                  size="sm"
+                />
+              </View>
             </View>
 
             {/* Income/expense comparative bar */}
@@ -487,14 +497,16 @@ export default function StatisticsScreen() {
           {loadingTx ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
           ) : byCategory.length === 0 ? (
-            <Animated.View entering={FadeIn.duration(300)} style={s.emptyWrap}>
-              <Ionicons name="bar-chart-outline" size={40} color={Colors.textMuted} style={{ marginBottom: 4 }} />
-              <Text style={s.emptyText}>
-                {language === 'id'
+            <EmptyState
+              mascot="thinking"
+              title={language === 'id' ? 'Belum Ada Transaksi' : 'No Transactions Yet'}
+              subtitle={
+                language === 'id'
                   ? `Tidak ada ${tab === 'expense' ? 'pengeluaran' : 'pemasukan'} pada periode ${dateFilter.label}.`
-                  : `No ${tab === 'expense' ? 'expenses' : 'income'} recorded in ${dateFilter.label}.`}
-              </Text>
-            </Animated.View>
+                  : `No ${tab === 'expense' ? 'expenses' : 'income'} recorded in ${dateFilter.label}.`
+              }
+              compact
+            />
           ) : (
             byCategory.map(([cat, amount], index) => {
               const meta = getCategoryMeta(cat);
@@ -661,9 +673,9 @@ export default function StatisticsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1, backgroundColor: '#F7FAFC' },
   header: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.forestGreen,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -716,21 +728,19 @@ const s = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     padding: 16,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     gap: 8,
-    borderBottomWidth: 3,
-    ...Shadows.clayCard,
+    ...Shadows.card,
   },
   summaryCardIncome: {
-    borderColor: Colors.incomeSoft,
-    borderBottomColor: '#A7D9BD',
+    borderColor: 'rgba(52, 211, 153, 0.4)',
   },
   summaryCardExpense: {
-    borderColor: Colors.expenseSoft,
-    borderBottomColor: '#F5B4B0',
+    borderColor: 'rgba(248, 113, 113, 0.4)',
   },
   summaryCardHeader: {
     flexDirection: 'row',
@@ -755,15 +765,24 @@ const s = StyleSheet.create({
   },
 
   netCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     padding: 20,
     marginBottom: 18,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
-    ...Shadows.clayCard,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
+  },
+  netCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  netMascotWrap: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   netLabel: {
     fontSize: 13,
@@ -866,16 +885,14 @@ const s = StyleSheet.create({
   catCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     gap: 14,
-    ...Shadows.clayCard,
+    ...Shadows.card,
   },
   catIcon: {
     width: 48,
@@ -890,29 +907,16 @@ const s = StyleSheet.create({
   catPct: { fontSize: 14, fontWeight: '800' },
   catAmt: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
 
-  emptyWrap: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 8,
-  },
-  emptyText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-
   // ── Budget Section ─────────────────────────────────────────────────────────
   budgetSection: {
     marginTop: 6,
     marginBottom: 22,
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     padding: 18,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
-    ...Shadows.clayCard,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
     gap: 12,
   },
   budgetHeaderRow: {

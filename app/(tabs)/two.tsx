@@ -42,6 +42,7 @@ import {
 } from '@/lib/notifications';
 import { checkAndApplyUpdate, getCurrentUpdateInfo } from '@/lib/updates';
 import { triggerDownloadApk } from '@/lib/downloadApp';
+import OtterMascot from '@/components/OtterMascot';
 
 type Member = {
   user_id: string;
@@ -509,6 +510,10 @@ export default function SettingsScreen() {
                     {isRegisteredUser ? t('googleConnected') : t('googleNotConnected')}
                   </Text>
                 </View>
+              </View>
+
+              <View style={s.userCardMascot}>
+                <OtterMascot variant="welcome" size="sm" />
               </View>
             </View>
 
@@ -1222,9 +1227,9 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1, backgroundColor: '#F7FAFC' },
   header: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.forestGreen,
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -1240,7 +1245,7 @@ const s = StyleSheet.create({
   },
 
   body: {
-    backgroundColor: Colors.background,
+    backgroundColor: '#F7FAFC',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 18,
@@ -1260,15 +1265,19 @@ const s = StyleSheet.create({
 
   // ── User Card ─────────────────────────────────────────────────────────────
   userCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
     padding: 18,
     gap: 14,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
-    ...Shadows.clayCard,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
+  },
+  userCardMascot: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userCardMainRow: {
     flexDirection: 'row',
@@ -1394,11 +1403,11 @@ const s = StyleSheet.create({
 
   // ── Active Workspace Card ──────────────────────────────────────────────────
   wsActiveCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     ...Shadows.card,
   },
   wsActiveHeader: {
@@ -1487,10 +1496,10 @@ const s = StyleSheet.create({
 
   // ── Menu Group & Rows ──────────────────────────────────────────────────────
   menuGroup: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     overflow: 'hidden',
     ...Shadows.card,
   },
@@ -1766,11 +1775,11 @@ const s = StyleSheet.create({
   },
   updateModalCloseBtn: {
     marginTop: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.forestGreen,
     borderRadius: Radius.md,
     paddingVertical: 12,
     paddingHorizontal: 36,
-    ...Shadows.clayButton,
+    ...Shadows.card,
   },
   updateModalCloseBtnText: {
     color: '#fff',

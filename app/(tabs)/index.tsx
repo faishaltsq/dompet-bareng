@@ -36,6 +36,8 @@ import { Colors, Shadows, Radius } from '@/constants/theme';
 import { HomeSkeleton } from '@/components/Skeleton';
 import { PressableScale, AnimatedProgressBar } from '@/components/Animated';
 import { triggerDownloadApk } from '@/lib/downloadApp';
+import OtterMascot from '@/components/OtterMascot';
+import EmptyState from '@/components/EmptyState';
 
 type PeriodFilter = 'all' | 'month' | 'week' | 'day';
 
@@ -299,11 +301,12 @@ export default function HomeScreen() {
 
       {/* 2. BODY SHEET WITH ROUNDED CORNERS */}
       <View style={s.sheetBody}>
-        {/* HERO BALANCE CARD (FinWise Emerald Widget) */}
+        {/* HERO BALANCE CARD (Modern Fintech Card with Otter Mascot) */}
         <Animated.View entering={FadeInDown.duration(450)} style={s.heroCard}>
           <View style={s.heroTopRow}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="wallet" size={14} color="rgba(255,255,255,0.85)" />
                 <Text style={s.heroLabel}>{t('totalBalance')}</Text>
                 {activeWorkspace?.name ? (
                   <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600' }} numberOfLines={1}>
@@ -313,19 +316,19 @@ export default function HomeScreen() {
               </View>
               <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatRupiah(summary.balance)}</Text>
             </View>
-            <PressableScale
-              style={s.heroActionPlus}
-              onPress={() => router.push('/modal')}
-            >
-              <Text style={s.heroActionPlusText}>＋</Text>
-            </PressableScale>
+            <View style={s.heroMascotWrap}>
+              <OtterMascot
+                variant={summary.balance >= 0 ? 'rich' : 'panic'}
+                size="md"
+              />
+            </View>
           </View>
 
-          {/* Mini Two-Column Metrics — separate clay mini-cards */}
+          {/* Mini Two-Column Metrics — separate mini-cards */}
           <View style={s.metricsRow}>
             <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-up-circle" size={18} color="#34D399" />
+                <Ionicons name="arrow-up-circle" size={16} color="#34D399" />
                 <Text style={[s.metricLabel, { color: '#E6FFFA' }]}>{t('income')}</Text>
               </View>
               <Text style={[s.metricValue, { color: '#6EE7B7' }]}>
@@ -334,7 +337,7 @@ export default function HomeScreen() {
             </View>
             <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-down-circle" size={18} color="#F87171" />
+                <Ionicons name="arrow-down-circle" size={16} color="#F87171" />
                 <Text style={[s.metricLabel, { color: '#FFE4E6' }]}>{t('expense')}</Text>
               </View>
               <Text style={[s.metricValue, { color: '#FCA5A5' }]}>
@@ -343,7 +346,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Budget Progress Bar — health gradient */}
+          {/* Budget Progress Bar */}
           <View style={s.budgetSection}>
             <View style={s.budgetHeader}>
               <Text style={s.budgetTitle}>{t('budgetUsed')}</Text>
@@ -510,13 +513,14 @@ export default function HomeScreen() {
         }}
         ListEmptyComponent={
           !loadingTx ? (
-            <Animated.View entering={FadeIn.duration(400)} style={s.emptyTxBox}>
-              <Ionicons name="receipt-outline" size={42} color={Colors.textMuted} style={{ marginBottom: 6 }} />
-              <Text style={s.emptyTxTitle}>{t('emptyTxTitle')}</Text>
-              <Text style={s.emptyTxDesc}>
-                {t('emptyTxDesc')}
-              </Text>
-            </Animated.View>
+            <EmptyState
+              mascot="sleeping"
+              title={t('emptyTxTitle')}
+              subtitle={t('emptyTxDesc')}
+              actionLabel={t('recordBtn')}
+              onAction={() => router.push('/modal')}
+              compact
+            />
           ) : null
         }
       />
@@ -616,15 +620,15 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F7FAFC',
   },
 
-  // 1. Top Bar — Clay Chestnut
+  // 1. Top Bar
   headerContainer: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.forestGreen,
   },
   finTopBar: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.forestGreen,
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
@@ -786,27 +790,33 @@ const s = StyleSheet.create({
 
   // 2. Sheet Body
   sheetBody: {
-    backgroundColor: Colors.background,
+    backgroundColor: '#F7FAFC',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 18,
     paddingHorizontal: 16,
   },
 
-  // Hero Card — Clay Warm Chestnut (3D puffy)
+  // Hero Card
   heroCard: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.forestGreen,
     borderRadius: Radius.xl,
     padding: 22,
     gap: 16,
-    ...Shadows.clayCard,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryLight,
+    ...Shadows.card,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  heroMascotWrap: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroLabel: {
     fontSize: 13,
@@ -818,21 +828,6 @@ const s = StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
     marginTop: 4,
-  },
-  heroActionPlus: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.float,
-  },
-  heroActionPlusText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: -2,
   },
 
   // Metrics
@@ -902,7 +897,7 @@ const s = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // Quick actions — Clay pillowy cards
+  // Quick actions
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -911,16 +906,14 @@ const s = StyleSheet.create({
   },
   quickActionBtn: {
     flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     paddingVertical: 14,
     alignItems: 'center',
     gap: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
-    ...Shadows.clayButton,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Shadows.card,
   },
   quickActionIcon: {
     width: 48,
@@ -935,27 +928,23 @@ const s = StyleSheet.create({
     color: Colors.textDark,
   },
 
-  // Segmented Control — Clay pill
+  // Segmented Control
   periodSegment: {
     flexDirection: 'row',
-    backgroundColor: Colors.cardAlt,
+    backgroundColor: '#EDF2F7',
     borderRadius: Radius.full,
-    padding: 5,
+    padding: 4,
     marginTop: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   periodPill: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 8,
     alignItems: 'center',
     borderRadius: Radius.full,
   },
   periodPillActive: {
-    backgroundColor: Colors.card,
-    ...Shadows.clayButton,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    backgroundColor: '#FFFFFF',
+    ...Shadows.card,
   },
   periodPillText: {
     fontSize: 12,
@@ -963,7 +952,7 @@ const s = StyleSheet.create({
     color: Colors.textMuted,
   },
   periodPillTextActive: {
-    color: Colors.primaryDark,
+    color: Colors.forestGreen,
     fontWeight: '700',
   },
 
@@ -986,21 +975,19 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Transaction item — Clay row card
+  // Transaction item
   txItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     padding: 16,
     marginHorizontal: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.borderDark,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     gap: 12,
-    ...Shadows.clayCard,
+    ...Shadows.card,
   },
   txIconCircle: {
     width: 50,
@@ -1104,24 +1091,6 @@ const s = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
-  },
-  emptyTxBox: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  emptyTxTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textDark,
-    marginTop: 8,
-  },
-  emptyTxDesc: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
   },
 
   // Modals

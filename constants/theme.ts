@@ -40,6 +40,16 @@ export const Colors = {
   borderLight: '#F6F1EA',
   skeletonBase: '#EDE5DC',
   skeletonHighlight: '#FBF7F0',
+  // Modern Fintech tokens (from mockups)
+  forestGreen: '#0F3832',
+  forestGreenDark: '#0A1E24',
+  mintGreen: '#00A86B',
+  mintSoft: '#D4F4E4',
+  coralExpense: '#FA5A5A',
+  coralSoft: '#FFEAEA',
+  cardCanvas: '#F4FBF7',
+  goldWarning: '#FFB84D',
+  goldSoft: '#FFF4E0',
 };
 
 export const Shadows = {
