@@ -44,6 +44,13 @@ import { filterTransactions } from '@/lib/transactionSearch';
 import { createDuplicateDraft } from '@/lib/transactionDuplicate';
 import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
 import TransactionSearchBar from '@/components/TransactionSearchBar';
+import SplitSettlementCard from '@/components/SplitSettlementCard';
+import {
+  simplifyDebts,
+  calculateNetBalancesFromSplits,
+  type ExpenseSplit,
+  type SettlementTransfer,
+} from '@/lib/debtSimplifier';
 import SavingsGoalCard from '@/components/SavingsGoalCard';
 import { computeEnvelopeBalance, type SavingsGoal } from '@/lib/envelopeAccounting';
 import UpcomingBillsCard from '@/components/UpcomingBillsCard';
@@ -203,6 +210,75 @@ export default function HomeScreen() {
   const envelope = useMemo(() => {
     return computeEnvelopeBalance(summary.income, summary.expense, savingsGoals);
   }, [summary.income, summary.expense, savingsGoals]);
+  const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    let isMounted = true;
+    interface SupabaseSplitRow {
+      id: string;
+      workspace_id: string;
+      title: string;
+      total_amount: number;
+      paid_by?: string | null;
+      split_participants?: Array<{
+        id: string;
+        split_id: string;
+        user_id?: string | null;
+        user_name: string;
+        owed_amount: number;
+        is_settled: boolean;
+      }>;
+    }
+    supabase
+      .from('expense_splits')
+      .select('*, split_participants(*)')
+      .eq('workspace_id', activeWorkspace.id)
+      .then(({ data }) => {
+        if (isMounted && data) {
+          const rows = data as unknown as SupabaseSplitRow[];
+          const formatted: ExpenseSplit[] = rows.map((d) => ({
+            id: d.id,
+            workspace_id: d.workspace_id,
+            title: d.title,
+            total_amount: Number(d.total_amount),
+            paid_by: d.paid_by,
+            paid_by_name: d.paid_by ? 'Anggota' : 'Admin',
+            participants: (d.split_participants || []).map((p) => ({
+              id: p.id,
+              split_id: p.split_id,
+              user_id: p.user_id,
+              user_name: p.user_name,
+              owed_amount: Number(p.owed_amount),
+              is_settled: p.is_settled,
+            })),
+          }));
+          setExpenseSplits(formatted);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspace?.id]);
+
+  const simplifiedDebts = useMemo(() => {
+    return simplifyDebts(calculateNetBalancesFromSplits(expenseSplits));
+  }, [expenseSplits]);
+
+  const handleSettleUp = useCallback((transfer: SettlementTransfer) => {
+    const today = new Date().toISOString().split('T')[0];
+    router.push({
+      pathname: '/modal',
+      params: {
+        duplicateType: 'expense',
+        duplicateAmount: String(transfer.amount),
+        duplicateCategory: 'Patungan',
+        duplicateDescription: `Pelunasan: ${transfer.fromName} ke ${transfer.toName}`,
+        duplicateDate: today,
+      },
+    });
+  }, [router]);
+
 
 
   const googleAvatarUrl = avatarUrl;
@@ -614,6 +690,16 @@ export default function HomeScreen() {
           </FadeSlideIn>
         )}
 
+        {/* SETTLE UP (Sprint 4) */}
+        {simplifiedDebts.length > 0 && (
+          <FadeSlideIn delay={165}>
+            <SplitSettlementCard
+              transfers={simplifiedDebts}
+              onSettleUp={handleSettleUp}
+            />
+          </FadeSlideIn>
+        )}
+
         {/* SECTION TITLE */}
         <FadeSlideIn delay={180} style={s.txSectionHeader}>
           <Text style={s.txSectionTitle}>{t('recentTx')}</Text>
@@ -970,6 +1056,15 @@ export default function HomeScreen() {
                   <UpcomingBillsCard
                     bills={urgentBills}
                     onPayAndRecord={handlePayAndRecordBill}
+                  />
+                </View>
+              )}
+
+              {simplifiedDebts.length > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <SplitSettlementCard
+                    transfers={simplifiedDebts}
+                    onSettleUp={handleSettleUp}
                   />
                 </View>
               )}
