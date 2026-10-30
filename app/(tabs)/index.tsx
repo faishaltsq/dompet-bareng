@@ -40,6 +40,10 @@ import { PressableScale, AnimatedProgressBar, FadeSlideIn, AnimatedFinanceAmount
 import { triggerDownloadApk } from '@/lib/downloadApp';
 import OtterMascot from '@/components/OtterMascot';
 import EmptyState from '@/components/EmptyState';
+import { filterTransactions } from '@/lib/transactionSearch';
+import { createDuplicateDraft } from '@/lib/transactionDuplicate';
+import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
+import TransactionSearchBar from '@/components/TransactionSearchBar';
 
 type PeriodFilter = 'all' | 'month' | 'week' | 'day';
 
@@ -131,6 +135,8 @@ export default function HomeScreen() {
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<PeriodFilter>('month');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
 
   const googleAvatarUrl = avatarUrl;
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('userFallback');
@@ -176,7 +182,7 @@ export default function HomeScreen() {
   };
 
   // Filter transaksi berdasarkan periode
-  const filteredTransactions = useMemo(() => {
+  const periodTransactions = useMemo(() => {
     if (!activeWorkspace) return [];
     // Pastikan hanya transaksi milik activeWorkspace yang ditampilkan
     const wsTransactions = transactions.filter(t => t.workspace_id === activeWorkspace.id);
@@ -199,6 +205,36 @@ export default function HomeScreen() {
       return true;
     });
   }, [transactions, period, activeWorkspace]);
+
+  // Filter transaksi berdasarkan pencarian dan tipe
+  const filteredTransactions = useMemo(() => {
+    return filterTransactions(periodTransactions, {
+      query: searchQuery,
+      type: activeTypeFilter,
+    });
+  }, [periodTransactions, searchQuery, activeTypeFilter]);
+
+  const handleDuplicate = useCallback((tx: Transaction) => {
+    const draft = createDuplicateDraft(tx);
+    router.push({
+      pathname: '/modal',
+      params: {
+        type: draft.type,
+        amount: draft.amountInput,
+        category: draft.category,
+        description: draft.description,
+      },
+    });
+  }, [router]);
+
+  const handleExportCsv = useCallback(() => {
+    const csv = generateTransactionsCsv(filteredTransactions);
+    if (Platform.OS === 'web') {
+      downloadTransactionsCsvWeb(csv, `transaksi-${activeWorkspace?.name || 'dompet'}.csv`);
+    } else {
+      Alert.alert('Export CSV', `Berhasil mengekspor ${filteredTransactions.length} transaksi.`);
+    }
+  }, [filteredTransactions, activeWorkspace]);
 
   // Rasio pengeluaran terhadap pemasukan (expense-to-income ratio), 0-100.
   // Dipakai HANYA untuk metrik "Rasio Pengeluaran" — bukan progres anggaran.
@@ -420,6 +456,15 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={s.quickActionBtn}
+            onPress={handleExportCsv}
+          >
+            <View style={[s.quickActionIcon, { backgroundColor: '#F0E7DE' }]}>
+              <Ionicons name="download-outline" size={20} color={Colors.primary} />
+            </View>
+            <Text style={s.quickActionLabel}>Export CSV</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.quickActionBtn}
             onPress={() => router.push('/(tabs)/statistics')}
           >
             <View style={[s.quickActionIcon, { backgroundColor: Colors.accentPurpleSoft }]}>
@@ -461,6 +506,15 @@ export default function HomeScreen() {
           <Text style={s.txSectionCount}>
             {filteredTransactions.length} {t('txCount')}
           </Text>
+        </FadeSlideIn>
+        {/* SEARCH BAR & FILTER CHIPS */}
+        <FadeSlideIn delay={190}>
+          <TransactionSearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            activeTypeFilter={activeTypeFilter}
+            onTypeFilterChange={setActiveTypeFilter}
+          />
         </FadeSlideIn>
 
         {loadingTx && transactions.length === 0 && (
@@ -777,14 +831,33 @@ export default function HomeScreen() {
                     {filteredTransactions.length} {t('txCount')}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={s.desktopAddTxBtn}
-                  onPress={() => router.push('/modal')}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
-                  <Text style={s.desktopAddTxBtnText}>+ Transaksi</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={s.desktopOutlineBtn}
+                    onPress={handleExportCsv}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="download-outline" size={14} color={Colors.primaryDark} />
+                    <Text style={s.desktopOutlineBtnText}>Export CSV</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.desktopAddTxBtn}
+                    onPress={() => router.push('/modal')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                    <Text style={s.desktopAddTxBtnText}>+ Transaksi</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                <TransactionSearchBar
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  activeTypeFilter={activeTypeFilter}
+                  onTypeFilterChange={setActiveTypeFilter}
+                />
               </View>
 
               {filteredTransactions.length === 0 ? (
@@ -833,7 +906,16 @@ export default function HomeScreen() {
                           <Text style={[s.txAmountText, { color: isIncome ? Colors.income : Colors.expense }]}>
                             {isIncome ? '+' : '-'}{formatRupiah(item.amount)}
                           </Text>
-                          <Text style={s.txDateText}>{item.transaction_date}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 2 }}>
+                            <Text style={s.txDateText}>{item.transaction_date}</Text>
+                            <TouchableOpacity
+                              onPress={() => handleDuplicate(item)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              accessibilityLabel="Duplikat transaksi"
+                            >
+                              <Ionicons name="copy-outline" size={13} color={Colors.textMuted} />
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </TouchableOpacity>
                     );
@@ -1001,7 +1083,16 @@ export default function HomeScreen() {
                   <Text style={[s.txAmountText, { color: isIncome ? Colors.income : Colors.expense }]}>
                     {isIncome ? '+' : '-'}{formatRupiah(item.amount)}
                   </Text>
-                  <Text style={s.txDateText}>{item.transaction_date}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 2 }}>
+                    <Text style={s.txDateText}>{item.transaction_date}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleDuplicate(item)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel="Duplikat transaksi"
+                    >
+                      <Ionicons name="copy-outline" size={13} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </TouchableOpacity>
             </Animated.View>

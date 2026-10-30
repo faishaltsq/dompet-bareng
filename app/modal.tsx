@@ -33,6 +33,7 @@ import { scanTransactionImage } from '@/lib/gemini';
 import { uploadPrivateReceipt } from '@/lib/receipts';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
+import ReceiptReviewModal from '@/components/ReceiptReviewModal';
 
 export default function AddTransactionModal() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function AddTransactionModal() {
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedTransaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const isExpense = type === 'expense';
 
@@ -104,6 +105,7 @@ export default function AddTransactionModal() {
     try {
       const scanned = await scanTransactionImage(inspected, type);
       setScanResult(scanned);
+      setShowReviewModal(true);
     } catch (err: any) {
       const msg = err?.message || 'Gagal mengenali dokumen';
       Alert.alert('Hasil Scan', `Dokumen belum berhasil dikenali otomatis (${msg}). Anda tetap bisa mengisi nominal secara manual.`);
@@ -472,6 +474,28 @@ export default function AddTransactionModal() {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ReceiptReviewModal
+        visible={showReviewModal && !!scanResult}
+        data={
+          scanResult
+            ? {
+                amount: scanResult.amount,
+                merchant: scanResult.description || '',
+                category: scanResult.category || category,
+                date: new Date().toISOString().split('T')[0],
+                imageUri: receiptUri || undefined,
+              }
+            : null
+        }
+        onClose={() => setShowReviewModal(false)}
+        onConfirm={(confirmed) => {
+          setAmount(formatCurrencyInput(String(confirmed.amount)));
+          if (confirmed.category) setCategory(confirmed.category);
+          if (confirmed.merchant) setDescription(confirmed.merchant);
+          setShowReviewModal(false);
+          setScanResult(null);
+        }}
+      />
     </View>
   );
 }

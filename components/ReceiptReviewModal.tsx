@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
+    color: Colors.textDark,
   },
   closeBtn: {
     padding: 4,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: Colors.text,
+    color: Colors.textDark,
     marginBottom: 12,
   },
   actions: {

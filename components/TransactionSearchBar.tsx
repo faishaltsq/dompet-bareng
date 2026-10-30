@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: Colors.text,
+    color: Colors.textDark,
     paddingVertical: 0,
   },
   clearBtn: {
