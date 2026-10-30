@@ -38,15 +38,9 @@ export function formatDateTime(isoString: string): string {
   }
 }
 
-/** Kategori preset */
-export const EXPENSE_CATEGORIES = [
-  'Makan & Minum', 'Transportasi', 'Belanja', 'Tagihan',
-  'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya',
-] as const;
-
-export const INCOME_CATEGORIES = [
-  'Gaji', 'Transfer', 'Bonus', 'Investasi', 'Lainnya',
-] as const;
+// Kategori preset — daftar kanonik hidup di lib/transactionInput.cjs supaya
+// klien dan proxy server memakai nilai yang sama. Modul ini hanya re-export.
+export { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from './transactionInput.cjs';
 
 /** Category icon & color mapping */
 export const CATEGORY_META: Record<

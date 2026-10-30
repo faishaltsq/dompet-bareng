@@ -21,7 +21,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import * as Crypto from 'expo-crypto';
+import {
+  inspectReceiptImage,
+  type ReceiptImage,
+  type ScannedTransaction,
+} from '@/lib/transactionInput.cjs';
+import { scanTransactionImage } from '@/lib/gemini';
+import { uploadPrivateReceipt } from '@/lib/receipts';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils';
 import { Colors, Shadows, Radius } from '@/constants/theme';
 
@@ -35,7 +44,8 @@ export default function AddTransactionModal() {
     category?: string;
     description?: string;
   }>();
-  const { addTransaction, uploadReceiptImage } = useWorkspace();
+  const { addTransaction, uploadReceiptImage, activeWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
   const initType = params.type === 'income' ? 'income' : 'expense';
@@ -49,6 +59,9 @@ export default function AddTransactionModal() {
   const [description, setDescription] = useState(params.description ?? '');
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
+  const [inspectedImage, setInspectedImage] = useState<ReceiptImage | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScannedTransaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -57,6 +70,58 @@ export default function AddTransactionModal() {
   const handleSwitchType = (t: 'expense' | 'income') => {
     setType(t);
     setCategory(t === 'expense' ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]);
+  };
+
+  const handleScanReceipt = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(t('alertPermissionRequired'), t('alertGalleryPermission'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
+      base64: true,
+    });
+    if (result.canceled || !result.assets[0]?.base64) return;
+
+    const asset = result.assets[0];
+    let inspected: ReceiptImage;
+    try {
+      inspected = inspectReceiptImage(asset.base64);
+    } catch (err: any) {
+      Alert.alert('Format Tidak Didukung', err?.message || 'Gagal membaca gambar');
+      return;
+    }
+
+    setReceiptUri(asset.uri);
+    setReceiptBase64(asset.base64 ?? null);
+    setInspectedImage(inspected);
+    setScanning(true);
+    setScanResult(null);
+
+    try {
+      const scanned = await scanTransactionImage(inspected, type);
+      setScanResult(scanned);
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal mengenali dokumen';
+      Alert.alert('Hasil Scan', `Dokumen belum berhasil dikenali otomatis (${msg}). Anda tetap bisa mengisi nominal secara manual.`);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleApplyScan = () => {
+    if (!scanResult) return;
+    setAmount(formatCurrencyInput(String(scanResult.amount)));
+    if (scanResult.category) {
+      setCategory(scanResult.category);
+    }
+    if (scanResult.description) {
+      setDescription(scanResult.description);
+    }
+    setScanResult(null);
   };
 
   const handlePickReceipt = async () => {
@@ -74,12 +139,21 @@ export default function AddTransactionModal() {
     if (!result.canceled && result.assets[0]) {
       setReceiptUri(result.assets[0].uri);
       setReceiptBase64(result.assets[0].base64 ?? null);
+      try {
+        if (result.assets[0].base64) {
+          setInspectedImage(inspectReceiptImage(result.assets[0].base64));
+        }
+      } catch {
+        // ignore for manual attach
+      }
     }
   };
 
   const handleRemoveReceipt = () => {
     setReceiptUri(null);
     setReceiptBase64(null);
+    setInspectedImage(null);
+    setScanResult(null);
   };
 
   const handleAmountChange = (text: string) => {
@@ -94,12 +168,37 @@ export default function AddTransactionModal() {
     }
     setSubmitting(true);
 
-    // Upload receipt first (blocking)
     let imageUrl: string | null = null;
-    if (receiptUri) {
+    let receiptPath: string | null = null;
+    const transactionId = Crypto.randomUUID();
+
+    if (inspectedImage && activeWorkspace && user) {
+      try {
+        receiptPath = await uploadPrivateReceipt(inspectedImage, {
+          transactionId,
+          workspaceId: activeWorkspace.id,
+          userId: user.id,
+        });
+      } catch (err) {
+        console.warn('Private receipt upload failed, trying fallback:', err);
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            t('alertReceiptUploadFailed'),
+            t('alertReceiptUploadBody'),
+            [
+              { text: t('cancel'), style: 'cancel', onPress: () => resolve(false) },
+              { text: t('alertReceiptSaveWithout'), onPress: () => resolve(true) },
+            ],
+          );
+        });
+        if (!proceed) {
+          setSubmitting(false);
+          return;
+        }
+      }
+    } else if (receiptUri) {
       imageUrl = await uploadReceiptImage(receiptUri, receiptBase64);
       if (!imageUrl) {
-        // Upload gagal — tanya user mau lanjut tanpa gambar atau batal
         const proceed = await new Promise<boolean>((resolve) => {
           Alert.alert(
             t('alertReceiptUploadFailed'),
@@ -121,14 +220,14 @@ export default function AddTransactionModal() {
     Vibration.vibrate(80);
     router.back();
 
-    // Fire-and-forget: addTransaction sudah optimistic (instant UI update),
-    // Supabase sync terjadi di background. Kalau gagal, rollback otomatis.
     addTransaction({
+      id: transactionId,
       type,
       amount: num,
       category,
       description: description.trim() || null,
-      image_url: imageUrl,
+      image_url: receiptPath ? null : imageUrl,
+      receipt_path: receiptPath,
       transaction_date: new Date().toLocaleDateString('en-CA'),
     }).catch(() => {
       Alert.alert(t('alertFailed'), t('alertTxSaveFailed'));
@@ -193,6 +292,76 @@ export default function AddTransactionModal() {
               <Text style={[s.switchText, !isExpense && s.switchTextActive]}>{t('income')}</Text>
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Scan Struk / Bukti Transfer Action */}
+          <Animated.View entering={FadeInDown.delay(30).duration(350)} style={s.scanBtnContainer}>
+            <TouchableOpacity
+              style={s.scanBtn}
+              onPress={handleScanReceipt}
+              disabled={scanning}
+              activeOpacity={0.85}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Scan Struk atau Bukti Transfer"
+            >
+              {scanning ? (
+                <View style={s.scanBtnInner}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={s.scanBtnText}>
+                    {language === 'id' ? '  Sedang Memindai Struk...' : '  Scanning Receipt...'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={s.scanBtnInner}>
+                  <Ionicons name="scan-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={s.scanBtnText}>
+                    {language === 'id' ? 'Scan Struk / Bukti Transfer' : 'Scan Receipt / Transfer'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Scan Result Card */}
+          {scanResult && (
+            <Animated.View entering={FadeIn.duration(250)} style={s.scanResultCard}>
+              <View style={s.scanResultHeader}>
+                <Ionicons name="sparkles" size={18} color={Colors.primary} />
+                <Text style={s.scanResultTitle}>
+                  {language === 'id' ? 'Hasil Deteksi AI' : 'AI Detection Result'}
+                </Text>
+              </View>
+              <View style={s.scanResultBody}>
+                <Text style={s.scanResultAmount}>
+                  Rp {scanResult.amount.toLocaleString('id-ID')}
+                </Text>
+                <Text style={s.scanResultMeta}>
+                  {scanResult.category} • {scanResult.description || '-'}
+                </Text>
+              </View>
+              <View style={s.scanResultActions}>
+                <TouchableOpacity
+                  style={s.applyBtn}
+                  onPress={handleApplyScan}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 4 }} />
+                  <Text style={s.applyBtnText}>
+                    {language === 'id' ? 'Terapkan ke Form' : 'Apply to Form'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.discardBtn}
+                  onPress={() => setScanResult(null)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.discardBtnText}>
+                    {language === 'id' ? 'Batal' : 'Discard'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
 
           {/* Amount Input */}
           <Animated.View entering={FadeInDown.delay(60).duration(350)} style={s.amountCard}>
@@ -475,4 +644,95 @@ const s = StyleSheet.create({
     ...Shadows.float,
   },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+
+  // Scan Receipt
+  scanBtnContainer: {
+    marginVertical: 4,
+  },
+  scanBtn: {
+    backgroundColor: Colors.primaryDark,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    ...Shadows.card,
+  },
+  scanBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  scanResultCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    gap: 10,
+    ...Shadows.card,
+  },
+  scanResultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scanResultTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  scanResultBody: {
+    gap: 4,
+  },
+  scanResultAmount: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.textDark,
+  },
+  scanResultMeta: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  scanResultActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  applyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    minHeight: 40,
+  },
+  applyBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  discardBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  discardBtnText: {
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
 });

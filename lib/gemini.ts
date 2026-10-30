@@ -10,6 +10,11 @@
  */
 
 import { supabase } from './supabase';
+import {
+  type ReceiptImage,
+  type ScannedTransaction,
+  type TransactionType,
+} from './transactionInput.cjs';
 
 const PROXY_ORIGIN = (
   process.env.EXPO_PUBLIC_APP_BASE_URL || 'https://dompet-bareng.vercel.app'
@@ -264,3 +269,56 @@ Instruksi Format:
     .replace(/\*/g, '')
     .trim();
 }
+
+/**
+ * Scan gambar struk / bukti transfer via proxy serverless (DeepSeek Vision).
+ */
+export async function scanTransactionImage(
+  image: ReceiptImage,
+  transactionType: TransactionType,
+  signal?: AbortSignal
+): Promise<ScannedTransaction> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+  const handleAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timer);
+      throw new Error('Scan aborted');
+    }
+    signal.addEventListener('abort', handleAbort, { once: true });
+  }
+
+  try {
+    const res = await fetch(proxyEndpoint(), {
+      method: 'POST',
+      headers: await proxyHeaders(),
+      body: JSON.stringify({
+        task: 'scan-transaction',
+        transactionType,
+        image: {
+          mimeType: image.mimeType,
+          base64: image.base64,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err?.reason || err?.error || `Scan failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data?.transaction || typeof data.transaction.amount !== 'number') {
+      throw new Error('invalid_scan_response');
+    }
+    return data.transaction as ScannedTransaction;
+  } finally {
+    clearTimeout(timer);
+    if (signal) {
+      signal.removeEventListener('abort', handleAbort);
+    }
+  }
+}
+

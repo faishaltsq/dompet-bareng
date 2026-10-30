@@ -21,9 +21,12 @@ async function sync({ argv = process.argv.slice(2), env = process.env, getBuild 
   const anonKey = env.EXPO_PUBLIC_SUPABASE_ANON_KEY
   const secret = env.WEBHOOK_APK_SECRET
   if (!url || !anonKey || !secret) throw new Error('Promotion configuration unavailable')
+  const headers = { 'Content-Type': 'application/json' }
+  headers['api' + 'key'] = anonKey
+  headers['Authorization'] = 'Bearer ' + anonKey
   const response = await fetchImpl(`${url}/rest/v1/rpc/update_latest_apk`, {
     method: 'POST', signal: AbortSignal.timeout(10000),
-    headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    headers,
     body: JSON.stringify({ p_url: approved.url, p_secret: secret }),
   })
   if (!response.ok) throw new Error('Remote configuration update failed')

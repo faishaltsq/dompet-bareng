@@ -1,5 +1,5 @@
-import React, { act } from 'react'
-import { create, type ReactTestRenderer } from 'react-test-renderer'
+import React from 'react'
+import { create, act, type ReactTestRenderer } from 'react-test-renderer'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 export type HookProbe<T> = { read(): T; rerender(hook:()=>T):Promise<void>; unmount():Promise<void> }
 export async function renderHookProbe<T>(hook:()=>T, wrapper?:React.ComponentType<{children:React.ReactNode}>):Promise<HookProbe<T>> {

@@ -22,6 +22,7 @@ export type Transaction = {
   category: string;
   description: string | null;
   image_url: string | null;
+  receipt_path?: string | null;
   transaction_date: string;
   created_at: string;
   updated_at?: string | null;
@@ -52,7 +53,7 @@ type WorkspaceContextType = {
   deleteWorkspace: (id: string) => Promise<boolean>;
   updateWorkspace: (id: string, name: string) => Promise<boolean>;
   generateInviteLink: () => Promise<string | null>;
-  addTransaction: (tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'>) => Promise<boolean>;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'> & { id?: string }) => Promise<boolean>;
   updateTransaction: (id: string, updates: Partial<Pick<Transaction, 'category' | 'transaction_date' | 'description' | 'amount'>>) => Promise<boolean>;
   deleteTransaction: (id: string) => Promise<boolean>;
   refetchTransactions: () => Promise<void>;
@@ -597,12 +598,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTransaction = async (
-    tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'>
+    tx: Omit<Transaction, 'id' | 'workspace_id' | 'user_id' | 'created_at'> & { id?: string }
   ): Promise<boolean> => {
     if (!activeWorkspace || !user) return false;
 
     // Optimistic insert
-    const optimisticId = `opt_${Date.now()}`;
+    const optimisticId = tx.id || `opt_${Date.now()}`;
     const optimisticTx: Transaction = {
       ...tx,
       id: optimisticId,
@@ -616,6 +617,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     const { data, error } = await supabase.from('transactions').insert({
       ...tx,
+      id: optimisticId,
       workspace_id: activeWorkspace.id,
       user_id: user.id,
     }).select().single();
