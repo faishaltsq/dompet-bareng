@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -44,6 +44,9 @@ import { filterTransactions } from '@/lib/transactionSearch';
 import { createDuplicateDraft } from '@/lib/transactionDuplicate';
 import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
 import TransactionSearchBar from '@/components/TransactionSearchBar';
+import UpcomingBillsCard from '@/components/UpcomingBillsCard';
+import { getUrgentBills, type RecurringBill } from '@/lib/billReminderEngine';
+import { supabase } from '@/lib/supabase';
 
 type PeriodFilter = 'all' | 'month' | 'week' | 'day';
 
@@ -137,6 +140,44 @@ export default function HomeScreen() {
   const [period, setPeriod] = useState<PeriodFilter>('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+
+  const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    let isMounted = true;
+    supabase
+      .from('recurring_bills')
+      .select('*')
+      .eq('workspace_id', activeWorkspace.id)
+      .eq('is_active', true)
+      .then(({ data }) => {
+        if (isMounted && data) {
+          setRecurringBills(data as RecurringBill[]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspace?.id]);
+
+  const urgentBills = useMemo(() => {
+    return getUrgentBills(recurringBills);
+  }, [recurringBills]);
+
+  const handlePayAndRecordBill = useCallback((bill: RecurringBill) => {
+    const today = new Date().toISOString().split('T')[0];
+    router.push({
+      pathname: '/modal',
+      params: {
+        duplicateType: 'expense',
+        duplicateAmount: String(bill.amount),
+        duplicateCategory: bill.category,
+        duplicateDescription: `Pembayaran ${bill.title}`,
+        duplicateDate: today,
+      },
+    });
+  }, [router]);
 
   const googleAvatarUrl = avatarUrl;
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('userFallback');
@@ -500,6 +541,15 @@ export default function HomeScreen() {
           })}
         </FadeSlideIn>
 
+        {urgentBills.length > 0 && (
+          <FadeSlideIn delay={170}>
+            <UpcomingBillsCard
+              bills={urgentBills}
+              onPayAndRecord={handlePayAndRecordBill}
+            />
+          </FadeSlideIn>
+        )}
+
         {/* SECTION TITLE */}
         <FadeSlideIn delay={180} style={s.txSectionHeader}>
           <Text style={s.txSectionTitle}>{t('recentTx')}</Text>
@@ -850,6 +900,15 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {urgentBills.length > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <UpcomingBillsCard
+                    bills={urgentBills}
+                    onPayAndRecord={handlePayAndRecordBill}
+                  />
+                </View>
+              )}
 
               <View style={{ marginBottom: 12 }}>
                 <TransactionSearchBar

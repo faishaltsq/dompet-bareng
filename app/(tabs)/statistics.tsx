@@ -27,6 +27,8 @@ import PieChart, { PieSlice } from '@/components/PieChart';
 import FinancialTrendChart, { MonthlyTrendData } from '@/components/FinancialTrendChart';
 import OtterMascot from '@/components/OtterMascot';
 import EmptyState from '@/components/EmptyState';
+import { generateMonthlyRecap } from '@/lib/monthlyRecap';
+import { generateActionableInsights } from '@/lib/actionableInsights';
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -70,6 +72,17 @@ export default function StatisticsScreen() {
   }, [MONTHS]);
 
   const [dateFilter, setDateFilter] = useState<DateFilterState>(() => getDefaultFilter());
+
+  const currentYear = dateFilter.year || new Date().getFullYear();
+  const currentMonth = (typeof dateFilter.monthIndex === 'number' ? dateFilter.monthIndex : new Date().getMonth()) + 1;
+
+  const monthlyRecap = useMemo(() => {
+    return generateMonthlyRecap(transactions, currentYear, currentMonth);
+  }, [transactions, currentYear, currentMonth]);
+
+  const actionableInsights = useMemo(() => {
+    return generateActionableInsights(transactions, currentYear, currentMonth);
+  }, [transactions, currentYear, currentMonth]);
 
   // Fetch budgets corresponding to selected reporting month
   useEffect(() => {
@@ -873,11 +886,25 @@ export default function StatisticsScreen() {
               </View>
               <View style={s.netMascotWrap}>
                 <OtterMascot
-                  variant={balance > 0 ? 'happy' : balance < 0 ? 'crying' : 'thinking'}
+                  variant={monthlyRecap.mascotMood}
                   size="sm"
                 />
               </View>
             </View>
+
+            {actionableInsights.length > 0 && (
+              <View style={s.insightCard}>
+                <View style={s.insightHeader}>
+                  <Ionicons name="bulb-outline" size={18} color={Colors.warning} />
+                  <Text style={s.insightTitle}>Insight Pengeluaran</Text>
+                </View>
+                {actionableInsights.slice(0, 2).map((ins) => (
+                  <View key={ins.id} style={s.insightItem}>
+                    <Text style={s.insightText}>{ins.message}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Income/expense comparative bar */}
             <View style={s.comparativeBarsWrap}>
@@ -1948,5 +1975,32 @@ const s = StyleSheet.create({
   },
   desktopRightColTablet: {
     gap: 16,
+  },
+  insightCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: Radius.lg,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  insightTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  insightItem: {
+    marginTop: 4,
+  },
+  insightText: {
+    fontSize: 12,
+    color: '#78350F',
+    lineHeight: 18,
   },
 });
