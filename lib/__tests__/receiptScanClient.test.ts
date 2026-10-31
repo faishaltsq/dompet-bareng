@@ -88,4 +88,42 @@ describe('scanTransactionImage client helper', () => {
 
     await expect(scanPromise).rejects.toThrow();
   });
+  it('falls back to direct vision endpoint when proxy is unreachable and AI key is present', async () => {
+    vi.stubEnv('EXPO_PUBLIC_AI_BASE_URL', 'http://127.0.0.1:20128/v1');
+    vi.stubEnv('EXPO_PUBLIC_AI_API_KEY', 'synthetic-direct-key');
+
+    const inspected = inspectReceiptImage(VALID_PNG_BASE64);
+    const fetchSpy = vi.fn().mockImplementation((url) => {
+      if (String(url).includes('/api/ai-chat')) {
+        return Promise.reject(new Error('Connection refused'));
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  status: 'recognized',
+                  currency: 'USD',
+                  amount: 5200,
+                  category: 'Tagihan',
+                  description: 'Website Design',
+                }),
+              },
+            },
+          ],
+        }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const result = await scanTransactionImage(inspected, 'expense');
+    expect(result).toEqual({
+      amount: 5200,
+      category: 'Tagihan',
+      description: 'Website Design (USD 5200)',
+    });
+  });
 });

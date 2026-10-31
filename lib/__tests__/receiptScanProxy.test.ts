@@ -220,6 +220,46 @@ describe('scan-transaction dispatch', () => {
 
     expect(res.statusCode).toBe(502);
   });
+  it('normalizes foreign currency invoice to IDR with original currency in description', async () => {
+    stubFetch(() => providerReply({
+      status: 'recognized',
+      currency: 'USD',
+      amount: 5200,
+      category: 'Tagihan',
+      description: 'Website Design Slicing PSD',
+    }));
+    const handler = loadHandler();
+    const res = makeRes();
+
+    await handler(makeReq({ task: 'scan-transaction', transactionType: 'expense', image: { base64: jpegBase64 } }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      transaction: {
+        amount: 5200,
+        category: 'Tagihan',
+        description: 'Website Design Slicing PSD (USD 5200)',
+      },
+    });
+  });
+
+  it('uses SCAN_BASE_URL and SCAN_MODEL when configured via env', async () => {
+    vi.stubEnv('SCAN_BASE_URL', 'https://custom-ai.invalid/v1');
+    vi.stubEnv('SCAN_MODEL', 'custom-vision-v1');
+    const fetch = stubFetch(() => providerReply(recognized));
+    const handler = loadHandler();
+    const res = makeRes();
+
+    await handler(makeReq({ task: 'scan-transaction', transactionType: 'expense', image: { base64: jpegBase64 } }), res);
+
+    expect(res.statusCode).toBe(200);
+    const call = fetch.mock.calls.find(([url]) => String(url).includes('custom-ai.invalid'))!;
+    expect(call).toBeTruthy();
+    expect(String(call[0])).toBe('https://custom-ai.invalid/v1/chat/completions');
+    const body = JSON.parse(String(call[1]!.body));
+    expect(body.model).toBe('custom-vision-v1');
+  });
+
 
   it('maps a truncated empty completion to 502', async () => {
     stubFetch(() => providerReply(''));

@@ -35,6 +35,57 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, formatCurrencyInput, parseCurren
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import ReceiptReviewModal from '@/components/ReceiptReviewModal';
 
+const showAlert = (
+  title: string,
+  message?: string,
+  buttons?: Array<{ text: string; onPress?: () => void; style?: 'default' | 'cancel' | 'destructive' }>
+) => {
+  if (Platform.OS === 'web') {
+    const text = [title, message].filter(Boolean).join('\n\n');
+    if (!buttons || buttons.length <= 1) {
+      if (typeof window !== 'undefined') window.alert(text);
+      buttons?.[0]?.onPress?.();
+    } else {
+      const confirmed = typeof window !== 'undefined' ? window.confirm(text) : true;
+      if (confirmed) {
+        const okBtn = buttons.find((b) => b.style !== 'cancel') || buttons[0];
+        okBtn?.onPress?.();
+      } else {
+        const cancelBtn = buttons.find((b) => b.style === 'cancel');
+        cancelBtn?.onPress?.();
+      }
+    }
+    return;
+  }
+  Alert.alert(title, message, buttons as any);
+};
+
+async function getBase64FromUri(uri: string): Promise<string | null> {
+  if (uri.startsWith('data:')) {
+    const comma = uri.indexOf(',');
+    return comma >= 0 ? uri.slice(comma + 1) : null;
+  }
+  if (Platform.OS === 'web' && typeof fetch !== 'undefined') {
+    try {
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      return new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const str = reader.result as string;
+          const comma = str.indexOf(',');
+          resolve(comma >= 0 ? str.slice(comma + 1) : str);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export default function AddTransactionModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -74,30 +125,59 @@ export default function AddTransactionModal() {
   };
 
   const handleScanReceipt = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(t('alertPermissionRequired'), t('alertGalleryPermission'));
+    if (Platform.OS !== 'web') {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        showAlert(t('alertPermissionRequired'), t('alertGalleryPermission'));
+        return;
+      }
+    }
+
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+        base64: true,
+      });
+    } catch (pickerErr: any) {
+      showAlert(
+        language === 'id' ? 'Gagal Membuka File' : 'Failed to Open File',
+        pickerErr?.message || ''
+      );
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.8,
-      base64: true,
-    });
-    if (result.canceled || !result.assets[0]?.base64) return;
+
+    if (result.canceled || !result.assets || !result.assets[0]) return;
 
     const asset = result.assets[0];
+    let base64Data = asset.base64 || null;
+
+    if (!base64Data && asset.uri) {
+      base64Data = await getBase64FromUri(asset.uri);
+    }
+
+    if (!base64Data) {
+      showAlert(
+        language === 'id' ? 'Gagal Membaca Gambar' : 'Failed to Read Image',
+        language === 'id'
+          ? 'Data gambar tidak dapat dibaca. Silakan pilih file gambar JPG atau PNG.'
+          : 'Image data could not be read. Please choose a JPG or PNG image file.'
+      );
+      return;
+    }
+
     let inspected: ReceiptImage;
     try {
-      inspected = inspectReceiptImage(asset.base64);
+      inspected = inspectReceiptImage(base64Data);
     } catch (err: any) {
-      Alert.alert('Format Tidak Didukung', err?.message || 'Gagal membaca gambar');
+      showAlert('Format Tidak Didukung', err?.message || 'Gagal membaca gambar');
       return;
     }
 
     setReceiptUri(asset.uri);
-    setReceiptBase64(asset.base64 ?? null);
+    setReceiptBase64(base64Data);
     setInspectedImage(inspected);
     setScanning(true);
     setScanResult(null);
@@ -108,7 +188,7 @@ export default function AddTransactionModal() {
       setShowReviewModal(true);
     } catch (err: any) {
       const msg = err?.message || 'Gagal mengenali dokumen';
-      Alert.alert('Hasil Scan', `Dokumen belum berhasil dikenali otomatis (${msg}). Anda tetap bisa mengisi nominal secara manual.`);
+      showAlert('Hasil Scan', `Dokumen belum berhasil dikenali otomatis (${msg}). Anda tetap bisa mengisi nominal secara manual.`);
     } finally {
       setScanning(false);
     }
@@ -127,23 +207,40 @@ export default function AddTransactionModal() {
   };
 
   const handlePickReceipt = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(t('alertPermissionRequired'), t('alertGalleryPermission'));
+    if (Platform.OS !== 'web') {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        showAlert(t('alertPermissionRequired'), t('alertGalleryPermission'));
+        return;
+      }
+    }
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+    } catch (pickerErr: any) {
+      showAlert(
+        language === 'id' ? 'Gagal Membuka File' : 'Failed to Open File',
+        pickerErr?.message || ''
+      );
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setReceiptUri(result.assets[0].uri);
-      setReceiptBase64(result.assets[0].base64 ?? null);
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const asset = result.assets[0];
+      let b64 = asset.base64 || null;
+      if (!b64 && asset.uri) {
+        b64 = await getBase64FromUri(asset.uri);
+      }
+      setReceiptUri(asset.uri);
+      setReceiptBase64(b64);
       try {
-        if (result.assets[0].base64) {
-          setInspectedImage(inspectReceiptImage(result.assets[0].base64));
+        if (b64) {
+          setInspectedImage(inspectReceiptImage(b64));
         }
       } catch {
         // ignore for manual attach
@@ -165,7 +262,7 @@ export default function AddTransactionModal() {
   const handleSubmit = async () => {
     const num = parseCurrencyInput(amount);
     if (isNaN(num) || num <= 0) {
-      Alert.alert(t('alertAttention'), t('alertAmountInvalid'));
+      showAlert(t('alertAttention'), t('alertAmountInvalid'));
       return;
     }
     setSubmitting(true);
@@ -184,7 +281,7 @@ export default function AddTransactionModal() {
       } catch (err) {
         console.warn('Private receipt upload failed, trying fallback:', err);
         const proceed = await new Promise<boolean>((resolve) => {
-          Alert.alert(
+          showAlert(
             t('alertReceiptUploadFailed'),
             t('alertReceiptUploadBody'),
             [
@@ -202,7 +299,7 @@ export default function AddTransactionModal() {
       imageUrl = await uploadReceiptImage(receiptUri, receiptBase64);
       if (!imageUrl) {
         const proceed = await new Promise<boolean>((resolve) => {
-          Alert.alert(
+          showAlert(
             t('alertReceiptUploadFailed'),
             t('alertReceiptUploadBody'),
             [
@@ -232,7 +329,7 @@ export default function AddTransactionModal() {
       receipt_path: receiptPath,
       transaction_date: new Date().toLocaleDateString('en-CA'),
     }).catch(() => {
-      Alert.alert(t('alertFailed'), t('alertTxSaveFailed'));
+      showAlert(t('alertFailed'), t('alertTxSaveFailed'));
     });
   };
 
