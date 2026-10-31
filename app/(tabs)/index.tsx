@@ -57,8 +57,11 @@ import { computeEnvelopeBalance, type SavingsGoal } from '@/lib/envelopeAccounti
 import UpcomingBillsCard from '@/components/UpcomingBillsCard';
 import { getUrgentBills, type RecurringBill } from '@/lib/billReminderEngine';
 import { supabase } from '@/lib/supabase';
-
-type PeriodFilter = 'all' | 'month' | 'week' | 'day';
+import {
+  isDateInPeriod,
+  calculatePeriodSummary,
+  type PeriodFilter,
+} from '@/lib/periodFilter';
 
 function CreateWorkspaceModal({
   visible,
@@ -325,30 +328,36 @@ export default function HomeScreen() {
     ]);
   };
 
-  // Filter transaksi berdasarkan periode
+  const periodLabels = useMemo<Record<PeriodFilter, string>>(() => ({
+    month: t('thisMonth'),
+    week: t('thisWeek'),
+    day: t('today'),
+    all: t('allTime'),
+  }), [t]);
+  const activePeriodLabel = periodLabels[period];
+
+  // Filter transaksi berdasarkan periode aktif
   const periodTransactions = useMemo(() => {
     if (!activeWorkspace) return [];
-    // Pastikan hanya transaksi milik activeWorkspace yang ditampilkan
     const wsTransactions = transactions.filter(t => t.workspace_id === activeWorkspace.id);
     if (period === 'all') return wsTransactions;
     const now = new Date();
-    return wsTransactions.filter(t => {
-      // Parse as local midnight to avoid UTC boundary shifts
-      const d = new Date(t.transaction_date + 'T00:00:00');
-      if (period === 'day') {
-        return d.toDateString() === now.toDateString();
-      }
-      if (period === 'week') {
-        const weekAgo = new Date();
-        weekAgo.setDate(now.getDate() - 7);
-        return d >= weekAgo;
-      }
-      if (period === 'month') {
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }
-      return true;
-    });
+    return wsTransactions.filter(t => isDateInPeriod(t.transaction_date, period, now));
   }, [transactions, period, activeWorkspace]);
+
+  // Ringkasan transaksi sesuai periode aktif (Hari Ini, Minggu Ini, Bulan Ini, Semua)
+  const periodSummary = useMemo(() => {
+    return calculatePeriodSummary(periodTransactions);
+  }, [periodTransactions]);
+
+  // Total pengeluaran bulan berjalan khusus untuk batas anggaran bulanan
+  const currentMonthExpense = useMemo(() => {
+    if (!activeWorkspace) return 0;
+    const now = new Date();
+    return transactions
+      .filter(t => t.workspace_id === activeWorkspace.id && t.type === 'expense' && isDateInPeriod(t.transaction_date, 'month', now))
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [transactions, activeWorkspace]);
 
   // Filter transaksi berdasarkan pencarian dan tipe
   const filteredTransactions = useMemo(() => {
@@ -380,22 +389,24 @@ export default function HomeScreen() {
     }
   }, [filteredTransactions, activeWorkspace]);
 
-  // Rasio pengeluaran terhadap pemasukan (expense-to-income ratio), 0-100.
-  // Dipakai HANYA untuk metrik "Rasio Pengeluaran" — bukan progres anggaran.
-  const expenseRatioPercent = summary.income > 0
-    ? Math.min(Math.round((summary.expense / summary.income) * 100), 100)
-    : summary.expense > 0 ? 100 : 0;
-  // Total anggaran bulan berjalan yang benar-benar dikonfigurasi di workspace.
+  // Rasio pengeluaran terhadap pemasukan periode ini (0-100)
+  const expenseRatioPercent = periodSummary.income > 0
+    ? Math.min(Math.round((periodSummary.expense / periodSummary.income) * 100), 100)
+    : periodSummary.expense > 0 ? 100 : 0;
+
+  // Total anggaran bulan berjalan yang benar-benar dikonfigurasi di workspace
   const totalBudget = useMemo(
     () => budgets.reduce((acc, b) => acc + (b.amount || 0), 0),
     [budgets]
   );
-  // Progres anggaran nyata: total pengeluaran periode ini / total anggaran. 0-100.
-  const budgetProgressPercent = totalBudget > 0
-    ? Math.min(Math.round((summary.expense / totalBudget) * 100), 100)
-    : 0;
   const hasBudget = totalBudget > 0;
-  // Nilai yang ditampilkan di hero card: anggaran nyata bila ada, jika tidak rasio pengeluaran.
+
+  // Progres anggaran nyata bulanan: total pengeluaran bulan ini / total anggaran (0-100)
+  const budgetProgressPercent = hasBudget
+    ? Math.min(Math.round((currentMonthExpense / totalBudget) * 100), 100)
+    : 0;
+
+  // Nilai yang ditampilkan di hero card: anggaran nyata bila ada, jika tidak rasio pengeluaran
   const heroGaugeValue = hasBudget ? budgetProgressPercent : expenseRatioPercent;
   const heroGaugeColor = heroGaugeValue > 90
     ? Colors.expense
@@ -531,28 +542,34 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Mini Two-Column Metrics — separate mini-cards */}
+          {/* Mini Two-Column Metrics: separate mini-cards */}
           <View style={s.metricsRow}>
             <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
                 <Ionicons name="arrow-up-circle" size={16} color={Colors.income} />
-                <Text style={[s.metricLabel, { color: Colors.primarySoft }]}>{t('income')}</Text>
+                <Text style={[s.metricLabel, { color: Colors.primarySoft }]}>
+                  {t('income')} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>({activePeriodLabel})</Text>
+                </Text>
               </View>
-              <AnimatedFinanceAmount value={summary.income} style={[s.metricValue, { color: Colors.incomeSoft }]} />
+              <AnimatedFinanceAmount value={periodSummary.income} style={[s.metricValue, { color: Colors.incomeSoft }]} />
             </View>
             <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
                 <Ionicons name="arrow-down-circle" size={16} color={Colors.expense} />
-                <Text style={[s.metricLabel, { color: Colors.expenseSoft }]}>{t('expense')}</Text>
+                <Text style={[s.metricLabel, { color: Colors.expenseSoft }]}>
+                  {t('expense')} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>({activePeriodLabel})</Text>
+                </Text>
               </View>
-              <AnimatedFinanceAmount value={summary.expense} style={[s.metricValue, { color: Colors.expenseSoft }]} />
+              <AnimatedFinanceAmount value={periodSummary.expense} style={[s.metricValue, { color: Colors.expenseSoft }]} />
             </View>
           </View>
 
-          {/* Budget Progress Bar — anggaran nyata bila dikonfigurasi */}
+          {/* Budget Progress Bar: anggaran nyata bila dikonfigurasi */}
           <View style={s.budgetSection}>
             <View style={s.budgetHeader}>
-              <Text style={s.budgetTitle}>{hasBudget ? t('budgetUsed') : t('expenseRatio')}</Text>
+              <Text style={s.budgetTitle}>
+                {hasBudget ? `${t('budgetUsed')} (${t('thisMonth')})` : `${t('expenseRatio')} (${activePeriodLabel})`}
+              </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={[s.budgetPercent, { color: heroGaugeColor }]}>{heroGaugeValue}%</Text>
                 <View style={[s.budgetBadge, { backgroundColor: heroGaugeBadgeBg }]}>
@@ -570,7 +587,7 @@ export default function HomeScreen() {
             />
             {hasBudget && (
               <Text style={s.budgetFootnote}>
-                {formatRupiah(summary.expense)} / {formatRupiah(totalBudget)}
+                {formatRupiah(currentMonthExpense)} / {formatRupiah(totalBudget)}
               </Text>
             )}
           </View>
@@ -845,9 +862,10 @@ export default function HomeScreen() {
               onPress={() => setShowSwitchModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="home" size={isTablet ? 13 : 16} color={Colors.primaryDark} />
+              <Ionicons name="wallet-outline" size={isTablet ? 13 : 16} color={Colors.primaryDark} />
+              <Text style={[s.desktopPillPrefix, isTablet && s.desktopPillPrefixTablet]}>Dompet:</Text>
               <Text style={[s.desktopPillText, isTablet && s.desktopPillTextTablet]} numberOfLines={1}>
-                {activeWorkspace?.name || 'Pilih Dompet'}
+                {activeWorkspace?.name || 'Utama'}
               </Text>
               <Ionicons name="chevron-down" size={isTablet ? 12 : 14} color={Colors.textSecondary} />
             </TouchableOpacity>
@@ -933,7 +951,7 @@ export default function HomeScreen() {
                     <Ionicons name="wallet" size={isTablet ? 14 : 16} color="rgba(255,255,255,0.85)" />
                     <Text style={[s.desktopKpiLabelLight, isTablet && { fontSize: 11 }]}>{t('totalBalance')}</Text>
                   </View>
-                  <Text style={[s.desktopKpiSubLight, isTablet && { fontSize: 10 }]}>• {activeWorkspace?.name || 'Utama'}</Text>
+                  <Text style={[s.desktopKpiSubLight, isTablet && { fontSize: 10 }]}>• Dompet: {activeWorkspace?.name || 'Utama'}</Text>
                 </View>
                 <View style={[s.desktopOtterWrap, isTablet && { width: 36, height: 36 }]}>
                   <OtterMascot variant={summary.balance >= 0 ? 'rich' : 'panic'} size={isTablet ? 32 : 'sm'} />
@@ -950,10 +968,48 @@ export default function HomeScreen() {
               </Text>
 
               <View style={s.desktopKpiBottom}>
-                <View style={[s.desktopBadgeGreen, isTablet && { paddingVertical: 2, paddingHorizontal: 6 }]}>
-                  <Ionicons name="trending-up" size={isTablet ? 10 : 12} color={Colors.income} />
-                  <Text style={[s.desktopBadgeGreenText, isTablet && { fontSize: 10 }]}>
-                    {summary.income >= summary.expense ? '+Surplus Sehat' : 'Defisit Pengeluaran'}
+                <View
+                  style={[
+                    periodSummary.balance > 0
+                      ? s.desktopBadgeGreen
+                      : periodSummary.balance < 0
+                      ? s.desktopBadgeRed
+                      : s.desktopBadgeNeutral,
+                    isTablet && { paddingVertical: 2, paddingHorizontal: 6 },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      periodSummary.balance > 0
+                        ? 'trending-up'
+                        : periodSummary.balance < 0
+                        ? 'trending-down'
+                        : 'remove-outline'
+                    }
+                    size={isTablet ? 10 : 12}
+                    color={
+                      periodSummary.balance > 0
+                        ? Colors.income
+                        : periodSummary.balance < 0
+                        ? Colors.expense
+                        : 'rgba(255,255,255,0.9)'
+                    }
+                  />
+                  <Text
+                    style={[
+                      periodSummary.balance > 0
+                        ? s.desktopBadgeGreenText
+                        : periodSummary.balance < 0
+                        ? s.desktopBadgeRedText
+                        : s.desktopBadgeNeutralText,
+                      isTablet && { fontSize: 10 },
+                    ]}
+                  >
+                    {periodSummary.balance > 0
+                      ? `+Surplus ${formatRupiah(periodSummary.balance)}`
+                      : periodSummary.balance < 0
+                      ? `Defisit ${formatRupiah(Math.abs(periodSummary.balance))}`
+                      : 'Arus Kas Seimbang'}
                   </Text>
                 </View>
 
@@ -975,6 +1031,9 @@ export default function HomeScreen() {
                   <Ionicons name="arrow-up" size={isTablet ? 15 : 18} color={Colors.income} />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('income')}</Text>
+                <View style={s.desktopKpiPeriodChip}>
+                  <Text style={s.desktopKpiPeriodChipText}>{activePeriodLabel}</Text>
+                </View>
               </View>
               <Text
                 style={[s.desktopKpiAmount, isTablet && s.desktopKpiAmountTablet, { color: Colors.income }]}
@@ -982,10 +1041,10 @@ export default function HomeScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
               >
-                {formatRupiah(summary.income)}
+                {formatRupiah(periodSummary.income)}
               </Text>
               <Text style={[s.desktopKpiFootnote, isTablet && s.desktopKpiFootnoteTablet]} numberOfLines={1}>
-                Total pemasukan tercatat periode ini
+                Total pemasukan tercatat • {activePeriodLabel}
               </Text>
             </View>
 
@@ -996,6 +1055,9 @@ export default function HomeScreen() {
                   <Ionicons name="arrow-down" size={isTablet ? 15 : 18} color={Colors.expense} />
                 </View>
                 <Text style={[s.desktopKpiLabel, isTablet && { fontSize: 12 }]}>{t('expense')}</Text>
+                <View style={s.desktopKpiPeriodChip}>
+                  <Text style={s.desktopKpiPeriodChipText}>{activePeriodLabel}</Text>
+                </View>
               </View>
               <Text
                 style={[s.desktopKpiAmount, isTablet && s.desktopKpiAmountTablet, { color: Colors.expense }]}
@@ -1003,11 +1065,13 @@ export default function HomeScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
               >
-                {formatRupiah(summary.expense)}
+                {formatRupiah(periodSummary.expense)}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: isTablet ? 10 : 11, color: Colors.textSecondary, fontWeight: '600' }}>Rasio Pengeluaran</Text>
+                  <Text style={{ fontSize: isTablet ? 10 : 11, color: Colors.textSecondary, fontWeight: '600' }}>
+                    Rasio Pengeluaran • {activePeriodLabel}
+                  </Text>
                   <Text style={{ fontSize: isTablet ? 10 : 11, color: expenseRatioPercent > 90 ? Colors.expense : Colors.income, fontWeight: '800' }}>
                     {expenseRatioPercent}%
                   </Text>
@@ -1044,7 +1108,7 @@ export default function HomeScreen() {
                     variant="primary"
                     size="sm"
                     icon="add"
-                    label="+ Transaksi"
+                    label="Tambah Transaksi"
                     onPress={() => router.push('/modal')}
                   />
                 </View>
@@ -1181,35 +1245,61 @@ export default function HomeScreen() {
               <View style={s.desktopSideCard}>
                 <View style={s.desktopSideCardHeader}>
                   <Ionicons name="pie-chart-outline" size={18} color={Colors.primaryDark} />
-                  <Text style={s.desktopSideCardTitle}>Progres Anggaran</Text>
+                  <Text style={s.desktopSideCardTitle}>Progres Anggaran Bulan Ini</Text>
                 </View>
-                <View style={{ marginVertical: 10 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600' }}>
-                      Status: {budgetProgressPercent > 90 ? 'Perhatian!' : budgetProgressPercent > 70 ? 'Waspada' : 'Aman'}
+                {hasBudget ? (
+                  <View style={{ marginVertical: 10 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600' }}>
+                        Status: {budgetProgressPercent > 90 ? 'Perhatian!' : budgetProgressPercent > 70 ? 'Waspada' : 'Aman'}
+                      </Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: budgetProgressPercent > 90 ? Colors.expense : Colors.income }}>
+                        {budgetProgressPercent}%
+                      </Text>
+                    </View>
+                    <AnimatedProgressBar
+                      progress={budgetProgressPercent}
+                      color={budgetProgressPercent > 90 ? Colors.expense : budgetProgressPercent > 75 ? Colors.warning : Colors.income}
+                      height={8}
+                    />
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, fontWeight: '600', marginTop: 6 }}>
+                      {formatRupiah(currentMonthExpense)} terpakai dari {formatRupiah(totalBudget)}
                     </Text>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: budgetProgressPercent > 90 ? Colors.expense : Colors.income }}>
-                      {budgetProgressPercent}%
+                    <Text style={[s.desktopBudgetNote, { marginTop: 8 }]}>
+                      {budgetProgressPercent > 90
+                        ? 'Pengeluaran hampir menyentuh batas anggaran. Tinjau kembali pos belanja.'
+                        : 'Pengeluaran masih dalam batas anggaran bulan ini. Pertahankan pola hemat keluarga!'}
                     </Text>
+                    <TouchableOpacity
+                      style={s.desktopManageBudgetBtn}
+                      onPress={() => router.push('/(tabs)/statistics')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={s.desktopManageBudgetBtnText}>Kelola Anggaran</Text>
+                      <Ionicons name="chevron-forward" size={13} color={Colors.primaryDark} />
+                    </TouchableOpacity>
                   </View>
-                  <AnimatedProgressBar
-                    progress={budgetProgressPercent}
-                    color={budgetProgressPercent > 90 ? Colors.expense : budgetProgressPercent > 75 ? Colors.warning : Colors.income}
-                    height={8}
-                  />
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, fontWeight: '600', marginTop: 6 }}>
-                    {formatRupiah(summary.expense)} / {formatRupiah(totalBudget)}
-                  </Text>
-                </View>
-                <Text style={s.desktopBudgetNote}>
-                  {budgetProgressPercent > 90
-                    ? 'Pengeluaran hampir menyentuh batas anggaran. Tinjau kembali pos belanja.'
-                    : 'Pengeluaran masih dalam batas anggaran. Pertahankan pola hemat keluarga!'}
-                </Text>
-                {!hasBudget && (
-                  <Text style={s.desktopBudgetNote}>
-                    Belum ada anggaran bulan ini. Rasio pengeluaran terhadap pemasukan {expenseRatioPercent}%.
-                  </Text>
+                ) : (
+                  <View style={s.desktopEmptyBudgetBox}>
+                    <View style={s.desktopEmptyBudgetIconWrap}>
+                      <Ionicons name="pie-chart-outline" size={24} color={Colors.primaryDark} />
+                    </View>
+                    <Text style={s.desktopEmptyBudgetTitle}>Belum Ada Anggaran</Text>
+                    <Text style={s.desktopEmptyBudgetDesc}>
+                      Batas anggaran bulanan belum diatur. Pasang batas agar pengeluaran keluarga lebih terencana.
+                    </Text>
+                    <Text style={s.desktopEmptyBudgetFootnote}>
+                      Pengeluaran bulan ini: {formatRupiah(currentMonthExpense)}
+                    </Text>
+                    <TouchableOpacity
+                      style={s.desktopSetBudgetBtn}
+                      onPress={() => router.push('/(tabs)/statistics')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="add-circle-outline" size={15} color="#FFFFFF" />
+                      <Text style={s.desktopSetBudgetBtnText}>Atur Batas Anggaran</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 
@@ -1955,6 +2045,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: Radius.full,
   },
+  desktopPillPrefix: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
   desktopPillText: {
     fontSize: 13,
     fontWeight: '700',
@@ -2076,6 +2171,34 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: Colors.income,
   },
+  desktopBadgeRed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(220,76,64,0.18)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radius.full,
+  },
+  desktopBadgeRedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.expense,
+  },
+  desktopBadgeNeutral: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radius.full,
+  },
+  desktopBadgeNeutralText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+  },
   desktopRecordBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2114,6 +2237,18 @@ const s = StyleSheet.create({
   },
   desktopKpiLabel: {
     fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  desktopKpiPeriodChip: {
+    backgroundColor: Colors.cardAlt,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: Radius.sm,
+    marginLeft: 'auto',
+  },
+  desktopKpiPeriodChipText: {
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.textSecondary,
   },
@@ -2263,6 +2398,67 @@ const s = StyleSheet.create({
     marginTop: 6,
     lineHeight: 16,
   },
+  desktopManageBudgetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primarySoft,
+  },
+  desktopManageBudgetBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  desktopEmptyBudgetBox: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  desktopEmptyBudgetIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  desktopEmptyBudgetTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+    marginBottom: 4,
+  },
+  desktopEmptyBudgetDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  desktopEmptyBudgetFootnote: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    marginBottom: 12,
+  },
+  desktopSetBudgetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primaryDark,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: Radius.full,
+  },
+  desktopSetBudgetBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   desktopOtterCard: {
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.xl,
@@ -2313,6 +2509,9 @@ const s = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     maxWidth: 130,
+  },
+  desktopPillPrefixTablet: {
+    fontSize: 10,
   },
   desktopPillTextTablet: {
     fontSize: 12,
