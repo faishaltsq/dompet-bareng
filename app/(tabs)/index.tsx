@@ -42,7 +42,7 @@ import OtterMascot from '@/components/OtterMascot';
 import EmptyState from '@/components/EmptyState';
 import { filterTransactions } from '@/lib/transactionSearch';
 import { createDuplicateDraft } from '@/lib/transactionDuplicate';
-import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
+import { generateTransactionsCsv, downloadTransactionsCsvWeb, saveTransactionsCsvNative, transactionCsvFileName } from '@/lib/exportCsv';
 import TransactionSearchBar from '@/components/TransactionSearchBar';
 import ClayButton from '@/components/ClayButton';
 import SplitSettlementCard from '@/components/SplitSettlementCard';
@@ -380,12 +380,20 @@ export default function HomeScreen() {
     });
   }, [router]);
 
-  const handleExportCsv = useCallback(() => {
+  const handleExportCsv = useCallback(async () => {
     const csv = generateTransactionsCsv(filteredTransactions);
+    const fileName = transactionCsvFileName(activeWorkspace?.name);
     if (Platform.OS === 'web') {
-      downloadTransactionsCsvWeb(csv, `transaksi-${activeWorkspace?.name || 'dompet'}.csv`);
-    } else {
-      Alert.alert('Export CSV', `Berhasil mengekspor ${filteredTransactions.length} transaksi.`);
+      downloadTransactionsCsvWeb(csv, fileName);
+      return;
+    }
+    try {
+      await saveTransactionsCsvNative(csv, fileName);
+      Alert.alert('Export CSV', `${filteredTransactions.length} transaksi tersimpan sebagai ${fileName}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('cancelled')) return;
+      Alert.alert('Gagal export CSV', message || 'Folder tujuan tidak bisa ditulis. Coba lagi.');
     }
   }, [filteredTransactions, activeWorkspace]);
 
@@ -550,9 +558,6 @@ export default function HomeScreen() {
                   <Ionicons name="arrow-up-circle" size={15} color={Colors.income} />
                   <Text style={s.metricLabel} numberOfLines={1}>{t('income')}</Text>
                 </View>
-                <View style={s.metricPeriodTag}>
-                  <Text style={s.metricPeriodTagText}>{activePeriodLabel}</Text>
-                </View>
               </View>
               <AnimatedFinanceAmount value={periodSummary.income} style={[s.metricValue, { color: Colors.incomeSoft }]} />
             </View>
@@ -561,9 +566,6 @@ export default function HomeScreen() {
                 <View style={s.metricIconTitle}>
                   <Ionicons name="arrow-down-circle" size={15} color={Colors.expense} />
                   <Text style={s.metricLabel} numberOfLines={1}>{t('expense')}</Text>
-                </View>
-                <View style={s.metricPeriodTag}>
-                  <Text style={s.metricPeriodTagText}>{activePeriodLabel}</Text>
                 </View>
               </View>
               <AnimatedFinanceAmount value={periodSummary.expense} style={[s.metricValue, { color: Colors.expenseSoft }]} />
@@ -1698,30 +1700,18 @@ const s = StyleSheet.create({
   metricHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   metricIconTitle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    flex: 1,
-    marginRight: 4,
+    flexShrink: 1,
   },
   metricLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.95)',
-  },
-  metricPeriodTag: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radius.xs,
-  },
-  metricPeriodTagText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.92)',
+    flexShrink: 1,
   },
   metricValue: {
     fontSize: 16,
