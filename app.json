@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.dompetbareng.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
