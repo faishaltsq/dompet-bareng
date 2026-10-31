@@ -40,6 +40,7 @@ export {
   Layout, LinearTransition,
 };
 
+export { default as ClayButton, type ClayButtonProps, type ClayButtonVariant, type ClayButtonSize } from '@/components/ClayButton';
 export const SpringPresets = Motion.spring;
 
 /** Stagger helper: generates FadeInUp with index-based delay */

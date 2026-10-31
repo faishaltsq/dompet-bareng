@@ -44,6 +44,7 @@ import { filterTransactions } from '@/lib/transactionSearch';
 import { createDuplicateDraft } from '@/lib/transactionDuplicate';
 import { generateTransactionsCsv, downloadTransactionsCsvWeb } from '@/lib/exportCsv';
 import TransactionSearchBar from '@/components/TransactionSearchBar';
+import ClayButton from '@/components/ClayButton';
 import SplitSettlementCard from '@/components/SplitSettlementCard';
 import {
   simplifyDebts,
@@ -1031,23 +1032,21 @@ export default function HomeScreen() {
                     {filteredTransactions.length} {t('txCount')}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    style={s.desktopOutlineBtn}
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <ClayButton
+                    variant="secondary"
+                    size="sm"
+                    icon="download-outline"
+                    label="Export CSV"
                     onPress={handleExportCsv}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="download-outline" size={14} color={Colors.primaryDark} />
-                    <Text style={s.desktopOutlineBtnText}>Export CSV</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={s.desktopAddTxBtn}
+                  />
+                  <ClayButton
+                    variant="primary"
+                    size="sm"
+                    icon="add"
+                    label="+ Transaksi"
                     onPress={() => router.push('/modal')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
-                    <Text style={s.desktopAddTxBtnText}>+ Transaksi</Text>
-                  </TouchableOpacity>
+                  />
                 </View>
               </View>
 
@@ -1155,20 +1154,26 @@ export default function HomeScreen() {
                   Peran: {activeWorkspace?.role === 'admin' ? 'Pemilik (Admin)' : 'Anggota'}
                 </Text>
                 <View style={s.desktopWsActions}>
-                  <TouchableOpacity
-                    style={s.desktopOutlineBtn}
-                    onPress={() => setShowSwitchModal(true)}
-                  >
-                    <Ionicons name="swap-horizontal" size={14} color={Colors.primaryDark} />
-                    <Text style={s.desktopOutlineBtnText}>Ganti Dompet</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={s.desktopOutlineBtn}
-                    onPress={() => router.push('/(tabs)/two')}
-                  >
-                    <Ionicons name="people-outline" size={14} color={Colors.primaryDark} />
-                    <Text style={s.desktopOutlineBtnText}>Kelola Anggota</Text>
-                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <ClayButton
+                      variant="secondary"
+                      size="sm"
+                      icon="swap-horizontal"
+                      label="Ganti Dompet"
+                      onPress={() => setShowSwitchModal(true)}
+                      fullWidth
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ClayButton
+                      variant="secondary"
+                      size="sm"
+                      icon="people-outline"
+                      label="Kelola Anggota"
+                      onPress={() => router.push('/(tabs)/two')}
+                      fullWidth
+                    />
+                  </View>
                 </View>
               </View>
 
@@ -2153,14 +2158,28 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.primaryDark,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: Radius.md,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: Radius.lg,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.38)',
+    borderLeftWidth: 1.5,
+    borderLeftColor: 'rgba(255, 255, 255, 0.22)',
+    borderRightWidth: 1.5,
+    borderRightColor: 'rgba(46, 24, 14, 0.28)',
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'rgba(35, 18, 10, 0.45)',
+    shadowColor: '#5C2A12',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.26,
+    shadowRadius: 10,
+    elevation: 6,
   },
   desktopAddTxBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   desktopTxList: {
     backgroundColor: '#FFFFFF',
@@ -2214,16 +2233,29 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: Colors.borderDark,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.cardAlt,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.lg,
+    borderTopWidth: 1.5,
+    borderTopColor: '#FFFFFF',
+    borderLeftWidth: 1.5,
+    borderLeftColor: '#FFFFFF',
+    borderRightWidth: 1.5,
+    borderRightColor: '#E6D7C8',
+    borderBottomWidth: 2.5,
+    borderBottomColor: '#D3BFAB',
+    shadowColor: '#6B3A17',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   desktopOutlineBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: Colors.primaryDark,
+    letterSpacing: 0.2,
   },
   desktopBudgetNote: {
     fontSize: 12,
