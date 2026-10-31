@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Shadows, Radius } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
-import { getRemoteConfigSync, initRemoteConfig } from '@/lib/remoteConfig';
 import { triggerDownloadApk } from '@/lib/downloadApp';
 
 const MASCOT_IMG = require('@/assets/images/app-mascot-wallet.png');
@@ -16,14 +15,6 @@ export default function DownloadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
-  const [apkUrl, setApkUrl] = useState<string>('');
-
-  useEffect(() => {
-    initRemoteConfig().then(() => {
-      const url = getRemoteConfigSync('latest_apk_url');
-      if (url) setApkUrl(url);
-    });
-  }, []);
 
   const handleDownload = () => {
     triggerDownloadApk();
