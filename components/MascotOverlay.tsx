@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  useWindowDimensions,
   PanResponder,
   Animated as RNAnimated,
   KeyboardAvoidingView,
@@ -53,12 +54,13 @@ import {
   getFallbackFreeResponse,
 } from '@/lib/companion';
 
-const MASCOT_SIZE = 72;
+const MASCOT_SIZE = 54;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export function MascotOverlay() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { activeWorkspace, transactions, summary, budgets } = useWorkspace();
   const { t, language } = useLanguage();
 
@@ -180,13 +182,29 @@ export function MascotOverlay() {
   // Track sisi dock secara reaktif agar tooltip tidak terpotong
   const [dockSide, setDockSide] = useState<'left' | 'right'>('right');
 
-  // Posisi default kanan bawah
-  const defaultX = SCREEN_WIDTH - MASCOT_SIZE - 16;
-  const defaultY = SCREEN_HEIGHT - MASCOT_SIZE - 96 - (insets.bottom || 16);
+  // Posisi default kanan bawah: di atas bottom tab bar
+  const defaultX = windowWidth - MASCOT_SIZE - 16;
+  const defaultY = windowHeight - MASCOT_SIZE - 78 - Math.max(insets.bottom, 16);
 
   // PanResponder native RN (bebas dependency crash di RN 0.86)
   const pan = useRef(new RNAnimated.ValueXY({ x: defaultX, y: defaultY })).current;
   const panCurrent = useRef({ x: defaultX, y: defaultY });
+
+  // Sinkronisasi posisi bila ukuran layar / viewport berubah (responsif di Web & orientasi)
+  useEffect(() => {
+    const maxX = windowWidth - MASCOT_SIZE - 16;
+    const maxY = windowHeight - MASCOT_SIZE - 78 - Math.max(insets.bottom, 16);
+    const minY = (insets.top || 20) + 12;
+
+    const currentX = panCurrent.current.x;
+    const currentY = panCurrent.current.y;
+
+    const safeX = dockSide === 'left' ? 16 : maxX;
+    const safeY = Math.min(Math.max(currentY, minY), maxY);
+
+    pan.setValue({ x: safeX, y: safeY });
+    panCurrent.current = { x: safeX, y: safeY };
+  }, [windowWidth, windowHeight, insets.bottom, insets.top, dockSide]);
 
   useEffect(() => {
     const id = pan.addListener(value => {
@@ -218,12 +236,12 @@ export function MascotOverlay() {
         const currentY = panCurrent.current.y;
 
         // Auto-dock ke tepi layar terdekat
-        const midX = SCREEN_WIDTH / 2;
-        const targetX = currentX < midX ? 16 : SCREEN_WIDTH - MASCOT_SIZE - 16;
+        const midX = windowWidth / 2;
+        const targetX = currentX < midX ? 16 : windowWidth - MASCOT_SIZE - 16;
         setDockSide(currentX < midX ? 'left' : 'right');
 
-        const minY = (insets.top || 20) + 10;
-        const maxY = SCREEN_HEIGHT - MASCOT_SIZE - (insets.bottom || 20) - 70;
+        const minY = (insets.top || 20) + 12;
+        const maxY = windowHeight - MASCOT_SIZE - Math.max(insets.bottom, 16) - 78;
         const targetY = Math.min(Math.max(currentY, minY), maxY);
 
         RNAnimated.spring(pan, {
@@ -715,16 +733,16 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusBadgeEmoji: {
-    fontSize: 12,
+    fontSize: 10,
   },
 
   tooltipBubble: {

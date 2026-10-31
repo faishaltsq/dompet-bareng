@@ -1204,7 +1204,7 @@ export default function SettingsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 50 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 84 }}
       >
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>

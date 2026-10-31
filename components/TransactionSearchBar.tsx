@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   chip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: Radius.full,
     backgroundColor: '#F4EFEA',
@@ -97,10 +97,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   chipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
 });

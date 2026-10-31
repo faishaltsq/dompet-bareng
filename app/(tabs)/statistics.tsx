@@ -821,7 +821,7 @@ export default function StatisticsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 84 }}
       >
         {/* HEADER */}
         <View style={[s.header, { paddingTop: insets.top + 12 }]}>

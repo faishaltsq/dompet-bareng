@@ -527,7 +527,7 @@ export default function HomeScreen() {
                 <Ionicons name="wallet" size={14} color="rgba(255,255,255,0.85)" />
                 <Text style={s.heroLabel}>{t('totalBalance')}</Text>
                 {activeWorkspace?.name ? (
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600' }} numberOfLines={1}>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '600' }} numberOfLines={1}>
                     • {activeWorkspace.name}
                   </Text>
                 ) : null}
@@ -537,7 +537,7 @@ export default function HomeScreen() {
             <View style={s.heroMascotWrap}>
               <OtterMascot
                 variant={summary.balance >= 0 ? 'rich' : 'panic'}
-                size="md"
+                size={52}
               />
             </View>
           </View>
@@ -546,19 +546,25 @@ export default function HomeScreen() {
           <View style={s.metricsRow}>
             <View style={[s.metricItem, s.metricIncome]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-up-circle" size={16} color={Colors.income} />
-                <Text style={[s.metricLabel, { color: Colors.primarySoft }]}>
-                  {t('income')} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>({activePeriodLabel})</Text>
-                </Text>
+                <View style={s.metricIconTitle}>
+                  <Ionicons name="arrow-up-circle" size={15} color={Colors.income} />
+                  <Text style={s.metricLabel} numberOfLines={1}>{t('income')}</Text>
+                </View>
+                <View style={s.metricPeriodTag}>
+                  <Text style={s.metricPeriodTagText}>{activePeriodLabel}</Text>
+                </View>
               </View>
               <AnimatedFinanceAmount value={periodSummary.income} style={[s.metricValue, { color: Colors.incomeSoft }]} />
             </View>
             <View style={[s.metricItem, s.metricExpense]}>
               <View style={s.metricHeader}>
-                <Ionicons name="arrow-down-circle" size={16} color={Colors.expense} />
-                <Text style={[s.metricLabel, { color: Colors.expenseSoft }]}>
-                  {t('expense')} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>({activePeriodLabel})</Text>
-                </Text>
+                <View style={s.metricIconTitle}>
+                  <Ionicons name="arrow-down-circle" size={15} color={Colors.expense} />
+                  <Text style={s.metricLabel} numberOfLines={1}>{t('expense')}</Text>
+                </View>
+                <View style={s.metricPeriodTag}>
+                  <Text style={s.metricPeriodTagText}>{activePeriodLabel}</Text>
+                </View>
               </View>
               <AnimatedFinanceAmount value={periodSummary.expense} style={[s.metricValue, { color: Colors.expenseSoft }]} />
             </View>
@@ -1362,7 +1368,7 @@ export default function HomeScreen() {
         data={filteredTransactions}
         keyExtractor={item => item.id}
         ListHeaderComponent={ListHeader}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 84 }}
         onEndReached={() => { if (hasMoreTx) loadMoreTransactions(); }}
         onEndReachedThreshold={0.3}
         ListFooterComponent={hasMoreTx ? (
@@ -1650,14 +1656,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   heroMascotWrap: {
-    width: 60,
-    height: 60,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '600',
   },
   heroAmount: {
@@ -1675,7 +1681,8 @@ const s = StyleSheet.create({
   metricItem: {
     flex: 1,
     borderRadius: 14,
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     gap: 6,
   },
   metricIncome: {
@@ -1691,17 +1698,36 @@ const s = StyleSheet.create({
   metricHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+  },
+  metricIconTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flex: 1,
+    marginRight: 4,
   },
   metricLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.95)',
   },
+  metricPeriodTag: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.xs,
+  },
+  metricPeriodTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.92)',
+  },
   metricValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
 
   // Budget
@@ -1715,7 +1741,7 @@ const s = StyleSheet.create({
   },
   budgetTitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '600',
   },
   budgetPercent: {
@@ -1735,7 +1761,7 @@ const s = StyleSheet.create({
   },
   budgetFootnote: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -1745,30 +1771,36 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 18,
-    gap: 12,
+    gap: 10,
   },
   quickActionBtn: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.xl,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    minHeight: 90,
+    gap: 6,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadows.card,
   },
   quickActionIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.textDark,
+    textAlign: 'center',
+    height: 28,
+    lineHeight: 14,
   },
 
   // Segmented Control
@@ -1791,12 +1823,12 @@ const s = StyleSheet.create({
   },
   periodPillText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   periodPillTextActive: {
     color: Colors.primaryDark,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // Transactions section header
